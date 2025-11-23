@@ -60,8 +60,8 @@ export default function Home() {
         }
 
         .logo {
-          max-width: 260px;
-          width: 60vw;
+          max-width: 420px;
+          width: 70vw;
           height: auto;
           margin: 0 auto 18px;
           display: block;
