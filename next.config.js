@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -30,8 +29,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-=======
-module.exports = {
-  reactStrictMode: true,
-};
->>>>>>> c32facd2a0056499b7519bbda281a285c9fb325d
+
