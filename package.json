@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "my-site",
   "version": "0.1.0",
   "private": true,
@@ -21,5 +22,18 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
     "typescript": "^5"
+=======
+  "name": "snow-explorer",
+  "version": "1.0.0",
+  "dependencies": {
+    "next": "13.5.6",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+>>>>>>> c32facd2a0056499b7519bbda281a285c9fb325d
   }
 }
