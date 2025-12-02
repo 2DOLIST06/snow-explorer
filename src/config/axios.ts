@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_SKI_API_BASE,
+  baseURL: process.env.NEXT_PUBLIC_SKI_API_BASE || "/api",
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
