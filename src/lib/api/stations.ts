@@ -1,7 +1,10 @@
 import axios from "@/config/axios";
 import type { StationWidgetsConfig } from "@/types/station";
 
-const API_BASE = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
+const API_BASE =
+  process.env.SKI_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:5001";
 
 const EMPTY_CFG: StationWidgetsConfig = {
   stationSlug: "",
@@ -16,10 +19,17 @@ const EMPTY_CFG: StationWidgetsConfig = {
 
 export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
   try {
-    const url = `${API_BASE}/api/stations/${stationSlug}/widgets`;
-    const res = await fetch(url, { headers: { accept: "application/json" }, cache: "no-store" });
+    const url = `${API_BASE}/api/admin/stations/${encodeURIComponent(stationSlug)}/widgets`;
+    const res = await fetch(url, {
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok || res.status === 204) {
+      // rien en base → config vide
+      return { ...EMPTY_CFG, stationSlug };
+    }
+
     const data = (await res.json()) as StationWidgetsConfig;
 
     // merge sécurité
