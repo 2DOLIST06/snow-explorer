@@ -1748,22 +1748,18 @@ const ResortPage: NextPage<Props> = ({ slug, resort, cfg }) => {
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
 
-  // 1) Resort via proxy Next puis fallback API
+  // 1) Resort depuis l'API Render (ou local en dev)
   let resort: Resort | null = null;
   try {
-    const host = ctx.req.headers.host || "localhost:3001";
-    const proxyUrl = `http://${host}/api/ski/resorts/${encodeURIComponent(slug)}`;
-    let r = await fetch(proxyUrl);
+    const api =
+      process.env.SKI_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://127.0.0.1:5001";
+
+    const r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
     if (r.ok) {
       const data = await r.json();
       resort = (data?.resort ?? data) as Resort;
-    } else {
-      const api = process.env.SKI_API_URL || "http://127.0.0.1:5001";
-      r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
-      if (r.ok) {
-        const data = await r.json();
-        resort = (data?.resort ?? data) as Resort;
-      }
     }
   } catch {
     resort = null;
@@ -1779,6 +1775,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   return { props: { slug, resort, cfg } };
 };
+
 
 
 export default ResortPage;
