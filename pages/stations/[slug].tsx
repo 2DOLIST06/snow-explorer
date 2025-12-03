@@ -1748,18 +1748,22 @@ const ResortPage: NextPage<Props> = ({ slug, resort, cfg }) => {
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
 
-  // 1) Resort via proxy Next puis fallback API Flask
+  // 1) Resort via proxy Next puis fallback API
   let resort: Resort | null = null;
   try {
     const host = ctx.req.headers.host || "localhost:3001";
     const proxyUrl = `http://${host}/api/ski/resorts/${encodeURIComponent(slug)}`;
     let r = await fetch(proxyUrl);
     if (r.ok) {
-      resort = (await r.json()) as Resort;
+      const data = await r.json();
+      resort = (data?.resort ?? data) as Resort;
     } else {
       const api = process.env.SKI_API_URL || "http://127.0.0.1:5001";
       r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
-      if (r.ok) resort = (await r.json()) as Resort;
+      if (r.ok) {
+        const data = await r.json();
+        resort = (data?.resort ?? data) as Resort;
+      }
     }
   } catch {
     resort = null;
@@ -1775,5 +1779,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   return { props: { slug, resort, cfg } };
 };
+
 
 export default ResortPage;
