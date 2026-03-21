@@ -42,9 +42,10 @@ type Resort = {
 type Piste = {
   id: string;
   resort_id: string;
+  name?: string | null;
   difficulty?: string | null;
-  color?: string | null;
   length_m?: number | null;
+  elevation_diff_m?: number | null;
 };
 
 type Lift = {
@@ -1319,7 +1320,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; pistes: Piste[]; lifts: Lif
   const pistesTotal = pistesTotalNum > 0 ? formatBig(pistesTotalNum) : "—";
 
   const normalizePisteColor = (p: Piste) => {
-    const raw = String(p.color || p.difficulty || "").toLowerCase().trim();
+  const raw = String(p.difficulty || "").toLowerCase().trim();
     if (["green", "verte", "vert", "v"].includes(raw)) return "green";
     if (["blue", "bleue", "bleu", "b"].includes(raw)) return "blue";
     if (["red", "rouge", "r"].includes(raw)) return "red";
