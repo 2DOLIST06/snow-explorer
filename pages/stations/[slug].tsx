@@ -1,6 +1,4 @@
-Voici le fichier complet réécrit avec **uniquement** les modifs nécessaires pour lire aussi `pistes` et `lifts` depuis l’API.
 
-```tsx
 // src/pages/stations/[slug].tsx
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
@@ -1853,6 +1851,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 };
 
 export default ResortPage;
-```
 
-Ensuite il faudra vérifier que les colonnes de `piste` et `lift` s’appellent bien comme ici : `resort_id`, `difficulty`, `color`, `type`, `category`.
