@@ -123,7 +123,9 @@ const styles = {
   shell: {
     maxWidth: 1320,
     margin: "0 auto",
-    padding: "24px 16px 48px",
+    padding: "24px 16px 24px",
+    height: "calc(100vh - 88px)",
+    overflow: "hidden",
   } as React.CSSProperties,
 
   topBar: {
@@ -223,14 +225,20 @@ const styles = {
     gridTemplateColumns: "280px minmax(0, 1fr)",
     gap: 20,
     alignItems: "start",
+    height: "100%",
+    minHeight: 0,
   } as React.CSSProperties,
 
   sidebar: {
     position: "sticky" as const,
-    top: 92,
+    top: 0,
     display: "grid",
     gap: 12,
-  },
+    alignSelf: "start",
+    maxHeight: "100%",
+    overflow: "auto",
+    paddingRight: 4,
+  } as React.CSSProperties,
 
   sidebarCard: {
     background: "#fff",
@@ -257,10 +265,51 @@ const styles = {
     fontWeight: 600,
   } as React.CSSProperties,
 
+  sectionLinkRow: {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+} as React.CSSProperties,
+
+sectionStatusOk: {
+  width: 20,
+  height: 20,
+  minWidth: 20,
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#dcfce7",
+  color: "#15803d",
+  border: "1px solid #86efac",
+  fontSize: 12,
+  fontWeight: 800,
+} as React.CSSProperties,
+
+sectionStatusKo: {
+  width: 20,
+  height: 20,
+  minWidth: 20,
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#fee2e2",
+  color: "#dc2626",
+  border: "1px solid #fca5a5",
+  fontSize: 12,
+  fontWeight: 800,
+} as React.CSSProperties,
+
   content: {
     display: "grid",
     gap: 18,
-  },
+    height: "100%",
+    minHeight: 0,
+    overflowY: "auto",
+    paddingRight: 6,
+  } as React.CSSProperties,
 
   section: {
     background: "#fff",
@@ -900,17 +949,92 @@ export default function AdminStationEdit() {
   }
 
   const sections = useMemo(
-    () => [
-      { id: "overview", label: "Vue d’ensemble" },
-      { id: "infos", label: "Infos station" },
-      { id: "pistes", label: "Pistes & snowpark" },
-      { id: "plan", label: "Plan des pistes" },
-      { id: "description", label: "Description" },
-      { id: "snowpark", label: "Snowpark visuel" },
-      { id: "forfaits", label: "Forfaits" },
-    ],
-    []
-  );
+  () => [
+    { id: "overview", label: "Vue d’ensemble", complete: sectionChecks.overview },
+    { id: "infos", label: "Infos station", complete: sectionChecks.infos },
+    { id: "pistes", label: "Pistes & snowpark", complete: sectionChecks.pistes },
+    { id: "plan", label: "Plan des pistes", complete: sectionChecks.plan },
+    { id: "description", label: "Description", complete: sectionChecks.description },
+    { id: "snowpark", label: "Snowpark visuel", complete: sectionChecks.snowpark },
+    { id: "forfaits", label: "Forfaits", complete: sectionChecks.forfaits },
+  ],
+  [
+    resort,
+    widgets,
+    forfaitItems,
+    sectionChecks.overview,
+    sectionChecks.infos,
+    sectionChecks.pistes,
+    sectionChecks.plan,
+    sectionChecks.description,
+    sectionChecks.snowpark,
+    sectionChecks.forfaits,
+  ]
+);
+
+  const isFilled = (v: any) => {
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  return true;
+};
+
+const isFilledNumber = (v: any) => {
+  return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
+};
+
+const isFilledArray = (arr: any[]) => Array.isArray(arr) && arr.length > 0;
+
+const areForfaitsComplete = (items: ForfaitItem[]) => {
+  if (!Array.isArray(items) || items.length === 0) return false;
+  return items.every((it) => isFilled(it.title) && isFilled(it.price));
+};
+
+const sectionChecks = {
+  overview: !!resort.cover_image_url && !!resort.logo_url,
+
+  infos:
+    isFilled(resort.name) &&
+    isFilledNumber(resort.latitude) &&
+    isFilledNumber(resort.longitude) &&
+    isFilled(resort.region_id) &&
+    isFilled(resort.department) &&
+    isFilled(resort.website_url) &&
+    isFilled(resort.cover_image_url) &&
+    isFilled(resort.logo_url) &&
+    isFilled(resort.description_md) &&
+    isFilledNumber(resort.altitude_min_m) &&
+    isFilledNumber(resort.altitude_max_m) &&
+    isFilled(resort.season_open_date) &&
+    isFilled(resort.season_close_date),
+
+  pistes:
+    isFilledNumber(widgets?.pistes?.colors?.green) &&
+    isFilledNumber(widgets?.pistes?.colors?.blue) &&
+    isFilledNumber(widgets?.pistes?.colors?.red) &&
+    isFilledNumber(widgets?.pistes?.colors?.black) &&
+    isFilledNumber(widgets?.snowparks?.count),
+
+  plan:
+    !!widgets?.pistes?.enabled &&
+    isFilled(widgets?.pistes?.largeMapUrl) &&
+    isFilled(widgets?.pistes?.smallMapUrl) &&
+    isFilled(widgets?.pistes?.caption),
+
+  description:
+    !!widgets?.description?.enabled &&
+    isFilled(widgets?.description?.html),
+
+  snowpark:
+    !!widgets?.snowpark?.enabled &&
+    isFilled(widgets?.snowpark?.mapUrl) &&
+    isFilled(widgets?.snowpark?.caption) &&
+    isFilled(widgets?.snowpark?.logoUrl) &&
+    isFilled(widgets?.snowpark?.descriptionHtml),
+
+  forfaits:
+    !!widgets?.forfaits?.enabled &&
+    areForfaitsComplete(forfaitItems),
+};
 
   if (loading) {
     return (
@@ -982,10 +1106,18 @@ export default function AdminStationEdit() {
 
               <div style={styles.sectionLinkList}>
                 {sections.map((section) => (
-                  <a key={section.id} href={`#${section.id}`} style={styles.sectionLink}>
-                    {section.label}
-                  </a>
-                ))}
+  <a key={section.id} href={`#${section.id}`} style={styles.sectionLink}>
+    <span style={styles.sectionLinkRow}>
+      <span>{section.label}</span>
+      <span
+        style={section.complete ? styles.sectionStatusOk : styles.sectionStatusKo}
+        title={section.complete ? "Section complète" : "Section incomplète"}
+      >
+        {section.complete ? "✓" : "✕"}
+      </span>
+    </span>
+  </a>
+))}
               </div>
             </div>
 
