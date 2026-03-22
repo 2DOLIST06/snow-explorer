@@ -1276,10 +1276,8 @@ const ResortSearchBox: React.FC<{ onPick: (slug: string) => void }> = ({ onPick 
 /* =========================
  * Panneaux d'infos étendus (tuiles compactes)
  * =======================*/
-const StationExtraPanels: React.FC<{ resort: Resort; pistes: Piste[]; lifts: Lift[]; cfg?: any }> = ({
+const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
   resort,
-  pistes,
-  lifts,
   cfg,
 }) => {
   const router = useRouter();
@@ -1314,29 +1312,15 @@ const StationExtraPanels: React.FC<{ resort: Resort; pistes: Piste[]; lifts: Lif
       ? `Jusqu’au ${fmtDate(closeRaw)}`
       : "—";
 
-  // Domaine / pistes
+    // Domaine / pistes
   const km = Number.isFinite(resort.ski_area_km as any) ? `${formatBig(resort.ski_area_km)} km` : "—";
-  const pistesTotalNum = Array.isArray(pistes) ? pistes.length : 0;
-  const pistesTotal = pistesTotalNum > 0 ? formatBig(pistesTotalNum) : "—";
+  const pistesTotal = Number.isFinite(resort.pistes_count as any) ? formatBig(resort.pistes_count) : "—";
 
-  const normalizePisteColor = (p: Piste) => {
-  const raw = String(p.difficulty || "").toLowerCase().trim();
-    if (["green", "verte", "vert", "v"].includes(raw)) return "green";
-    if (["blue", "bleue", "bleu", "b"].includes(raw)) return "blue";
-    if (["red", "rouge", "r"].includes(raw)) return "red";
-    if (["black", "noire", "noir", "n"].includes(raw)) return "black";
-    return "";
-  };
-
-  const pistesGreenNum = pistes.filter((p) => normalizePisteColor(p) === "green").length;
-  const pistesBlueNum = pistes.filter((p) => normalizePisteColor(p) === "blue").length;
-  const pistesRedNum = pistes.filter((p) => normalizePisteColor(p) === "red").length;
-  const pistesBlackNum = pistes.filter((p) => normalizePisteColor(p) === "black").length;
-
-  const pistesGreen = pistesGreenNum > 0 ? formatBig(pistesGreenNum) : "—";
-  const pistesBlue = pistesBlueNum > 0 ? formatBig(pistesBlueNum) : "—";
-  const pistesRed = pistesRedNum > 0 ? formatBig(pistesRedNum) : "—";
-  const pistesBlack = pistesBlackNum > 0 ? formatBig(pistesBlackNum) : "—";
+  const pc = cfg?.pistes?.colors || {};
+  const pistesGreen = Number.isFinite(pc.green) ? formatBig(pc.green) : "—";
+  const pistesBlue = Number.isFinite(pc.blue) ? formatBig(pc.blue) : "—";
+  const pistesRed = Number.isFinite(pc.red) ? formatBig(pc.red) : "—";
+  const pistesBlack = Number.isFinite(pc.black) ? formatBig(pc.black) : "—";
 
   // Snowparks
   const snowparksCountRaw =
@@ -1350,47 +1334,16 @@ const StationExtraPanels: React.FC<{ resort: Resort; pistes: Piste[]; lifts: Lif
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
 
   // Remontées mécaniques
-  const normalizeLiftType = (l: Lift) => {
-    const raw = String(l.type || l.category || "").toLowerCase().trim();
-    if (
-      raw.includes("drag") ||
-      raw.includes("surface") ||
-      raw.includes("button") ||
-      raw.includes("platter") ||
-      raw.includes("rope") ||
-      raw.includes("t-bar") ||
-      raw.includes("j-bar") ||
-      raw.includes("tire")
-    ) {
-      return "drag";
-    }
-    if (
-      raw.includes("chair") ||
-      raw.includes("telesiege") ||
-      raw.includes("télésiège")
-    ) {
-      return "chair";
-    }
-    if (
-      raw.includes("gondola") ||
-      raw.includes("tram") ||
-      raw.includes("aerial") ||
-      raw.includes("funitel") ||
-      raw.includes("telepherique") ||
-      raw.includes("téléphérique") ||
-      raw.includes("cable")
-    ) {
-      return "cable";
-    }
-    return "";
-  };
+  const rm = cfg?.remontees || {};
+  const liftsDrag = Number.isFinite(rm.tireFesses) ? Number(rm.tireFesses) : 0;
+  const liftsChairs = Number.isFinite(rm.telesieges) ? Number(rm.telesieges) : 0;
+  const liftsCable = Number.isFinite(rm.telepheriques) ? Number(rm.telepheriques) : 0;
 
-  const liftsDrag = lifts.filter((l) => normalizeLiftType(l) === "drag").length;
-  const liftsChairs = lifts.filter((l) => normalizeLiftType(l) === "chair").length;
-  const liftsCable = lifts.filter((l) => normalizeLiftType(l) === "cable").length;
-
-  const liftsTotalNum = Array.isArray(lifts) ? lifts.length : 0;
-  const liftsTotal = liftsTotalNum > 0 ? formatBig(liftsTotalNum) : "—";
+  const liftsTotal = Number.isFinite(resort.lifts_count as any)
+    ? formatBig(resort.lifts_count)
+    : [liftsDrag, liftsChairs, liftsCable].some((v) => v > 0)
+    ? formatBig(liftsDrag + liftsChairs + liftsCable)
+    : "—";
 
   const liftTypesCount = [liftsDrag, liftsChairs, liftsCable].filter((v) => v > 0).length;
   const liftTypesLabel = liftTypesCount ? `${liftTypesCount}` : "—";
@@ -1746,7 +1699,7 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
         )}
 
         {/* Tuiles info */}
-        <StationExtraPanels resort={resort} pistes={pistes} lifts={lifts} cfg={cfg as any} />
+        <StationExtraPanels resort={resort} cfg={cfg as any} />
 
         {/* Ligne A : plan + widgets droite */}
         <section className="stations-layout">
