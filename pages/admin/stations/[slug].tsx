@@ -793,7 +793,79 @@ export default function AdminStationEdit() {
     setWidgets(copy);
   };
 
-  const forfaitItems: ForfaitItem[] = widgets?.forfaits?.items || [];
+ const forfaitItems: ForfaitItem[] = widgets?.forfaits?.items || [];
+
+const isFilled = (v: any) => {
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  return true;
+};
+
+const isFilledNumber = (v: any) => {
+  return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
+};
+
+const areForfaitsComplete = (items: ForfaitItem[]) => {
+  if (!Array.isArray(items) || items.length === 0) return false;
+  return items.every((it) => isFilled(it.title) && isFilled(it.price));
+};
+
+const sectionChecks = {
+  overview: !!resort?.cover_image_url && !!resort?.logo_url,
+
+  infos:
+    isFilled(resort?.name) &&
+    isFilledNumber(resort?.latitude) &&
+    isFilledNumber(resort?.longitude) &&
+    isFilled(resort?.region_id) &&
+    isFilled(resort?.department) &&
+    isFilled(resort?.website_url) &&
+    isFilled(resort?.cover_image_url) &&
+    isFilled(resort?.logo_url) &&
+    isFilled(resort?.description_md) &&
+    isFilledNumber(resort?.altitude_min_m) &&
+    isFilledNumber(resort?.altitude_max_m) &&
+    isFilled(resort?.season_open_date) &&
+    isFilled(resort?.season_close_date),
+
+  pistes:
+    isFilledNumber(widgets?.pistes?.colors?.green) &&
+    isFilledNumber(widgets?.pistes?.colors?.blue) &&
+    isFilledNumber(widgets?.pistes?.colors?.red) &&
+    isFilledNumber(widgets?.pistes?.colors?.black) &&
+    isFilledNumber(widgets?.snowparks?.count),
+
+  plan:
+    !!widgets?.pistes?.enabled &&
+    isFilled(widgets?.pistes?.largeMapUrl) &&
+    isFilled(widgets?.pistes?.smallMapUrl) &&
+    isFilled(widgets?.pistes?.caption),
+
+  description:
+    !!widgets?.description?.enabled &&
+    isFilled(widgets?.description?.html),
+
+  snowpark:
+    !!widgets?.snowpark?.enabled &&
+    isFilled(widgets?.snowpark?.mapUrl) &&
+    isFilled(widgets?.snowpark?.caption) &&
+    isFilled(widgets?.snowpark?.logoUrl) &&
+    isFilled(widgets?.snowpark?.descriptionHtml),
+
+  forfaits:
+    !!widgets?.forfaits?.enabled &&
+    areForfaitsComplete(forfaitItems),
+};
+
+const sections = [
+  { id: "overview", label: "Vue d’ensemble", complete: sectionChecks.overview },
+  { id: "infos", label: "Infos station", complete: sectionChecks.infos },
+  { id: "pistes", label: "Pistes & snowpark", complete: sectionChecks.pistes },
+  { id: "plan", label: "Plan des pistes", complete: sectionChecks.plan },
+  { id: "description", label: "Description", complete: sectionChecks.description },
+  { id: "snowpark", label: "Snowpark visuel", complete: sectionChecks.snowpark },
+  { id: "forfaits", label: "Forfaits", complete: sectionChecks.forfaits },
+];
 
   const addForfait = () => {
     const next = [...forfaitItems, { id: `f${Date.now()}`, title: "", price: "", url: "" }];
@@ -948,93 +1020,7 @@ export default function AdminStationEdit() {
     }
   }
 
-  const sections = useMemo(
-  () => [
-    { id: "overview", label: "Vue d’ensemble", complete: sectionChecks.overview },
-    { id: "infos", label: "Infos station", complete: sectionChecks.infos },
-    { id: "pistes", label: "Pistes & snowpark", complete: sectionChecks.pistes },
-    { id: "plan", label: "Plan des pistes", complete: sectionChecks.plan },
-    { id: "description", label: "Description", complete: sectionChecks.description },
-    { id: "snowpark", label: "Snowpark visuel", complete: sectionChecks.snowpark },
-    { id: "forfaits", label: "Forfaits", complete: sectionChecks.forfaits },
-  ],
-  [
-    resort,
-    widgets,
-    forfaitItems,
-    sectionChecks.overview,
-    sectionChecks.infos,
-    sectionChecks.pistes,
-    sectionChecks.plan,
-    sectionChecks.description,
-    sectionChecks.snowpark,
-    sectionChecks.forfaits,
-  ]
-);
 
-  const isFilled = (v: any) => {
-  if (v === null || v === undefined) return false;
-  if (typeof v === "string") return v.trim() !== "";
-  return true;
-};
-
-const isFilledNumber = (v: any) => {
-  return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
-};
-
-const isFilledArray = (arr: any[]) => Array.isArray(arr) && arr.length > 0;
-
-const areForfaitsComplete = (items: ForfaitItem[]) => {
-  if (!Array.isArray(items) || items.length === 0) return false;
-  return items.every((it) => isFilled(it.title) && isFilled(it.price));
-};
-
-const sectionChecks = {
-  overview: !!resort.cover_image_url && !!resort.logo_url,
-
-  infos:
-    isFilled(resort.name) &&
-    isFilledNumber(resort.latitude) &&
-    isFilledNumber(resort.longitude) &&
-    isFilled(resort.region_id) &&
-    isFilled(resort.department) &&
-    isFilled(resort.website_url) &&
-    isFilled(resort.cover_image_url) &&
-    isFilled(resort.logo_url) &&
-    isFilled(resort.description_md) &&
-    isFilledNumber(resort.altitude_min_m) &&
-    isFilledNumber(resort.altitude_max_m) &&
-    isFilled(resort.season_open_date) &&
-    isFilled(resort.season_close_date),
-
-  pistes:
-    isFilledNumber(widgets?.pistes?.colors?.green) &&
-    isFilledNumber(widgets?.pistes?.colors?.blue) &&
-    isFilledNumber(widgets?.pistes?.colors?.red) &&
-    isFilledNumber(widgets?.pistes?.colors?.black) &&
-    isFilledNumber(widgets?.snowparks?.count),
-
-  plan:
-    !!widgets?.pistes?.enabled &&
-    isFilled(widgets?.pistes?.largeMapUrl) &&
-    isFilled(widgets?.pistes?.smallMapUrl) &&
-    isFilled(widgets?.pistes?.caption),
-
-  description:
-    !!widgets?.description?.enabled &&
-    isFilled(widgets?.description?.html),
-
-  snowpark:
-    !!widgets?.snowpark?.enabled &&
-    isFilled(widgets?.snowpark?.mapUrl) &&
-    isFilled(widgets?.snowpark?.caption) &&
-    isFilled(widgets?.snowpark?.logoUrl) &&
-    isFilled(widgets?.snowpark?.descriptionHtml),
-
-  forfaits:
-    !!widgets?.forfaits?.enabled &&
-    areForfaitsComplete(forfaitItems),
-};
 
   if (loading) {
     return (
