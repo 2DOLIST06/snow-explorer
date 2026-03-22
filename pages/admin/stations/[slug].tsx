@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
 const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
@@ -20,16 +20,16 @@ type ResortType = {
   department?: string | null;
   region?: { id?: string; name?: string; country_code?: string } | null;
 
-  // ✅ NOUVEAUX CHAMPS
   altitude_min_m?: number | null;
   altitude_max_m?: number | null;
-  season_open_date?: string | null;   // 'YYYY-MM-DD'
-  season_close_date?: string | null;  // 'YYYY-MM-DD'
+  season_open_date?: string | null;
+  season_close_date?: string | null;
 
-  // ✅ Plan des pistes stocké dans la table resort
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
 };
+
+type ForfaitItem = { id?: string; title?: string; price?: string; url?: string };
 
 // helpers
 const toNumberOrNull = (v: string): number | null => {
@@ -37,6 +37,7 @@ const toNumberOrNull = (v: string): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
+
 const toIntOrZero = (v: string): number => {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : 0;
@@ -109,14 +110,428 @@ function buildSmallFilename(original: string, preferJpeg = true): string {
   return `${base}-small.jpg`;
 }
 
+// =========================
+// UI helpers
+// =========================
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    color: "#111827",
+  } as React.CSSProperties,
+
+  shell: {
+    maxWidth: 1320,
+    margin: "0 auto",
+    padding: "24px 16px 48px",
+  } as React.CSSProperties,
+
+  topBar: {
+    position: "sticky" as const,
+    top: 0,
+    zIndex: 30,
+    background: "rgba(245,247,251,0.92)",
+    backdropFilter: "blur(10px)",
+    borderBottom: "1px solid #e5e7eb",
+    margin: "0 -16px 24px",
+    padding: "14px 16px",
+  },
+
+  topBarInner: {
+    maxWidth: 1320,
+    margin: "0 auto",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap" as const,
+  },
+
+  titleWrap: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 6,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 28,
+    lineHeight: 1.1,
+    fontWeight: 800,
+    letterSpacing: "-0.02em",
+  } as React.CSSProperties,
+
+  subtitle: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap" as const,
+    fontSize: 13,
+    color: "#6b7280",
+  },
+
+  chip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    fontSize: 12,
+    color: "#374151",
+  } as React.CSSProperties,
+
+  actionRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap" as const,
+    alignItems: "center",
+  },
+
+  primaryBtn: {
+    border: "none",
+    borderRadius: 10,
+    background: "#111827",
+    color: "#fff",
+    padding: "10px 14px",
+    fontWeight: 700,
+    cursor: "pointer",
+  } as React.CSSProperties,
+
+  secondaryBtn: {
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    background: "#fff",
+    color: "#111827",
+    padding: "10px 14px",
+    fontWeight: 600,
+    cursor: "pointer",
+  } as React.CSSProperties,
+
+  ghostBtn: {
+    border: "1px dashed #d1d5db",
+    borderRadius: 10,
+    background: "#fff",
+    color: "#111827",
+    padding: "10px 14px",
+    fontWeight: 600,
+    cursor: "pointer",
+  } as React.CSSProperties,
+
+  layout: {
+    display: "grid",
+    gridTemplateColumns: "280px minmax(0, 1fr)",
+    gap: 20,
+    alignItems: "start",
+  } as React.CSSProperties,
+
+  sidebar: {
+    position: "sticky" as const,
+    top: 92,
+    display: "grid",
+    gap: 12,
+  },
+
+  sidebarCard: {
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 18,
+    padding: 14,
+    boxShadow: "0 8px 28px rgba(15,23,42,0.04)",
+  } as React.CSSProperties,
+
+  sectionLinkList: {
+    display: "grid",
+    gap: 8,
+  },
+
+  sectionLink: {
+    display: "block",
+    textDecoration: "none",
+    color: "#374151",
+    background: "#f9fafb",
+    border: "1px solid #edf0f3",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 600,
+  } as React.CSSProperties,
+
+  content: {
+    display: "grid",
+    gap: 18,
+  },
+
+  section: {
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 22,
+    padding: 18,
+    boxShadow: "0 12px 34px rgba(15,23,42,0.05)",
+  } as React.CSSProperties,
+
+  sectionHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap" as const,
+    marginBottom: 16,
+  },
+
+  sectionTitleWrap: {
+    display: "grid",
+    gap: 4,
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: 20,
+    lineHeight: 1.2,
+    fontWeight: 800,
+    letterSpacing: "-0.01em",
+  } as React.CSSProperties,
+
+  sectionDesc: {
+    margin: 0,
+    color: "#6b7280",
+    fontSize: 14,
+  },
+
+  sectionActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap" as const,
+  },
+
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 14,
+  } as React.CSSProperties,
+
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 14,
+  } as React.CSSProperties,
+
+  grid4: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 14,
+  } as React.CSSProperties,
+
+  stack: {
+    display: "grid",
+    gap: 14,
+  } as React.CSSProperties,
+
+  label: {
+    display: "grid",
+    gap: 8,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#374151",
+  } as React.CSSProperties,
+
+  input: {
+    width: "100%",
+    minHeight: 44,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    color: "#111827",
+    fontSize: 14,
+    outline: "none",
+  } as React.CSSProperties,
+
+  textarea: {
+    width: "100%",
+    padding: "12px",
+    borderRadius: 12,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    color: "#111827",
+    fontSize: 14,
+    fontFamily: "monospace",
+    outline: "none",
+    resize: "vertical" as const,
+  } as React.CSSProperties,
+
+  checkboxRow: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#111827",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#fafafa",
+  } as React.CSSProperties,
+
+  helperBox: {
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    padding: 12,
+    fontSize: 13,
+    color: "#4b5563",
+  } as React.CSSProperties,
+
+  previewImage: {
+    width: "100%",
+    height: "auto",
+    display: "block",
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+  } as React.CSSProperties,
+
+  previewLogo: {
+    maxWidth: 180,
+    maxHeight: 180,
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    objectFit: "contain" as const,
+    padding: 8,
+  } as React.CSSProperties,
+
+  splitPreview: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+  } as React.CSSProperties,
+
+  previewCard: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    overflow: "hidden",
+    background: "#fff",
+  } as React.CSSProperties,
+
+  previewCardHeader: {
+    padding: "10px 12px",
+    borderBottom: "1px solid #e5e7eb",
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#6b7280",
+    background: "#fafafa",
+  } as React.CSSProperties,
+
+  lineItem: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: 12,
+    background: "#fcfcfd",
+  } as React.CSSProperties,
+
+  miniStats: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  } as React.CSSProperties,
+
+  statBox: {
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    padding: 12,
+    display: "grid",
+    gap: 6,
+  } as React.CSSProperties,
+
+  statLabel: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+  } as React.CSSProperties,
+
+  statValue: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: 700,
+  } as React.CSSProperties,
+
+  alertInfo: {
+    marginBottom: 16,
+    border: "1px solid #bfdbfe",
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    borderRadius: 14,
+    padding: "12px 14px",
+    fontSize: 14,
+    fontWeight: 600,
+  } as React.CSSProperties,
+
+  alertError: {
+    marginBottom: 16,
+    border: "1px solid #fecaca",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    borderRadius: 14,
+    padding: "12px 14px",
+    fontSize: 14,
+    fontWeight: 600,
+  } as React.CSSProperties,
+};
+
+function SectionCard({
+  id,
+  title,
+  description,
+  actions,
+  children,
+}: {
+  id: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} style={styles.section}>
+      <div style={styles.sectionHeader}>
+        <div style={styles.sectionTitleWrap}>
+          <h2 style={styles.sectionTitle}>{title}</h2>
+          {description ? <p style={styles.sectionDesc}>{description}</p> : null}
+        </div>
+        {actions ? <div style={styles.sectionActions}>{actions}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SaveButton({
+  onClick,
+  label = "Enregistrer",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <button onClick={onClick} style={styles.primaryBtn}>
+      {label}
+    </button>
+  );
+}
+
 export default function AdminStationEdit() {
   const router = useRouter();
-const slug =
-  typeof router.query.slug === "string"
-    ? router.query.slug
-    : Array.isArray(router.query.slug)
-    ? router.query.slug[0]
-    : "";
+
+  const slug =
+    typeof router.query.slug === "string"
+      ? router.query.slug
+      : Array.isArray(router.query.slug)
+      ? router.query.slug[0]
+      : "";
 
   const [loading, setLoading] = useState(true);
   const [resort, setResort] = useState<ResortType | null>(null);
@@ -124,11 +539,9 @@ const slug =
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
-  // listes pour les <select>
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
 
-  // ——— helpers pour garantir l’option courante dans les listes ———
   const ensureRegionInList = (
     list: RegionRow[],
     rid: string | null | undefined,
@@ -151,24 +564,28 @@ const slug =
 
   const load = async (mySlug: string) => {
     if (!mySlug) {
-  setErr("Slug manquant dans l’URL");
-  setLoading(false);
-  return;
-}
+      setErr("Slug manquant dans l’URL");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setErr("");
+
     try {
-      // 1) station + widgets
       let url = `${API}/api/admin/stations/${mySlug}`;
       let r = await fetch(url, { cache: "no-store" });
+
       if (!r.ok) {
         url = `${API}/api/admin/resorts/${mySlug}`;
         r = await fetch(url, { cache: "no-store" });
       }
+
       if (!r.ok) throw new Error(`HTTP ${r.status} (${url})`);
+
       const j = await r.json();
 
-            const rcv: ResortType = j.resort || j;
+      const rcv: ResortType = j.resort || j;
       const normalized: ResortType = {
         ...rcv,
         region_id: rcv.region_id ?? rcv.region?.id ?? null,
@@ -180,10 +597,9 @@ const slug =
         pistes_small_map_url: rcv.pistes_small_map_url ?? null,
         pistes_large_map_url: rcv.pistes_large_map_url ?? null,
       };
+
       setResort(normalized);
 
-
-      // defaults widgets
       const w = j.widgets || {};
       if (!w.pistes) w.pistes = {};
       if (!w.pistes.colors) w.pistes.colors = { green: 0, blue: 0, red: 0, black: 0 };
@@ -193,18 +609,17 @@ const slug =
       if (!Array.isArray(w.forfaits.items)) w.forfaits.items = [];
       setWidgets(w);
 
-      // 2) régions
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
       let regs: RegionRow[] = rr.ok ? await rr.json() : [];
       regs = ensureRegionInList(regs, normalized.region_id, normalized.region?.name || null);
       regs.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr"));
       setRegions(regs);
 
-      // 3) départements
       const rid = (normalized.region_id || "").toLowerCase();
       const depUrl = rid
         ? `${API}/api/departments?region_id=${encodeURIComponent(rid)}`
         : `${API}/api/departments`;
+
       const dr = await fetch(depUrl, { cache: "no-store" });
       let deps: DepartmentRow[] = dr.ok ? await dr.json() : [];
       deps = ensureDepartmentInList(deps, normalized.department || null, normalized.region_id || null);
@@ -218,25 +633,26 @@ const slug =
   };
 
   useEffect(() => {
-  if (!router.isReady) return;
-  if (!slug) return;
-  load(slug);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [router.isReady, slug]);
+    if (!router.isReady) return;
+    if (!slug) return;
+    load(slug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, slug]);
 
-  // recharger les départements si region_id change côté UI
   useEffect(() => {
     const rid = (resort?.region_id || "").toLowerCase();
     if (!resort) return;
+
     (async () => {
       if (!rid) {
-        setDepartments((prev) =>
-          ensureDepartmentInList(prev, resort.department || null, null)
-        );
+        setDepartments((prev) => ensureDepartmentInList(prev, resort.department || null, null));
         return;
       }
+
       try {
-        const r = await fetch(`${API}/api/departments?region_id=${encodeURIComponent(rid)}`, { cache: "no-store" });
+        const r = await fetch(`${API}/api/departments?region_id=${encodeURIComponent(rid)}`, {
+          cache: "no-store",
+        });
         let deps: DepartmentRow[] = r.ok ? await r.json() : [];
         deps = ensureDepartmentInList(deps, resort.department || null, resort.region_id || null);
         deps.sort((a, b) => (a.name || "").localeCompare(b.name || "", "fr"));
@@ -247,9 +663,9 @@ const slug =
         );
       }
     })();
-  }, [resort?.region_id]);
+  }, [resort?.region_id, resort]);
 
-    const patchResort = async () => {
+  const patchResort = async () => {
     if (!resort) return;
     setMsg("Enregistrement…");
     setErr("");
@@ -257,18 +673,12 @@ const slug =
     try {
       const payload: ResortType = {
         ...resort,
-
-        // 🔹 on force les champs plan des pistes à partir des widgets si besoin
-        pistes_large_map_url:
-          resort.pistes_large_map_url ?? (widgets?.pistes?.largeMapUrl || null),
-        pistes_small_map_url:
-          resort.pistes_small_map_url ?? (widgets?.pistes?.smallMapUrl || null),
-
+        pistes_large_map_url: resort.pistes_large_map_url ?? (widgets?.pistes?.largeMapUrl || null),
+        pistes_small_map_url: resort.pistes_small_map_url ?? (widgets?.pistes?.smallMapUrl || null),
         region_id: resort.region_id ?? resort.region?.id ?? null,
         region: undefined,
       };
 
-      // debug si besoin
       console.log("PATCH resort payload =", payload);
 
       const r = await fetch(`${API}/api/admin/stations/${slug}`, {
@@ -276,10 +686,12 @@ const slug =
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!r.ok) {
         const txt = await r.text();
         throw new Error(`PATCH failed ${r.status}: ${txt}`);
       }
+
       await load(slug);
       setMsg("Infos enregistrées.");
     } catch (e: any) {
@@ -288,20 +700,22 @@ const slug =
     }
   };
 
-
   const patchWidgets = async () => {
     setMsg("Enregistrement widgets…");
     setErr("");
+
     try {
       const r = await fetch(`${API}/api/admin/stations/${slug}/widgets`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(widgets),
       });
+
       if (!r.ok) {
         const txt = await r.text();
         throw new Error(`PATCH widgets failed ${r.status}: ${txt}`);
       }
+
       await load(slug);
       setMsg("Widgets enregistrés.");
     } catch (e: any) {
@@ -310,113 +724,113 @@ const slug =
     }
   };
 
-  if (loading) {
-    return (
-      <main style={{ maxWidth: 960, margin: "24px auto", padding: "0 16px" }}>
-        Chargement…
-      </main>
-    );
-  }
-  if (err) {
-    return (
-      <main style={{ maxWidth: 960, margin: "24px auto", padding: "0 16px", color: "#dc2626" }}>
-        Erreur : {err}
-      </main>
-    );
-  }
-  if (!resort) return <main>Not found</main>;
+  const patchPistesBoth = async () => {
+    await patchWidgets();
+    await patchResort();
+  };
 
   const setW = (path: string, val: any) => {
     const parts = path.split(".");
     const copy = { ...widgets };
     let cur: any = copy;
+
     for (let i = 0; i < parts.length - 1; i++) {
       const k = parts[i];
       cur[k] = cur[k] ?? {};
       cur = cur[k];
     }
+
     cur[parts[parts.length - 1]] = val;
     setWidgets(copy);
   };
 
-  // gestion des forfaits (UI structurée)
-  type ForfaitItem = { id?: string; title?: string; price?: string; url?: string };
   const forfaitItems: ForfaitItem[] = widgets?.forfaits?.items || [];
 
   const addForfait = () => {
     const next = [...forfaitItems, { id: `f${Date.now()}`, title: "", price: "", url: "" }];
     setW("forfaits.items", next);
   };
+
   const updateForfait = (idx: number, key: keyof ForfaitItem, value: string) => {
     const next = forfaitItems.map((it, i) => (i === idx ? { ...it, [key]: value } : it));
     setW("forfaits.items", next);
   };
+
   const removeForfait = (idx: number) => {
     const next = forfaitItems.filter((_, i) => i !== idx);
     setW("forfaits.items", next);
   };
 
-  // ========= Upload S3 (pré-signé) =========
   async function uploadWithPresign(file: File): Promise<string> {
     const r = await fetch(`${API}/api/s3/presign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name })
+      body: JSON.stringify({ filename: file.name }),
     });
+
     if (!r.ok) {
       const t = await r.text();
       throw new Error(`Presign error ${r.status}: ${t}`);
     }
+
     const { uploadUrl, publicUrl } = await r.json();
     const put = await fetch(uploadUrl, { method: "PUT", body: file });
+
     if (!put.ok) {
       const t = await put.text();
       throw new Error(`S3 PUT failed ${put.status}: ${t}`);
     }
+
     return publicUrl;
   }
 
   async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       const publicUrl = await uploadWithPresign(file);
       setResort((prev) => ({ ...(prev || {}), cover_image_url: publicUrl }));
       setMsg("Image uploadée.");
     } catch (e: any) {
       setErr(e?.message || "Erreur upload");
+    } finally {
+      (e.target as HTMLInputElement).value = "";
     }
   }
 
-    async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       const publicUrl = await uploadWithPresign(file);
       setResort((prev) => ({ ...(prev || {}), logo_url: publicUrl }));
       setMsg("Logo uploadé.");
     } catch (e: any) {
       setErr(e?.message || "Erreur upload logo");
+    } finally {
+      (e.target as HTMLInputElement).value = "";
     }
   }
 
-
-  // handler générique pour widgets.*.* champs
   function handleFileUploadTo(path: string) {
     return async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
       try {
         const publicUrl = await uploadWithPresign(file);
         setW(path, publicUrl);
         setMsg("Image uploadée.");
       } catch (e: any) {
         setErr(e?.message || "Erreur upload");
+      } finally {
+        (e.target as HTMLInputElement).value = "";
       }
     };
   }
 
-  // === Upload large + génération auto small ===
   async function uploadLargeAndAutoSmall(
     file: File,
     {
@@ -435,13 +849,16 @@ const slug =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: smallName }),
     });
+
     if (!presignSmall.ok) {
       const t = await presignSmall.text();
       throw new Error(`Presign small error ${presignSmall.status}: ${t}`);
     }
+
     const { uploadUrl: smallUploadUrl, publicUrl: smallPublicUrl } = await presignSmall.json();
 
     const putSmall = await fetch(smallUploadUrl, { method: "PUT", body: smallBlob });
+
     if (!putSmall.ok) {
       const t = await putSmall.text();
       throw new Error(`S3 PUT small failed ${putSmall.status}: ${t}`);
@@ -451,926 +868,792 @@ const slug =
   }
 
   async function handleUploadPistesLargeAutoSmall(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  try {
-    setMsg("Upload du plan en cours…");
-    setErr("");
-    const { largeUrl, smallUrl } = await uploadLargeAndAutoSmall(file, {
-      smallWidth: 800,
-      smallMime: "image/jpeg",
-      smallQuality: 0.85,
-    });
+    try {
+      setMsg("Upload du plan en cours…");
+      setErr("");
 
-    // ✅ widgets (StationWidgets)
-    setW("pistes.largeMapUrl", largeUrl);
-    setW("pistes.smallMapUrl", smallUrl);
+      const { largeUrl, smallUrl } = await uploadLargeAndAutoSmall(file, {
+        smallWidth: 800,
+        smallMime: "image/jpeg",
+        smallQuality: 0.85,
+      });
 
-    // ✅ resort (table resort → colonnes pistes_*_map_url)
-    setResort((prev) => ({
-      ...(prev || {}),
-      pistes_large_map_url: largeUrl,
-      pistes_small_map_url: smallUrl,
-    }));
+      setW("pistes.largeMapUrl", largeUrl);
+      setW("pistes.smallMapUrl", smallUrl);
 
-    setMsg("Plan des pistes uploadé (grand + petit).");
-  } catch (e: any) {
-    setErr(e?.message || "Erreur upload plan");
-    setMsg("");
-  } finally {
-    (e.target as HTMLInputElement).value = "";
+      setResort((prev) => ({
+        ...(prev || {}),
+        pistes_large_map_url: largeUrl,
+        pistes_small_map_url: smallUrl,
+      }));
+
+      setMsg("Plan des pistes uploadé (grand + petit).");
+    } catch (e: any) {
+      setErr(e?.message || "Erreur upload plan");
+      setMsg("");
+    } finally {
+      (e.target as HTMLInputElement).value = "";
+    }
   }
-}
 
-  // =========================================
+  const sections = useMemo(
+    () => [
+      { id: "overview", label: "Vue d’ensemble" },
+      { id: "infos", label: "Infos station" },
+      { id: "pistes", label: "Pistes & snowpark" },
+      { id: "plan", label: "Plan des pistes" },
+      { id: "description", label: "Description" },
+      { id: "snowpark", label: "Snowpark visuel" },
+      { id: "forfaits", label: "Forfaits" },
+    ],
+    []
+  );
+
+  if (loading) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.shell}>Chargement…</div>
+      </main>
+    );
+  }
+
+  if (err && !resort) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.shell}>
+          <div style={styles.alertError}>Erreur : {err}</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!resort) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.shell}>Not found</div>
+      </main>
+    );
+  }
 
   return (
-    <main style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h1 style={{ margin: 0 }}>
-          Admin — {resort.name}{" "}
-          <span style={{ color: "#6b7280", fontSize: 14 }}>({slug})</span>
-        </h1>
-        <button
-          onClick={() => load(slug)}
-          style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
-        >
-          Rafraîchir
-        </button>
-      </div>
-
-      {msg ? <div style={{ margin: "8px 0", fontSize: 13, color: "#2563eb" }}>{msg}</div> : null}
-
-      {/* Infos */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Infos</h2>
-
-        {/* aperçu base */}
-        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-          En base → region_id: <b>{resort.region_id || "—"}</b> • department:{" "}
-          <b>{resort.department || "—"}</b>
-          {resort.region?.name ? (
-            <>
-              {" "}
-              • region.name: <b>{resort.region.name}</b>
-            </>
-          ) : null}
-        </div>
-
-        <div style={{ display: "grid", gap: 8 }}>
-          <label>
-            Nom
-            <input
-              value={resort.name || ""}
-              onChange={(e) => setResort({ ...resort, name: e.target.value })}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          <label>
-            Latitude
-            <input
-              value={resort.latitude ?? ""}
-              onChange={(e) =>
-                setResort({
-                  ...resort,
-                  latitude: toNumberOrNull(e.target.value),
-                })
-              }
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          <label>
-            Longitude
-            <input
-              value={resort.longitude ?? ""}
-              onChange={(e) =>
-                setResort({
-                  ...resort,
-                  longitude: toNumberOrNull(e.target.value),
-                })
-              }
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          {/* Région (select) */}
-          <label>
-            Région
-            <select
-              value={resort.region_id ?? ""}
-              onChange={(e) =>
-                setResort({
-                  ...resort,
-                  region_id: e.target.value || null,
-                })
-              }
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            >
-              <option value="">— choisir —</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Département (select filtré) */}
-          <label>
-            Département
-            <select
-              value={resort.department ?? ""}
-              onChange={(e) =>
-                setResort({ ...resort, department: e.target.value || null })
-              }
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            >
-              <option value="">— choisir —</option>
-              {departments.map((d) => (
-                <option key={`${d.region_id}-${d.code}-${d.name}`} value={d.name}>
-                  {d.name}{d.code ? ` (${d.code})` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Site web
-            <input
-              value={resort.website_url || ""}
-              onChange={(e) =>
-                setResort({ ...resort, website_url: e.target.value })
-              }
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          {/* ✅ Cover image : input + upload S3 + preview */}
-          <label>
-            Cover image
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={resort.cover_image_url || ""}
-                onChange={(e) =>
-                  setResort({ ...resort, cover_image_url: e.target.value })
-                }
-                placeholder="URL publique (auto-remplie après upload)"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleCoverUpload}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-              {resort.cover_image_url ? (
-                <img
-                  src={resort.cover_image_url}
-                  alt="Cover preview"
-                  style={{ maxWidth: 360, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                />
-              ) : null}
+    <main style={styles.page}>
+      <div style={styles.topBar}>
+        <div style={styles.topBarInner}>
+          <div style={styles.titleWrap}>
+            <h1 style={styles.title}>{resort.name || "Station"}</h1>
+            <div style={styles.subtitle}>
+              <span style={styles.chip}>Slug : {slug || "—"}</span>
+              <span style={styles.chip}>region_id : {resort.region_id || "—"}</span>
+              <span style={styles.chip}>department : {resort.department || "—"}</span>
+              {resort.region?.name ? <span style={styles.chip}>region.name : {resort.region.name}</span> : null}
             </div>
-          </label>
-
-                    {/* ✅ Logo station : input + upload S3 + preview */}
-          <label>
-            Logo station
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={resort.logo_url || ""}
-                onChange={(e) =>
-                  setResort({ ...resort, logo_url: e.target.value })
-                }
-                placeholder="URL publique du logo (auto-remplie après upload)"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoUpload}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-              {resort.logo_url ? (
-                <img
-                  src={resort.logo_url}
-                  alt="Logo station"
-                  style={{ maxWidth: 160, maxHeight: 160, borderRadius: 8, border: "1px solid #e5e7eb", objectFit: "contain" }}
-                />
-              ) : null}
-            </div>
-          </label>
-
-
-          <label>
-            Description (Markdown/HTML)
-            <textarea
-              value={resort.description_md || ""}
-              onChange={(e) =>
-                setResort({ ...resort, description_md: e.target.value })
-              }
-              rows={6}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontFamily: "monospace",
-              }}
-            />
-          </label>
-
-          {/* ✅ Altitudes */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <label>
-              Altitude min (m)
-              <input
-                value={resort.altitude_min_m ?? ""}
-                onChange={(e) =>
-                  setResort({ ...resort, altitude_min_m: toNumberOrNull(e.target.value) })
-                }
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-            </label>
-            <label>
-              Altitude max (m)
-              <input
-                value={resort.altitude_max_m ?? ""}
-                onChange={(e) =>
-                  setResort({ ...resort, altitude_max_m: toNumberOrNull(e.target.value) })
-                }
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-            </label>
           </div>
 
-          {/* ✅ Dates d'ouverture/fermeture */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <label>
-              Ouverture (saison) — AAAA-MM-JJ
-              <input
-                type="date"
-                value={resort.season_open_date || ""}
-                onChange={(e) =>
-                  setResort({ ...resort, season_open_date: e.target.value || null })
-                }
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-            </label>
-            <label>
-              Fermeture (saison) — AAAA-MM-JJ
-              <input
-                type="date"
-                value={resort.season_close_date || ""}
-                onChange={(e) =>
-                  setResort({ ...resort, season_close_date: e.target.value || null })
-                }
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-            </label>
-          </div>
-        </div>
-
-        <button
-          onClick={patchResort}
-          style={{
-            marginTop: 10,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          Enregistrer
-        </button>
-      </section>
-
-      {/* ✅ Pistes & Snowpark (chiffres) */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Pistes & Snowpark</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 8 }}>
-          <label>
-            Vertes
-            <input
-              type="number"
-              min={0}
-              value={widgets?.pistes?.colors?.green ?? 0}
-              onChange={(e) => setW("pistes.colors.green", toIntOrZero(e.target.value))}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            />
-          </label>
-          <label>
-            Bleues
-            <input
-              type="number"
-              min={0}
-              value={widgets?.pistes?.colors?.blue ?? 0}
-              onChange={(e) => setW("pistes.colors.blue", toIntOrZero(e.target.value))}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            />
-          </label>
-          <label>
-            Rouges
-            <input
-              type="number"
-              min={0}
-              value={widgets?.pistes?.colors?.red ?? 0}
-              onChange={(e) => setW("pistes.colors.red", toIntOrZero(e.target.value))}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            />
-          </label>
-          <label>
-            Noires
-            <input
-              type="number"
-              min={0}
-              value={widgets?.pistes?.colors?.black ?? 0}
-              onChange={(e) => setW("pistes.colors.black", toIntOrZero(e.target.value))}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            />
-          </label>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-          <label>
-            Snowparks (nombre)
-            <input
-              type="number"
-              min={0}
-              value={widgets?.snowparks?.count ?? 0}
-              onChange={(e) => setW("snowparks.count", toIntOrZero(e.target.value))}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            />
-          </label>
-        </div>
-
-        <button
-  onClick={() => {
-    patchWidgets();
-    patchResort();
-  }}
-  style={{
-    marginTop: 10,
-    padding: "8px 12px",
-    borderRadius: 8,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-  }}
->
-  Enregistrer
-</button>
-
-      </section>
-
-      {/* Plan des pistes (auto small depuis large) */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Plan des pistes</h2>
-        <div style={{ display: "grid", gap: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            Activer
-            <input
-              type="checkbox"
-              checked={!!widgets?.pistes?.enabled}
-              onChange={(e) => setW("pistes.enabled", e.target.checked)}
-            />
-          </label>
-
-          {/* Large map URL + upload (déclenche auto-small) */}
-          <label>
-            Large map URL
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={widgets?.pistes?.largeMapUrl || ""}
-                onChange={(e) => setW("pistes.largeMapUrl", e.target.value)}
-                placeholder="URL grande carte…"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleUploadPistesLargeAutoSmall}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-            </div>
-          </label>
-
-          {/* Small map URL (auto) — lecture seule */}
-          <label>
-            Small map URL (auto)
-            <input
-              value={widgets?.pistes?.smallMapUrl || ""}
-              readOnly
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                background: "#f9fafb",
-                color: "#6b7280",
-              }}
-            />
-          </label>
-
-          <label>
-            Légende
-            <input
-              value={widgets?.pistes?.caption || ""}
-              onChange={(e) => setW("pistes.caption", e.target.value)}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          {(widgets?.pistes?.largeMapUrl || widgets?.pistes?.smallMapUrl) ? (
-            <div
-              style={{
-                marginTop: 6,
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                overflow: "hidden",
-                background: "#fff",
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 0,
-              }}
-            >
-              <div style={{ borderRight: "1px solid #e5e7eb" }}>
-                <div style={{ padding: 8, fontSize: 12, color: "#6b7280" }}>Small</div>
-                {widgets?.pistes?.smallMapUrl ? (
-                  <img
-                    src={widgets?.pistes?.smallMapUrl}
-                    alt="Prévisualisation small"
-                    style={{ width: "100%", height: "auto", display: "block" }}
-                  />
-                ) : (
-                  <div style={{ padding: 12, fontSize: 12, color: "#9ca3af" }}>—</div>
-                )}
-              </div>
-              <div>
-                <div style={{ padding: 8, fontSize: 12, color: "#6b7280" }}>Large</div>
-                {widgets?.pistes?.largeMapUrl ? (
-                  <img
-                    src={widgets?.pistes?.largeMapUrl}
-                    alt="Prévisualisation large"
-                    style={{ width: "100%", height: "auto", display: "block" }}
-                  />
-                ) : (
-                  <div style={{ padding: 12, fontSize: 12, color: "#9ca3af" }}>—</div>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-                <button
-          onClick={() => {
-            patchWidgets();
-            patchResort();
-          }}
-          style={{
-            marginTop: 10,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          Enregistrer
-        </button>
-
-      </section>
-
-      {/* Description HTML */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Description (widgets.description.html)</h2>
-        <label>
-          Activer
-          <input
-            type="checkbox"
-            checked={!!widgets?.description?.enabled}
-            onChange={(e) => setW("description.enabled", e.target.checked)}
-          />
-        </label>
-        <textarea
-          value={widgets?.description?.html || ""}
-          onChange={(e) => setW("description.html", e.target.value)}
-          rows={8}
-          style={{
-            width: "100%",
-            padding: 8,
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            fontFamily: "monospace",
-          }}
-        />
-        <button
-          onClick={patchWidgets}
-          style={{
-            marginTop: 10,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          Enregistrer
-        </button>
-      </section>
-
-      {/* Snowpark (plan/image d'aperçu) */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Snowpark (aperçu visuel)</h2>
-
-        <div style={{ display: "grid", gap: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            Activer
-            <input
-              type="checkbox"
-              checked={!!widgets?.snowpark?.enabled}
-              onChange={(e) => setW("snowpark.enabled", e.target.checked)}
-            />
-          </label>
-
-          <label>
-            Plan (mapUrl)
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={widgets?.snowpark?.mapUrl || ""}
-                onChange={(e) => setW("snowpark.mapUrl", e.target.value)}
-                placeholder="https://.../plan-snowpark.svg|png|jpg"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUploadTo("snowpark.mapUrl")}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-            </div>
-          </label>
-
-          <label>
-            Image (imageUrl) — optionnel
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={widgets?.snowpark?.imageUrl || ""}
-                onChange={(e) => setW("snowpark.imageUrl", e.target.value)}
-                placeholder="https://.../snowpark.jpg"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUploadTo("snowpark.imageUrl")}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-            </div>
-          </label>
-
-          <label>
-            Légende
-            <input
-              value={widgets?.snowpark?.caption || ""}
-              onChange={(e) => setW("snowpark.caption", e.target.value)}
-              placeholder="Nom du secteur, année, source, etc."
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </label>
-
-          <label>
-            Logo snowpark (logoUrl)
-            <div style={{ display: "grid", gap: 8 }}>
-              <input
-                value={widgets?.snowpark?.logoUrl || ""}
-                onChange={(e) => setW("snowpark.logoUrl", e.target.value)}
-                placeholder="https://.../logo-snowpark.png"
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUploadTo("snowpark.logoUrl")}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                }}
-              />
-              {widgets?.snowpark?.logoUrl ? (
-                <img
-                  src={widgets?.snowpark?.logoUrl}
-                  alt="Logo snowpark"
-                  style={{
-                    maxWidth: 160,
-                    maxHeight: 160,
-                    borderRadius: 8,
-                    border: "1px solid #e5e7eb",
-                    objectFit: "contain",
-                  }}
-                />
-              ) : null}
-            </div>
-          </label>
-
-                    <label>
-            Description du snowpark (HTML)
-            <textarea
-              value={widgets?.snowpark?.descriptionHtml || ""}
-              onChange={(e) => setW("snowpark.descriptionHtml", e.target.value)}
-              rows={6}
-              placeholder="<p>Contenu HTML de la description du snowpark…</p>"
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontFamily: "monospace",
-              }}
-            />
-          </label>
-
-
-          {(widgets?.snowpark?.mapUrl || widgets?.snowpark?.imageUrl) ? (
-            <div
-              style={{
-                marginTop: 6,
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                overflow: "hidden",
-                background: "#fff",
-              }}
-            >
-              <img
-                src={widgets?.snowpark?.mapUrl || widgets?.snowpark?.imageUrl}
-                alt={widgets?.snowpark?.caption || "Aperçu snowpark"}
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            </div>
-          ) : null}
-        </div>
-
-        <button
-          onClick={patchWidgets}
-          style={{
-            marginTop: 10,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          Enregistrer
-        </button>
-      </section>
-
-      {/* ✅ Forfaits — édition par lignes */}
-      <section
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          padding: 12,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Forfaits</h2>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          Activer
-          <input
-            type="checkbox"
-            checked={!!widgets?.forfaits?.enabled}
-            onChange={(e) => setW("forfaits.enabled", e.target.checked)}
-          />
-        </label>
-
-        <div style={{ display: "grid", gap: 8 }}>
-          {forfaitItems.map((it, idx) => (
-            <div
-              key={idx}
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                padding: 8,
-                display: "grid",
-                gridTemplateColumns: "2fr 1fr 2fr auto",
-                gap: 8,
-                alignItems: "center",
-              }}
-            >
-              <input
-                placeholder="Nom du forfait (ex: Journée Adulte)"
-                value={it.title || ""}
-                onChange={(e) => updateForfait(idx, "title", e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-              />
-              <input
-                placeholder="Prix (ex: 45,00 €)"
-                value={it.price || ""}
-                onChange={(e) => updateForfait(idx, "price", e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-              />
-              <input
-                placeholder="URL (optionnel)"
-                value={it.url || ""}
-                onChange={(e) => updateForfait(idx, "url", e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-              />
-              <button
-                onClick={() => removeForfait(idx)}
-                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
-                title="Supprimer la ligne"
-              >
-                Suppr.
-              </button>
-            </div>
-          ))}
-
-          <div>
-            <button
-              onClick={addForfait}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
-            >
-              + Ajouter une ligne
+          <div style={styles.actionRow}>
+            <button onClick={() => load(slug)} style={styles.secondaryBtn}>
+              Rafraîchir
+            </button>
+            <button onClick={patchWidgets} style={styles.secondaryBtn}>
+              Enregistrer widgets
+            </button>
+            <button onClick={patchResort} style={styles.primaryBtn}>
+              Enregistrer station
             </button>
           </div>
         </div>
+      </div>
 
-        <button
-          onClick={patchWidgets}
-          style={{
-            marginTop: 10,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          Enregistrer
-        </button>
-      </section>
+      <div style={styles.shell}>
+        {msg ? <div style={styles.alertInfo}>{msg}</div> : null}
+        {err ? <div style={styles.alertError}>{err}</div> : null}
+
+        <div style={styles.layout}>
+          <aside style={styles.sidebar}>
+            <div style={styles.sidebarCard}>
+              <div style={{ ...styles.sectionTitleWrap, marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Navigation</h3>
+                <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
+                  Accès rapide aux blocs d’édition
+                </p>
+              </div>
+
+              <div style={styles.sectionLinkList}>
+                {sections.map((section) => (
+                  <a key={section.id} href={`#${section.id}`} style={styles.sectionLink}>
+                    {section.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.sidebarCard}>
+              <div style={{ ...styles.sectionTitleWrap, marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Résumé</h3>
+              </div>
+
+              <div style={styles.miniStats}>
+                <div style={styles.statBox}>
+                  <div style={styles.statLabel}>Nom</div>
+                  <div style={styles.statValue}>{resort.name || "—"}</div>
+                </div>
+
+                <div style={styles.statBox}>
+                  <div style={styles.statLabel}>Région</div>
+                  <div style={styles.statValue}>{resort.region_id || "—"}</div>
+                </div>
+
+                <div style={styles.statBox}>
+                  <div style={styles.statLabel}>Département</div>
+                  <div style={styles.statValue}>{resort.department || "—"}</div>
+                </div>
+
+                <div style={styles.statBox}>
+                  <div style={styles.statLabel}>Forfaits</div>
+                  <div style={styles.statValue}>{forfaitItems.length}</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div style={styles.content}>
+            <SectionCard
+              id="overview"
+              title="Vue d’ensemble"
+              description="Aperçu rapide de la station et des principaux médias."
+            >
+              <div style={styles.grid2}>
+                <div style={styles.lineItem}>
+                  <div style={{ ...styles.statLabel, marginBottom: 10 }}>Cover</div>
+                  {resort.cover_image_url ? (
+                    <img src={resort.cover_image_url} alt="Cover preview" style={styles.previewImage} />
+                  ) : (
+                    <div style={styles.helperBox}>Aucune image de couverture.</div>
+                  )}
+                </div>
+
+                <div style={styles.lineItem}>
+                  <div style={{ ...styles.statLabel, marginBottom: 10 }}>Logo</div>
+                  {resort.logo_url ? (
+                    <img src={resort.logo_url} alt="Logo station" style={styles.previewLogo} />
+                  ) : (
+                    <div style={styles.helperBox}>Aucun logo.</div>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="infos"
+              title="Infos station"
+              description="Informations principales, localisation, images, altitudes et dates."
+              actions={<SaveButton onClick={patchResort} />}
+            >
+              <div style={styles.stack}>
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Nom
+                    <input
+                      value={resort.name || ""}
+                      onChange={(e) => setResort({ ...resort, name: e.target.value })}
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Site web
+                    <input
+                      value={resort.website_url || ""}
+                      onChange={(e) => setResort({ ...resort, website_url: e.target.value })}
+                      style={styles.input}
+                    />
+                  </label>
+                </div>
+
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Latitude
+                    <input
+                      value={resort.latitude ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          latitude: toNumberOrNull(e.target.value),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Longitude
+                    <input
+                      value={resort.longitude ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          longitude: toNumberOrNull(e.target.value),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+                </div>
+
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Région
+                    <select
+                      value={resort.region_id ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          region_id: e.target.value || null,
+                        })
+                      }
+                      style={styles.input}
+                    >
+                      <option value="">— choisir —</option>
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={styles.label}>
+                    Département
+                    <select
+                      value={resort.department ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          department: e.target.value || null,
+                        })
+                      }
+                      style={styles.input}
+                    >
+                      <option value="">— choisir —</option>
+                      {departments.map((d) => (
+                        <option key={`${d.region_id}-${d.code}-${d.name}`} value={d.name}>
+                          {d.name}
+                          {d.code ? ` (${d.code})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Altitude min (m)
+                    <input
+                      value={resort.altitude_min_m ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          altitude_min_m: toNumberOrNull(e.target.value),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Altitude max (m)
+                    <input
+                      value={resort.altitude_max_m ?? ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          altitude_max_m: toNumberOrNull(e.target.value),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+                </div>
+
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Ouverture (saison) — AAAA-MM-JJ
+                    <input
+                      type="date"
+                      value={resort.season_open_date || ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          season_open_date: e.target.value || null,
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Fermeture (saison) — AAAA-MM-JJ
+                    <input
+                      type="date"
+                      value={resort.season_close_date || ""}
+                      onChange={(e) =>
+                        setResort({
+                          ...resort,
+                          season_close_date: e.target.value || null,
+                        })
+                      }
+                      style={styles.input}
+                    />
+                  </label>
+                </div>
+
+                <div style={styles.grid2}>
+                  <div style={styles.lineItem}>
+                    <label style={styles.label}>
+                      Cover image
+                      <input
+                        value={resort.cover_image_url || ""}
+                        onChange={(e) => setResort({ ...resort, cover_image_url: e.target.value })}
+                        placeholder="URL publique (auto-remplie après upload)"
+                        style={styles.input}
+                      />
+                    </label>
+
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverUpload}
+                        style={styles.input}
+                      />
+                      {resort.cover_image_url ? (
+                        <img src={resort.cover_image_url} alt="Cover preview" style={styles.previewImage} />
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div style={styles.lineItem}>
+                    <label style={styles.label}>
+                      Logo station
+                      <input
+                        value={resort.logo_url || ""}
+                        onChange={(e) => setResort({ ...resort, logo_url: e.target.value })}
+                        placeholder="URL publique du logo (auto-remplie après upload)"
+                        style={styles.input}
+                      />
+                    </label>
+
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        style={styles.input}
+                      />
+                      {resort.logo_url ? (
+                        <img src={resort.logo_url} alt="Logo station" style={styles.previewLogo} />
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <label style={styles.label}>
+                  Description (Markdown/HTML)
+                  <textarea
+                    value={resort.description_md || ""}
+                    onChange={(e) => setResort({ ...resort, description_md: e.target.value })}
+                    rows={8}
+                    style={styles.textarea}
+                  />
+                </label>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="pistes"
+              title="Pistes & snowpark"
+              description="Comptages par couleur et nombre de snowparks."
+              actions={<SaveButton onClick={patchPistesBoth} />}
+            >
+              <div style={styles.grid4}>
+                <label style={styles.label}>
+                  Vertes
+                  <input
+                    type="number"
+                    min={0}
+                    value={widgets?.pistes?.colors?.green ?? 0}
+                    onChange={(e) => setW("pistes.colors.green", toIntOrZero(e.target.value))}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Bleues
+                  <input
+                    type="number"
+                    min={0}
+                    value={widgets?.pistes?.colors?.blue ?? 0}
+                    onChange={(e) => setW("pistes.colors.blue", toIntOrZero(e.target.value))}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Rouges
+                  <input
+                    type="number"
+                    min={0}
+                    value={widgets?.pistes?.colors?.red ?? 0}
+                    onChange={(e) => setW("pistes.colors.red", toIntOrZero(e.target.value))}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Noires
+                  <input
+                    type="number"
+                    min={0}
+                    value={widgets?.pistes?.colors?.black ?? 0}
+                    onChange={(e) => setW("pistes.colors.black", toIntOrZero(e.target.value))}
+                    style={styles.input}
+                  />
+                </label>
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <label style={{ ...styles.label, maxWidth: 260 }}>
+                  Snowparks (nombre)
+                  <input
+                    type="number"
+                    min={0}
+                    value={widgets?.snowparks?.count ?? 0}
+                    onChange={(e) => setW("snowparks.count", toIntOrZero(e.target.value))}
+                    style={styles.input}
+                  />
+                </label>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="plan"
+              title="Plan des pistes"
+              description="Gestion du plan grand format, génération automatique du small et légende."
+              actions={<SaveButton onClick={patchPistesBoth} />}
+            >
+              <div style={styles.stack}>
+                <label style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={!!widgets?.pistes?.enabled}
+                    onChange={(e) => setW("pistes.enabled", e.target.checked)}
+                  />
+                  Activer
+                </label>
+
+                <label style={styles.label}>
+                  Large map URL
+                  <input
+                    value={widgets?.pistes?.largeMapUrl || ""}
+                    onChange={(e) => setW("pistes.largeMapUrl", e.target.value)}
+                    placeholder="URL grande carte…"
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Upload plan des pistes
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadPistesLargeAutoSmall}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Small map URL (auto)
+                  <input
+                    value={widgets?.pistes?.smallMapUrl || ""}
+                    readOnly
+                    style={{ ...styles.input, background: "#f9fafb", color: "#6b7280" }}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Légende
+                  <input
+                    value={widgets?.pistes?.caption || ""}
+                    onChange={(e) => setW("pistes.caption", e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+
+                {(widgets?.pistes?.largeMapUrl || widgets?.pistes?.smallMapUrl) ? (
+                  <div style={styles.splitPreview}>
+                    <div style={styles.previewCard}>
+                      <div style={styles.previewCardHeader}>Small</div>
+                      {widgets?.pistes?.smallMapUrl ? (
+                        <img
+                          src={widgets?.pistes?.smallMapUrl}
+                          alt="Prévisualisation small"
+                          style={{ width: "100%", height: "auto", display: "block" }}
+                        />
+                      ) : (
+                        <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>—</div>
+                      )}
+                    </div>
+
+                    <div style={styles.previewCard}>
+                      <div style={styles.previewCardHeader}>Large</div>
+                      {widgets?.pistes?.largeMapUrl ? (
+                        <img
+                          src={widgets?.pistes?.largeMapUrl}
+                          alt="Prévisualisation large"
+                          style={{ width: "100%", height: "auto", display: "block" }}
+                        />
+                      ) : (
+                        <div style={{ padding: 16, color: "#9ca3af", fontSize: 13 }}>—</div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="description"
+              title="Description"
+              description="Bloc widgets.description.html"
+              actions={<SaveButton onClick={patchWidgets} />}
+            >
+              <div style={styles.stack}>
+                <label style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={!!widgets?.description?.enabled}
+                    onChange={(e) => setW("description.enabled", e.target.checked)}
+                  />
+                  Activer
+                </label>
+
+                <label style={styles.label}>
+                  HTML
+                  <textarea
+                    value={widgets?.description?.html || ""}
+                    onChange={(e) => setW("description.html", e.target.value)}
+                    rows={10}
+                    style={styles.textarea}
+                  />
+                </label>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="snowpark"
+              title="Snowpark visuel"
+              description="Aperçu, image, logo et description HTML du snowpark."
+              actions={<SaveButton onClick={patchWidgets} />}
+            >
+              <div style={styles.stack}>
+                <label style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={!!widgets?.snowpark?.enabled}
+                    onChange={(e) => setW("snowpark.enabled", e.target.checked)}
+                  />
+                  Activer
+                </label>
+
+                <div style={styles.grid2}>
+                  <div style={styles.lineItem}>
+                    <label style={styles.label}>
+                      Plan (mapUrl)
+                      <input
+                        value={widgets?.snowpark?.mapUrl || ""}
+                        onChange={(e) => setW("snowpark.mapUrl", e.target.value)}
+                        placeholder="https://.../plan-snowpark.svg|png|jpg"
+                        style={styles.input}
+                      />
+                    </label>
+
+                    <div style={{ marginTop: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUploadTo("snowpark.mapUrl")}
+                        style={styles.input}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.lineItem}>
+                    <label style={styles.label}>
+                      Image (imageUrl) — optionnel
+                      <input
+                        value={widgets?.snowpark?.imageUrl || ""}
+                        onChange={(e) => setW("snowpark.imageUrl", e.target.value)}
+                        placeholder="https://.../snowpark.jpg"
+                        style={styles.input}
+                      />
+                    </label>
+
+                    <div style={{ marginTop: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUploadTo("snowpark.imageUrl")}
+                        style={styles.input}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.grid2}>
+                  <label style={styles.label}>
+                    Légende
+                    <input
+                      value={widgets?.snowpark?.caption || ""}
+                      onChange={(e) => setW("snowpark.caption", e.target.value)}
+                      placeholder="Nom du secteur, année, source, etc."
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <div style={styles.lineItem}>
+                    <label style={styles.label}>
+                      Logo snowpark (logoUrl)
+                      <input
+                        value={widgets?.snowpark?.logoUrl || ""}
+                        onChange={(e) => setW("snowpark.logoUrl", e.target.value)}
+                        placeholder="https://.../logo-snowpark.png"
+                        style={styles.input}
+                      />
+                    </label>
+
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUploadTo("snowpark.logoUrl")}
+                        style={styles.input}
+                      />
+                      {widgets?.snowpark?.logoUrl ? (
+                        <img
+                          src={widgets?.snowpark?.logoUrl}
+                          alt="Logo snowpark"
+                          style={styles.previewLogo}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <label style={styles.label}>
+                  Description du snowpark (HTML)
+                  <textarea
+                    value={widgets?.snowpark?.descriptionHtml || ""}
+                    onChange={(e) => setW("snowpark.descriptionHtml", e.target.value)}
+                    rows={8}
+                    placeholder="<p>Contenu HTML de la description du snowpark…</p>"
+                    style={styles.textarea}
+                  />
+                </label>
+
+                {(widgets?.snowpark?.mapUrl || widgets?.snowpark?.imageUrl) ? (
+                  <div style={styles.previewCard}>
+                    <div style={styles.previewCardHeader}>Aperçu</div>
+                    <img
+                      src={widgets?.snowpark?.mapUrl || widgets?.snowpark?.imageUrl}
+                      alt={widgets?.snowpark?.caption || "Aperçu snowpark"}
+                      style={{ width: "100%", height: "auto", display: "block" }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="forfaits"
+              title="Forfaits"
+              description="Gestion des lignes de forfaits."
+              actions={<SaveButton onClick={patchWidgets} />}
+            >
+              <div style={styles.stack}>
+                <label style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={!!widgets?.forfaits?.enabled}
+                    onChange={(e) => setW("forfaits.enabled", e.target.checked)}
+                  />
+                  Activer
+                </label>
+
+                <div style={styles.stack}>
+                  {forfaitItems.map((it, idx) => (
+                    <div key={idx} style={styles.lineItem}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "2fr 1fr 2fr auto",
+                          gap: 10,
+                          alignItems: "end",
+                        }}
+                      >
+                        <label style={styles.label}>
+                          Nom du forfait
+                          <input
+                            placeholder="Journée Adulte"
+                            value={it.title || ""}
+                            onChange={(e) => updateForfait(idx, "title", e.target.value)}
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <label style={styles.label}>
+                          Prix
+                          <input
+                            placeholder="45,00 €"
+                            value={it.price || ""}
+                            onChange={(e) => updateForfait(idx, "price", e.target.value)}
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <label style={styles.label}>
+                          URL
+                          <input
+                            placeholder="URL (optionnel)"
+                            value={it.url || ""}
+                            onChange={(e) => updateForfait(idx, "url", e.target.value)}
+                            style={styles.input}
+                          />
+                        </label>
+
+                        <button
+                          onClick={() => removeForfait(idx)}
+                          style={styles.secondaryBtn}
+                          title="Supprimer la ligne"
+                        >
+                          Suppr.
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <button onClick={addForfait} style={styles.ghostBtn}>
+                    + Ajouter une ligne
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
