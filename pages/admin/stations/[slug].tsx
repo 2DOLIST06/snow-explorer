@@ -110,8 +110,13 @@ function buildSmallFilename(original: string, preferJpeg = true): string {
 }
 
 export default function AdminStationEdit() {
-  const { query } = useRouter();
-  const slug = String(query.slug || "");
+  const router = useRouter();
+const slug =
+  typeof router.query.slug === "string"
+    ? router.query.slug
+    : Array.isArray(router.query.slug)
+    ? router.query.slug[0]
+    : "";
 
   const [loading, setLoading] = useState(true);
   const [resort, setResort] = useState<ResortType | null>(null);
@@ -145,6 +150,11 @@ export default function AdminStationEdit() {
   };
 
   const load = async (mySlug: string) => {
+    if (!mySlug) {
+  setErr("Slug manquant dans l’URL");
+  setLoading(false);
+  return;
+}
     setLoading(true);
     setErr("");
     try {
@@ -208,10 +218,11 @@ export default function AdminStationEdit() {
   };
 
   useEffect(() => {
-    if (!slug) return;
-    load(slug);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  if (!router.isReady) return;
+  if (!slug) return;
+  load(slug);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [router.isReady, slug]);
 
   // recharger les départements si region_id change côté UI
   useEffect(() => {
