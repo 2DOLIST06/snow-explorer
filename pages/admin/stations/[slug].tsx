@@ -37,6 +37,7 @@ type ForfaitColumn = {
 
 type ForfaitItem = {
   id: string;
+  title: string;
   columns: ForfaitColumn[];
 };
 
@@ -63,6 +64,8 @@ const normalizeForfaitItems = (rawItems: any): ForfaitItem[] => {
         ? rawItem.id
         : createId(`f${itemIndex + 1}`);
 
+    const rowTitle = typeof rawItem?.title === "string" ? rawItem.title : "";
+
     if (Array.isArray(rawItem?.columns)) {
       const columns: ForfaitColumn[] = rawItem.columns.map((rawCol: any, colIndex: number) => ({
         id:
@@ -73,13 +76,18 @@ const normalizeForfaitItems = (rawItems: any): ForfaitItem[] => {
         value: typeof rawCol?.value === "string" ? rawCol.value : "",
       }));
 
-      return { id: rowId, columns: columns.length ? columns : [{ id: createId("c"), label: "", value: "" }] };
+      return {
+        id: rowId,
+        title: rowTitle,
+        columns: columns.length ? columns : [{ id: createId("c"), label: "", value: "" }],
+      };
     }
 
-    const legacyColumns: ForfaitColumn[] = [
-      { id: createId("c"), label: "Type", value: typeof rawItem?.title === "string" ? rawItem.title : "" },
-      { id: createId("c"), label: "Prix", value: typeof rawItem?.price === "string" ? rawItem.price : "" },
-    ];
+    const legacyColumns: ForfaitColumn[] = [];
+
+    if (typeof rawItem?.price === "string" && rawItem.price.trim() !== "") {
+      legacyColumns.push({ id: createId("c"), label: "Prix", value: rawItem.price });
+    }
 
     if (typeof rawItem?.url === "string" && rawItem.url.trim() !== "") {
       legacyColumns.push({ id: createId("c"), label: "URL", value: rawItem.url });
@@ -89,7 +97,11 @@ const normalizeForfaitItems = (rawItems: any): ForfaitItem[] => {
       legacyColumns.push({ id: createId("c"), label: "Note", value: rawItem.note });
     }
 
-    return { id: rowId, columns: legacyColumns };
+    return {
+      id: rowId,
+      title: rowTitle,
+      columns: legacyColumns.length ? legacyColumns : [{ id: createId("c"), label: "", value: "" }],
+    };
   });
 };
 
@@ -858,6 +870,7 @@ const isFilledNumber = (v: any) => {
 const areForfaitsComplete = (items: ForfaitItem[]) => {
   if (!Array.isArray(items) || items.length === 0) return false;
   return items.every((item) =>
+    isFilled(item.title) &&
     Array.isArray(item.columns) &&
     item.columns.length > 0 &&
     item.columns.every((col) => isFilled(col.label) && isFilled(col.value))
@@ -922,7 +935,15 @@ const sections = [
 ];
 
   const addForfaitRow = () => {
-    const next = [...forfaitItems, { id: createId("f"), columns: [{ id: createId("c"), label: "", value: "" }] }];
+    const next = [
+      ...forfaitItems,
+      { id: createId("f"), title: "", columns: [{ id: createId("c"), label: "", value: "" }] },
+    ];
+    setW("forfaits.items", next);
+  };
+
+  const updateForfaitRowTitle = (rowIdx: number, value: string) => {
+    const next = forfaitItems.map((row, idx) => (idx === rowIdx ? { ...row, title: value } : row));
     setW("forfaits.items", next);
   };
 
@@ -1820,6 +1841,16 @@ const sections = [
                           Supprimer la ligne
                         </button>
                       </div>
+
+                      <label style={styles.label}>
+                        Nom du forfait
+                        <input
+                          placeholder="Ex: Forfait journée"
+                          value={row.title}
+                          onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                          style={styles.input}
+                        />
+                      </label>
 
                       <div style={styles.stack}>
                         {row.columns.map((col, colIdx) => (
