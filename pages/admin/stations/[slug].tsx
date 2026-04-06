@@ -29,7 +29,16 @@ type ResortType = {
   pistes_large_map_url?: string | null;
 };
 
-type ForfaitItem = { id?: string; title?: string; price?: string; url?: string };
+type ForfaitColumn = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+type ForfaitItem = {
+  id: string;
+  columns: ForfaitColumn[];
+};
 
 // helpers
 const toNumberOrNull = (v: string): number | null => {
@@ -41,6 +50,47 @@ const toNumberOrNull = (v: string): number | null => {
 const toIntOrZero = (v: string): number => {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : 0;
+};
+
+const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+
+const normalizeForfaitItems = (rawItems: any): ForfaitItem[] => {
+  if (!Array.isArray(rawItems)) return [];
+
+  return rawItems.map((rawItem: any, itemIndex: number) => {
+    const rowId =
+      typeof rawItem?.id === "string" && rawItem.id.trim() !== ""
+        ? rawItem.id
+        : createId(`f${itemIndex + 1}`);
+
+    if (Array.isArray(rawItem?.columns)) {
+      const columns: ForfaitColumn[] = rawItem.columns.map((rawCol: any, colIndex: number) => ({
+        id:
+          typeof rawCol?.id === "string" && rawCol.id.trim() !== ""
+            ? rawCol.id
+            : createId(`c${colIndex + 1}`),
+        label: typeof rawCol?.label === "string" ? rawCol.label : "",
+        value: typeof rawCol?.value === "string" ? rawCol.value : "",
+      }));
+
+      return { id: rowId, columns: columns.length ? columns : [{ id: createId("c"), label: "", value: "" }] };
+    }
+
+    const legacyColumns: ForfaitColumn[] = [
+      { id: createId("c"), label: "Type", value: typeof rawItem?.title === "string" ? rawItem.title : "" },
+      { id: createId("c"), label: "Prix", value: typeof rawItem?.price === "string" ? rawItem.price : "" },
+    ];
+
+    if (typeof rawItem?.url === "string" && rawItem.url.trim() !== "") {
+      legacyColumns.push({ id: createId("c"), label: "URL", value: rawItem.url });
+    }
+
+    if (typeof rawItem?.note === "string" && rawItem.note.trim() !== "") {
+      legacyColumns.push({ id: createId("c"), label: "Note", value: rawItem.note });
+    }
+
+    return { id: rowId, columns: legacyColumns };
+  });
 };
 
 // === Helpers image (resize via Canvas) ===
@@ -655,7 +705,7 @@ export default function AdminStationEdit() {
       if (!w.snowparks) w.snowparks = { count: 0 };
       if (!w.remontees) w.remontees = { tireFesses: 0, telesieges: 0, telepheriques: 0 };
       if (!w.forfaits) w.forfaits = { enabled: false, items: [] };
-      if (!Array.isArray(w.forfaits.items)) w.forfaits.items = [];
+      w.forfaits.items = normalizeForfaitItems(w.forfaits.items);
       setWidgets(w);
 
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
@@ -793,7 +843,7 @@ export default function AdminStationEdit() {
     setWidgets(copy);
   };
 
- const forfaitItems: ForfaitItem[] = widgets?.forfaits?.items || [];
+  const forfaitItems: ForfaitItem[] = normalizeForfaitItems(widgets?.forfaits?.items);
 
 const isFilled = (v: any) => {
   if (v === null || v === undefined) return false;
@@ -807,7 +857,11 @@ const isFilledNumber = (v: any) => {
 
 const areForfaitsComplete = (items: ForfaitItem[]) => {
   if (!Array.isArray(items) || items.length === 0) return false;
-  return items.every((it) => isFilled(it.title) && isFilled(it.price));
+  return items.every((item) =>
+    Array.isArray(item.columns) &&
+    item.columns.length > 0 &&
+    item.columns.every((col) => isFilled(col.label) && isFilled(col.value))
+  );
 };
 
 const sectionChecks = {
@@ -867,18 +921,54 @@ const sections = [
   { id: "forfaits", label: "Forfaits", complete: sectionChecks.forfaits },
 ];
 
-  const addForfait = () => {
-    const next = [...forfaitItems, { id: `f${Date.now()}`, title: "", price: "", url: "" }];
+  const addForfaitRow = () => {
+    const next = [...forfaitItems, { id: createId("f"), columns: [{ id: createId("c"), label: "", value: "" }] }];
     setW("forfaits.items", next);
   };
 
-  const updateForfait = (idx: number, key: keyof ForfaitItem, value: string) => {
-    const next = forfaitItems.map((it, i) => (i === idx ? { ...it, [key]: value } : it));
+  const removeForfaitRow = (rowIdx: number) => {
+    const next = forfaitItems.filter((_, idx) => idx !== rowIdx);
     setW("forfaits.items", next);
   };
 
-  const removeForfait = (idx: number) => {
-    const next = forfaitItems.filter((_, i) => i !== idx);
+  const addForfaitColumn = (rowIdx: number) => {
+    const next = forfaitItems.map((row, idx) =>
+      idx === rowIdx
+        ? { ...row, columns: [...row.columns, { id: createId("c"), label: "", value: "" }] }
+        : row
+    );
+    setW("forfaits.items", next);
+  };
+
+  const updateForfaitColumn = (
+    rowIdx: number,
+    colIdx: number,
+    key: keyof ForfaitColumn,
+    value: string
+  ) => {
+    const next = forfaitItems.map((row, rIdx) => {
+      if (rIdx !== rowIdx) return row;
+
+      return {
+        ...row,
+        columns: row.columns.map((col, cIdx) => (cIdx === colIdx ? { ...col, [key]: value } : col)),
+      };
+    });
+
+    setW("forfaits.items", next);
+  };
+
+  const removeForfaitColumn = (rowIdx: number, colIdx: number) => {
+    const next = forfaitItems.map((row, rIdx) => {
+      if (rIdx !== rowIdx) return row;
+
+      const updatedColumns = row.columns.filter((_, cIdx) => cIdx !== colIdx);
+      return {
+        ...row,
+        columns: updatedColumns.length ? updatedColumns : [{ id: createId("c"), label: "", value: "" }],
+      };
+    });
+
     setW("forfaits.items", next);
   };
 
@@ -1710,52 +1800,72 @@ const sections = [
                 </label>
 
                 <div style={styles.stack}>
-                  {forfaitItems.map((it, idx) => (
-                    <div key={idx} style={styles.lineItem}>
+                  {forfaitItems.map((row, rowIdx) => (
+                    <div key={row.id} style={styles.lineItem}>
                       <div
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: "2fr 1fr 2fr auto",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                           gap: 10,
-                          alignItems: "end",
+                          marginBottom: 12,
                         }}
                       >
-                        <label style={styles.label}>
-                          Nom du forfait
-                          <input
-                            placeholder="Journée Adulte"
-                            value={it.title || ""}
-                            onChange={(e) => updateForfait(idx, "title", e.target.value)}
-                            style={styles.input}
-                          />
-                        </label>
-
-                        <label style={styles.label}>
-                          Prix
-                          <input
-                            placeholder="45,00 €"
-                            value={it.price || ""}
-                            onChange={(e) => updateForfait(idx, "price", e.target.value)}
-                            style={styles.input}
-                          />
-                        </label>
-
-                        <label style={styles.label}>
-                          URL
-                          <input
-                            placeholder="URL (optionnel)"
-                            value={it.url || ""}
-                            onChange={(e) => updateForfait(idx, "url", e.target.value)}
-                            style={styles.input}
-                          />
-                        </label>
-
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Ligne {rowIdx + 1}</div>
                         <button
-                          onClick={() => removeForfait(idx)}
+                          onClick={() => removeForfaitRow(rowIdx)}
                           style={styles.secondaryBtn}
                           title="Supprimer la ligne"
                         >
-                          Suppr.
+                          Supprimer la ligne
+                        </button>
+                      </div>
+
+                      <div style={styles.stack}>
+                        {row.columns.map((col, colIdx) => (
+                          <div
+                            key={col.id}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr) auto",
+                              gap: 10,
+                              alignItems: "end",
+                            }}
+                          >
+                            <label style={styles.label}>
+                              Nom de colonne
+                              <input
+                                placeholder="Ex: Adulte"
+                                value={col.label}
+                                onChange={(e) => updateForfaitColumn(rowIdx, colIdx, "label", e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <label style={styles.label}>
+                              Valeur
+                              <input
+                                placeholder="Ex: 49 €"
+                                value={col.value}
+                                onChange={(e) => updateForfaitColumn(rowIdx, colIdx, "value", e.target.value)}
+                                style={styles.input}
+                              />
+                            </label>
+
+                            <button
+                              onClick={() => removeForfaitColumn(rowIdx, colIdx)}
+                              style={styles.secondaryBtn}
+                              title="Supprimer la colonne"
+                            >
+                              Suppr. colonne
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ marginTop: 12 }}>
+                        <button onClick={() => addForfaitColumn(rowIdx)} style={styles.ghostBtn}>
+                          + Ajouter une colonne
                         </button>
                       </div>
                     </div>
@@ -1763,7 +1873,7 @@ const sections = [
                 </div>
 
                 <div>
-                  <button onClick={addForfait} style={styles.ghostBtn}>
+                  <button onClick={addForfaitRow} style={styles.ghostBtn}>
                     + Ajouter une ligne
                   </button>
                 </div>
