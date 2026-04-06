@@ -8,12 +8,20 @@ export type WebcamItem = {
   pageUrl?: string | null;   // lien externe (fallback)
 };
 
+export type ForfaitColumn = {
+  id: string;
+  label: string;
+  value: string;
+};
+
 export type ForfaitItem = {
   id: string;
-  title: string;             // ex: "Journée Adulte"
-  price: string;             // ex: "52,00 €"
-  url?: string | null;       // lien d'achat
-  note?: string | null;      // ex: "Tarif basse saison"
+  title: string;
+  columns: ForfaitColumn[];
+  // Compatibilité ancienne structure (lecture)
+  price?: string;
+  url?: string | null;
+  note?: string | null;
 };
 
 export type StationWidgetsConfig = {
