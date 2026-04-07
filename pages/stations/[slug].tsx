@@ -1719,8 +1719,12 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
 
         {/* Forfaits */}
         <section style={{ marginTop: 20 }}>
-          <StationForfaitsBlock enabled={cfg?.forfaits?.enabled} items={cfg?.forfaits?.items || []} />
-        </section>
+  <StationForfaitsBlock
+    enabled={cfg?.forfaits?.enabled}
+    columns={cfg?.forfaits?.columns || []}
+    items={cfg?.forfaits?.items || []}
+  />
+</section>
       </main>
 
       <style jsx global>{`
