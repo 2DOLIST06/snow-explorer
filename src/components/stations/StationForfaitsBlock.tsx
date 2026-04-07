@@ -1,100 +1,129 @@
 import React from "react";
-import { ForfaitColumn, ForfaitItem } from "@/types/station";
 
-type Props = {
-  enabled?: boolean;
-  items?: ForfaitItem[];
-};
-
-type DisplayColumn = {
+type ForfaitColumn = {
   id: string;
   label: string;
 };
 
-type DisplayRow = {
+type ForfaitItem = {
   id: string;
   title: string;
-  values: Record<string, string>;
+  prices: Record<string, string>;
+};
+
+type Props = {
+  enabled?: boolean;
+  columns?: ForfaitColumn[];
+  items?: ForfaitItem[];
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
+const normalizeLabelKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-");
+
 const normalizeForfaits = (
-  items: ForfaitItem[] | undefined
-): { columns: DisplayColumn[]; rows: DisplayRow[] } => {
-  if (!Array.isArray(items) || items.length === 0) {
-    return { columns: [], rows: [] };
+  rawColumns: ForfaitColumn[] | undefined,
+  rawItems: ForfaitItem[] | undefined
+): { columns: ForfaitColumn[]; items: ForfaitItem[] } => {
+  const columnMap = new Map<string, ForfaitColumn>();
+
+  const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
+    const label = text(rawLabel);
+    if (!label) {
+      const fallbackId =
+        typeof rawId === "string" && rawId.trim() !== ""
+          ? rawId.trim()
+          : `fc-${Math.random().toString(36).slice(2, 8)}`;
+
+      if (!columnMap.has(fallbackId)) {
+        columnMap.set(fallbackId, { id: fallbackId, label: "" });
+      }
+      return fallbackId;
+    }
+
+    const normalized = normalizeLabelKey(label);
+    const existing = Array.from(columnMap.values()).find(
+      (col) => normalizeLabelKey(col.label) === normalized
+    );
+    if (existing) return existing.id;
+
+    const id =
+      typeof rawId === "string" && rawId.trim() !== ""
+        ? rawId.trim()
+        : `fc-${normalized || Math.random().toString(36).slice(2, 8)}`;
+
+    columnMap.set(id, { id, label });
+    return id;
+  };
+
+  if (Array.isArray(rawColumns)) {
+    rawColumns.forEach((col) => {
+      ensureColumn(col?.label, col?.id);
+    });
   }
 
-  const columnMap = new Map<string, DisplayColumn>();
+  const items: ForfaitItem[] = Array.isArray(rawItems)
+    ? rawItems.map((rawItem, index) => {
+        const rowId =
+          typeof rawItem?.id === "string" && rawItem.id.trim() !== ""
+            ? rawItem.id
+            : `f-${index + 1}`;
 
-  const rows: DisplayRow[] = items.map((rawItem, index) => {
-    const rowId = text((rawItem as any)?.id) || `forfait-${index + 1}`;
-    const rowTitle = text((rawItem as any)?.title) || `Forfait ${index + 1}`;
+        const rowTitle = text(rawItem?.title);
+        const prices: Record<string, string> = {};
 
-    const rawColumns = Array.isArray((rawItem as any)?.columns)
-      ? ((rawItem as any).columns as ForfaitColumn[])
-      : [];
+        if (rawItem?.prices && typeof rawItem.prices === "object" && !Array.isArray(rawItem.prices)) {
+          Object.entries(rawItem.prices).forEach(([key, value]) => {
+            const rawValue = text(value);
 
-    const values: Record<string, string> = {};
+            const existingById = Array.from(columnMap.values()).find((col) => col.id === key);
+            if (existingById) {
+              prices[existingById.id] = rawValue;
+              return;
+            }
 
-    rawColumns.forEach((col, colIndex) => {
-      const colId = text((col as any)?.id) || `${rowId}-col-${colIndex + 1}`;
-      const label = text((col as any)?.label) || `Colonne ${colIndex + 1}`;
-      const value = text((col as any)?.value);
+            const existingByLabel = Array.from(columnMap.values()).find(
+              (col) => normalizeLabelKey(col.label) === normalizeLabelKey(key)
+            );
+            if (existingByLabel) {
+              prices[existingByLabel.id] = rawValue;
+              return;
+            }
 
-      if (!columnMap.has(colId)) {
-        columnMap.set(colId, {
-          id: colId,
-          label,
-        });
-      }
+            const newId = ensureColumn(key);
+            prices[newId] = rawValue;
+          });
+        }
 
-      values[colId] = value || "—";
-    });
+        return {
+          id: rowId,
+          title: rowTitle,
+          prices,
+        };
+      })
+    : [];
 
-    return {
-      id: rowId,
-      title: rowTitle,
-      values,
-    };
-  });
-
-  const columns = Array.from(columnMap.values());
-
-  return { columns, rows };
+  return {
+    columns: Array.from(columnMap.values()),
+    items,
+  };
 };
 
-export default function StationForfaitsBlock({ enabled, items }: Props) {
+export default function StationForfaitsBlock({ enabled, columns, items }: Props) {
   if (!enabled) return null;
 
-  const { columns, rows } = normalizeForfaits(items);
+  const normalized = normalizeForfaits(columns, items);
+  const finalColumns = normalized.columns.filter((col) => text(col.label));
+  const finalItems = normalized.items.filter((item) => text(item.title));
 
-  if (rows.length === 0 || columns.length === 0) {
-    return (
-      <section
-        style={{
-          border: "1px solid #cbd5e1",
-          borderRadius: 16,
-          background: "#fff",
-          padding: 16,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 12px",
-            fontSize: 20,
-            fontWeight: 800,
-            color: "#0f172a",
-          }}
-        >
-          Forfaits
-        </h2>
-        <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
-          Aucun forfait disponible pour le moment.
-        </p>
-      </section>
-    );
+  if (finalColumns.length === 0 || finalItems.length === 0) {
+    return null;
   }
 
   return (
@@ -138,9 +167,6 @@ export default function StationForfaitsBlock({ enabled, items }: Props) {
             <tr>
               <th
                 style={{
-                  position: "sticky",
-                  left: 0,
-                  zIndex: 2,
                   textAlign: "left",
                   padding: "14px 16px",
                   fontSize: 13,
@@ -154,7 +180,7 @@ export default function StationForfaitsBlock({ enabled, items }: Props) {
                 Forfait
               </th>
 
-              {columns.map((column) => (
+              {finalColumns.map((column) => (
                 <th
                   key={column.id}
                   style={{
@@ -175,14 +201,11 @@ export default function StationForfaitsBlock({ enabled, items }: Props) {
           </thead>
 
           <tbody>
-            {rows.map((row, rowIndex) => (
+            {finalItems.map((row, rowIndex) => (
               <tr key={row.id}>
                 <th
                   scope="row"
                   style={{
-                    position: "sticky",
-                    left: 0,
-                    zIndex: 1,
                     textAlign: "left",
                     padding: "14px 16px",
                     fontSize: 14,
@@ -196,7 +219,7 @@ export default function StationForfaitsBlock({ enabled, items }: Props) {
                   {row.title}
                 </th>
 
-                {columns.map((column) => (
+                {finalColumns.map((column) => (
                   <td
                     key={`${row.id}-${column.id}`}
                     style={{
@@ -208,7 +231,7 @@ export default function StationForfaitsBlock({ enabled, items }: Props) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {row.values[column.id] || "—"}
+                    {text(row.prices?.[column.id]) || "—"}
                   </td>
                 ))}
               </tr>
