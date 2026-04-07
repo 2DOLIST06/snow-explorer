@@ -31,6 +31,21 @@ type Props = {
 
 const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
+const formatForfaitDisplayValue = (raw: unknown) => {
+  const value = text(raw);
+  if (!value) return "—";
+
+  if (value.includes("€")) return value;
+
+  const match = value.match(/^(\d+(?:[.,]\d+)?)(.*)$/);
+  if (!match) return value;
+
+  const amount = match[1];
+  const suffix = match[2] || "";
+
+  return `${amount}€${suffix}`;
+};
+
 const normalizeLabelKey = (value: string) =>
   value
     .trim()
@@ -297,7 +312,7 @@ export default function StationForfaitsBlock({ enabled, columns, items }: Props)
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {text(row.prices?.[column.id]) || "—"}
+                    {formatForfaitDisplayValue(row.prices?.[column.id])}
                   </td>
                 ))}
               </tr>
