@@ -25,6 +25,10 @@ type ResortType = {
   season_open_date?: string | null;
   season_close_date?: string | null;
 
+  pistes_count?: number | null;
+  ski_area_km?: number | null;
+  lifts_count?: number | null;
+
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
 };
@@ -799,16 +803,21 @@ export default function AdminStationEdit() {
 
       const rcv: ResortType = j.resort || j;
       const normalized: ResortType = {
-        ...rcv,
-        region_id: rcv.region_id ?? rcv.region?.id ?? null,
-        department: rcv.department ?? null,
-        altitude_min_m: rcv.altitude_min_m ?? null,
-        altitude_max_m: rcv.altitude_max_m ?? null,
-        season_open_date: rcv.season_open_date ?? null,
-        season_close_date: rcv.season_close_date ?? null,
-        pistes_small_map_url: rcv.pistes_small_map_url ?? null,
-        pistes_large_map_url: rcv.pistes_large_map_url ?? null,
-      };
+  ...rcv,
+  region_id: rcv.region_id ?? rcv.region?.id ?? null,
+  department: rcv.department ?? null,
+  altitude_min_m: rcv.altitude_min_m ?? null,
+  altitude_max_m: rcv.altitude_max_m ?? null,
+  season_open_date: rcv.season_open_date ?? null,
+  season_close_date: rcv.season_close_date ?? null,
+
+  pistes_count: rcv.pistes_count ?? null,
+  ski_area_km: rcv.ski_area_km ?? null,
+  lifts_count: rcv.lifts_count ?? null,
+
+  pistes_small_map_url: rcv.pistes_small_map_url ?? null,
+  pistes_large_map_url: rcv.pistes_large_map_url ?? null,
+};
 
       setResort(normalized);
 
@@ -996,27 +1005,33 @@ const areForfaitsComplete = (columns: ForfaitColumn[], items: ForfaitItem[]) => 
 const sectionChecks = {
   overview: !!resort?.cover_image_url && !!resort?.logo_url,
 
-  infos:
-    isFilled(resort?.name) &&
-    isFilledNumber(resort?.latitude) &&
-    isFilledNumber(resort?.longitude) &&
-    isFilled(resort?.region_id) &&
-    isFilled(resort?.department) &&
-    isFilled(resort?.website_url) &&
-    isFilled(resort?.cover_image_url) &&
-    isFilled(resort?.logo_url) &&
-    isFilled(resort?.description_md) &&
-    isFilledNumber(resort?.altitude_min_m) &&
-    isFilledNumber(resort?.altitude_max_m) &&
-    isFilled(resort?.season_open_date) &&
-    isFilled(resort?.season_close_date),
+ infos:
+  isFilled(resort?.name) &&
+  isFilledNumber(resort?.latitude) &&
+  isFilledNumber(resort?.longitude) &&
+  isFilled(resort?.region_id) &&
+  isFilled(resort?.department) &&
+  isFilled(resort?.website_url) &&
+  isFilled(resort?.cover_image_url) &&
+  isFilled(resort?.logo_url) &&
+  isFilled(resort?.description_md) &&
+  isFilledNumber(resort?.altitude_min_m) &&
+  isFilledNumber(resort?.altitude_max_m) &&
+  isFilledNumber(resort?.pistes_count) &&
+  isFilledNumber(resort?.ski_area_km) &&
+  isFilledNumber(resort?.lifts_count) &&
+  isFilled(resort?.season_open_date) &&
+  isFilled(resort?.season_close_date),
 
   pistes:
-    isFilledNumber(widgets?.pistes?.colors?.green) &&
-    isFilledNumber(widgets?.pistes?.colors?.blue) &&
-    isFilledNumber(widgets?.pistes?.colors?.red) &&
-    isFilledNumber(widgets?.pistes?.colors?.black) &&
-    isFilledNumber(widgets?.snowparks?.count),
+  isFilledNumber(widgets?.pistes?.colors?.green) &&
+  isFilledNumber(widgets?.pistes?.colors?.blue) &&
+  isFilledNumber(widgets?.pistes?.colors?.red) &&
+  isFilledNumber(widgets?.pistes?.colors?.black) &&
+  isFilledNumber(widgets?.snowparks?.count) &&
+  isFilledNumber(widgets?.remontees?.tireFesses) &&
+  isFilledNumber(widgets?.remontees?.telesieges) &&
+  isFilledNumber(widgets?.remontees?.telepheriques),
 
   plan:
     !!widgets?.pistes?.enabled &&
@@ -1555,6 +1570,57 @@ const removeForfaitRow = (rowIdx: number) => {
                   </label>
                 </div>
 
+                <div style={styles.grid3}>
+  <label style={styles.label}>
+    Nombre de pistes
+    <input
+      type="number"
+      min={0}
+      value={resort.pistes_count ?? ""}
+      onChange={(e) =>
+        setResort({
+          ...resort,
+          pistes_count: toNumberOrNull(e.target.value),
+        })
+      }
+      style={styles.input}
+    />
+  </label>
+
+  <label style={styles.label}>
+    Domaine skiable (km)
+    <input
+      type="number"
+      min={0}
+      step="0.1"
+      value={resort.ski_area_km ?? ""}
+      onChange={(e) =>
+        setResort({
+          ...resort,
+          ski_area_km: toNumberOrNull(e.target.value),
+        })
+      }
+      style={styles.input}
+    />
+  </label>
+
+  <label style={styles.label}>
+    Nombre total de remontées
+    <input
+      type="number"
+      min={0}
+      value={resort.lifts_count ?? ""}
+      onChange={(e) =>
+        setResort({
+          ...resort,
+          lifts_count: toNumberOrNull(e.target.value),
+        })
+      }
+      style={styles.input}
+    />
+  </label>
+</div>
+
                 <div style={styles.grid2}>
                   <label style={styles.label}>
                     Ouverture (saison) — AAAA-MM-JJ
@@ -1656,63 +1722,107 @@ const removeForfaitRow = (rowIdx: number) => {
               actions={<SaveButton onClick={patchPistesBoth} />}
             >
               <div style={styles.grid4}>
-                <label style={styles.label}>
-                  Vertes
-                  <input
-                    type="number"
-                    min={0}
-                    value={widgets?.pistes?.colors?.green ?? 0}
-                    onChange={(e) => setW("pistes.colors.green", toIntOrZero(e.target.value))}
-                    style={styles.input}
-                  />
-                </label>
+  <label style={styles.label}>
+    Vertes
+    <input
+      type="number"
+      min={0}
+      value={widgets?.pistes?.colors?.green ?? 0}
+      onChange={(e) => setW("pistes.colors.green", toIntOrZero(e.target.value))}
+      style={styles.input}
+    />
+  </label>
 
-                <label style={styles.label}>
-                  Bleues
-                  <input
-                    type="number"
-                    min={0}
-                    value={widgets?.pistes?.colors?.blue ?? 0}
-                    onChange={(e) => setW("pistes.colors.blue", toIntOrZero(e.target.value))}
-                    style={styles.input}
-                  />
-                </label>
+  <label style={styles.label}>
+    Bleues
+    <input
+      type="number"
+      min={0}
+      value={widgets?.pistes?.colors?.blue ?? 0}
+      onChange={(e) => setW("pistes.colors.blue", toIntOrZero(e.target.value))}
+      style={styles.input}
+    />
+  </label>
 
-                <label style={styles.label}>
-                  Rouges
-                  <input
-                    type="number"
-                    min={0}
-                    value={widgets?.pistes?.colors?.red ?? 0}
-                    onChange={(e) => setW("pistes.colors.red", toIntOrZero(e.target.value))}
-                    style={styles.input}
-                  />
-                </label>
+  <label style={styles.label}>
+    Rouges
+    <input
+      type="number"
+      min={0}
+      value={widgets?.pistes?.colors?.red ?? 0}
+      onChange={(e) => setW("pistes.colors.red", toIntOrZero(e.target.value))}
+      style={styles.input}
+    />
+  </label>
 
-                <label style={styles.label}>
-                  Noires
-                  <input
-                    type="number"
-                    min={0}
-                    value={widgets?.pistes?.colors?.black ?? 0}
-                    onChange={(e) => setW("pistes.colors.black", toIntOrZero(e.target.value))}
-                    style={styles.input}
-                  />
-                </label>
-              </div>
+  <label style={styles.label}>
+    Noires
+    <input
+      type="number"
+      min={0}
+      value={widgets?.pistes?.colors?.black ?? 0}
+      onChange={(e) => setW("pistes.colors.black", toIntOrZero(e.target.value))}
+      style={styles.input}
+    />
+  </label>
+</div>
 
-              <div style={{ marginTop: 14 }}>
-                <label style={{ ...styles.label, maxWidth: 260 }}>
-                  Snowparks (nombre)
-                  <input
-                    type="number"
-                    min={0}
-                    value={widgets?.snowparks?.count ?? 0}
-                    onChange={(e) => setW("snowparks.count", toIntOrZero(e.target.value))}
-                    style={styles.input}
-                  />
-                </label>
-              </div>
+<div style={{ marginTop: 14 }}>
+  <label style={{ ...styles.label, maxWidth: 260 }}>
+    Snowparks (nombre)
+    <input
+      type="number"
+      min={0}
+      value={widgets?.snowparks?.count ?? 0}
+      onChange={(e) => setW("snowparks.count", toIntOrZero(e.target.value))}
+      style={styles.input}
+    />
+  </label>
+</div>
+
+<div style={{ marginTop: 18 }}>
+  <div style={{ ...styles.sectionTitleWrap, marginBottom: 10 }}>
+    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Détail des remontées</h3>
+    <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
+      Ces valeurs servent au détail affiché sur la fiche station.
+    </p>
+  </div>
+
+  <div style={styles.grid3}>
+    <label style={styles.label}>
+      Tire-fesses
+      <input
+        type="number"
+        min={0}
+        value={widgets?.remontees?.tireFesses ?? 0}
+        onChange={(e) => setW("remontees.tireFesses", toIntOrZero(e.target.value))}
+        style={styles.input}
+      />
+    </label>
+
+    <label style={styles.label}>
+      Télésièges
+      <input
+        type="number"
+        min={0}
+        value={widgets?.remontees?.telesieges ?? 0}
+        onChange={(e) => setW("remontees.telesieges", toIntOrZero(e.target.value))}
+        style={styles.input}
+      />
+    </label>
+
+    <label style={styles.label}>
+      Téléphériques
+      <input
+        type="number"
+        min={0}
+        value={widgets?.remontees?.telepheriques ?? 0}
+        onChange={(e) => setW("remontees.telepheriques", toIntOrZero(e.target.value))}
+        style={styles.input}
+      />
+    </label>
+  </div>
+</div>
             </SectionCard>
 
             <SectionCard
