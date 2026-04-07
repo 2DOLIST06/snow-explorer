@@ -54,44 +54,72 @@ const normalizeForfaits = (items: ForfaitItem[] | undefined): DisplayForfaitItem
     .filter((item) => item.columns.length > 0);
 };
 
+const collectHeaders = (rows: DisplayForfaitItem[]): string[] => {
+  const headers: string[] = [];
+
+  rows.forEach((row) => {
+    row.columns.forEach((col) => {
+      const label = text(col.label);
+      if (!label) return;
+      if (!headers.includes(label)) headers.push(label);
+    });
+  });
+
+  return headers;
+};
+
 const StationForfaitsBlock: React.FC<{ items: ForfaitItem[]; enabled?: boolean }> = ({ items, enabled }) => {
   if (!enabled) return null;
 
   const rows = normalizeForfaits(items);
+  const headers = collectHeaders(rows);
 
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-neutral-900">Forfaits</h2>
-        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
-          {rows.length} ligne{rows.length > 1 ? "s" : ""}
-        </span>
-      </div>
+      <h2 className="mb-4 text-lg font-semibold text-neutral-900">Forfaits</h2>
 
       {rows.length > 0 ? (
-        <div className="space-y-3">
-          {rows.map((row) => (
-            <article key={row.id} className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-3 sm:p-4">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-700">{row.title}</h3>
-
-              <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-neutral-200 bg-neutral-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-600 sm:px-4">
-                  <span>Catégorie</span>
-                  <span>Tarif</span>
-                </div>
-
-                {row.columns.map((col) => (
-                  <div
-                    key={col.id}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-neutral-100 px-3 py-2.5 text-sm last:border-b-0 sm:px-4"
-                  >
-                    <span className="truncate text-neutral-700">{col.label || "—"}</span>
-                    <span className="font-semibold text-neutral-900">{col.value || "—"}</span>
-                  </div>
+        <div className="overflow-x-auto rounded-xl border border-neutral-200">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-neutral-100 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                <th className="px-4 py-3">Type de forfait</th>
+                {headers.map((header) => (
+                  <th key={header} className="px-4 py-3">
+                    {header}
+                  </th>
                 ))}
-              </div>
-            </article>
-          ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {rows.map((row, rowIndex) => {
+                const valuesByLabel = new Map<string, string>();
+                row.columns.forEach((col) => {
+                  const label = text(col.label);
+                  if (!label) return;
+                  valuesByLabel.set(label, text(col.value));
+                });
+
+                return (
+                  <tr
+                    key={row.id}
+                    className={rowIndex % 2 === 0 ? "bg-white" : "bg-neutral-50/50"}
+                  >
+                    <td className="whitespace-nowrap border-t border-neutral-200 px-4 py-3 font-semibold text-neutral-900">
+                      {row.title}
+                    </td>
+
+                    {headers.map((header) => (
+                      <td key={`${row.id}-${header}`} className="border-t border-neutral-200 px-4 py-3 text-neutral-700">
+                        {valuesByLabel.get(header) || "—"}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <p className="text-sm text-neutral-500">Aucun forfait renseigné.</p>
