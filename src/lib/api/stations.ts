@@ -11,7 +11,7 @@ const EMPTY_CFG: StationWidgetsConfig = {
   pistes: { enabled: false, smallMapUrl: null, largeMapUrl: null, caption: null },
   meteo: { enabled: false, iframeUrl: null },
   description: { enabled: false, html: null, metaTitle: null, metaDescription: null },
-  forfaits: { enabled: false, items: [] },
+  forfaits: { enabled: false, columns: [], items: [] },
   webcams: { enabled: false, items: [] },
   snow: { enabled: false, iframeUrl: null },
   snowpark: { enabled: false, mapUrl: null, imageUrl: null, caption: null },
@@ -26,14 +26,47 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
     });
 
     if (!res.ok || res.status === 204) {
-      // rien en base → config vide
       return { ...EMPTY_CFG, stationSlug };
     }
 
     const data = (await res.json()) as StationWidgetsConfig;
 
-    // merge sécurité
-    return { ...EMPTY_CFG, ...data, stationSlug };
+    return {
+      ...EMPTY_CFG,
+      ...data,
+      stationSlug,
+      pistes: {
+        ...EMPTY_CFG.pistes,
+        ...data.pistes,
+      },
+      meteo: {
+        ...EMPTY_CFG.meteo,
+        ...data.meteo,
+      },
+      description: {
+        ...EMPTY_CFG.description,
+        ...data.description,
+      },
+      forfaits: {
+        ...EMPTY_CFG.forfaits,
+        ...data.forfaits,
+        columns: data.forfaits?.columns || [],
+        items: data.forfaits?.items || [],
+      },
+      webcams: {
+        ...EMPTY_CFG.webcams,
+        ...data.webcams,
+        items: data.webcams?.items || [],
+      },
+      snow: {
+        ...EMPTY_CFG.snow,
+        ...data.snow,
+      },
+      snowpark: {
+        ...EMPTY_CFG.snowpark,
+        ...data.snowpark,
+      },
+    };
   } catch (err) {
     console.error("❌ fetchStationWidgetsConfig error:", err);
     return { ...EMPTY_CFG, stationSlug };
