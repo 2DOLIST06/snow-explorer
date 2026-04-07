@@ -1075,37 +1075,8 @@ const removeForfaitRow = (rowIdx: number) => {
   const nextItems = forfaitItems.filter((_, idx) => idx !== rowIdx);
   setForfaitsState(forfaitColumns, nextItems);
 };
-  const updateForfaitColumn = (
-    rowIdx: number,
-    colIdx: number,
-    key: keyof ForfaitColumn,
-    value: string
-  ) => {
-    const next = forfaitItems.map((row, rIdx) => {
-      if (rIdx !== rowIdx) return row;
+  
 
-      return {
-        ...row,
-        columns: row.columns.map((col, cIdx) => (cIdx === colIdx ? { ...col, [key]: value } : col)),
-      };
-    });
-
-    setW("forfaits.items", next);
-  };
-
-  const removeForfaitColumn = (rowIdx: number, colIdx: number) => {
-    const next = forfaitItems.map((row, rIdx) => {
-      if (rIdx !== rowIdx) return row;
-
-      const updatedColumns = row.columns.filter((_, cIdx) => cIdx !== colIdx);
-      return {
-        ...row,
-        columns: updatedColumns.length ? updatedColumns : [{ id: createId("c"), label: "", value: "" }],
-      };
-    });
-
-    setW("forfaits.items", next);
-  };
 
   async function uploadWithPresign(file: File): Promise<string> {
     const r = await fetch(`${API}/api/s3/presign`, {
