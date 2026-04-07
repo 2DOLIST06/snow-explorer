@@ -35,6 +35,7 @@ const normalizeForfaits = (
 
   const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
     const label = text(rawLabel);
+
     if (!label) {
       const fallbackId =
         typeof rawId === "string" && rawId.trim() !== ""
@@ -44,6 +45,7 @@ const normalizeForfaits = (
       if (!columnMap.has(fallbackId)) {
         columnMap.set(fallbackId, { id: fallbackId, label: "" });
       }
+
       return fallbackId;
     }
 
