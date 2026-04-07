@@ -454,7 +454,7 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
       <figure
         style={{
           margin: 0,
-          border: "1px solid #e5e7eb",
+          border: "1px solid #cbd5e1",
           borderRadius: 12,
           overflow: "hidden",
           background: "#fff",
@@ -521,7 +521,7 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
                 width: 32,
                 height: 32,
                 borderRadius: "50%",
-                border: "1px solid #e5e7eb",
+                border: "1px solid #cbd5e1",
                 background: "#fff",
                 fontSize: 18,
                 lineHeight: "30px",
@@ -628,8 +628,8 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
             width: "100%",
             overflow: "hidden",
             borderRadius: 10,
-            background: "#e5e7eb",
-            border: "1px solid #e5e7eb",
+            background: "#cbd5e1",
+            border: "1px solid #cbd5e1",
             cursor: "pointer",
           }}
           onClick={() => setOpen(true)}
@@ -645,7 +645,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
               width: 34,
               height: 34,
               borderRadius: 8,
-              border: "1px solid #e5e7eb",
+              border: "1px solid #cbd5e1",
               background: "#fff",
               display: "flex",
               alignItems: "center",
@@ -696,7 +696,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
                 width: 32,
                 height: 32,
                 borderRadius: "50%",
-                border: "1px solid #e5e7eb",
+                border: "1px solid #cbd5e1",
                 background: "#fff",
                 fontSize: 18,
                 lineHeight: "30px",
@@ -716,7 +716,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
                     height: 36,
                     padding: "0 12px",
                     borderRadius: 8,
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid #cbd5e1",
                     background: "#fff",
                     cursor: "pointer",
                     fontSize: 13,
@@ -727,7 +727,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
               )}
             </div>
 
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+            <div style={{ border: "1px solid #cbd5e1", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={activePreview}
@@ -757,7 +757,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
                       key={c.id ?? c.webcamId ?? `strip-${idx}`}
                       onClick={() => setActiveIndex(idx)}
                       style={{
-                        border: isActive ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                        border: isActive ? "2px solid #2563eb" : "1px solid #cbd5e1",
                         borderRadius: 10,
                         overflow: "hidden",
                         cursor: "pointer",
@@ -809,7 +809,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
                         setShowAll(false);
                       }}
                       style={{
-                        border: "1px solid #e5e7eb",
+                        border: "1px solid #cbd5e1",
                         borderRadius: 10,
                         overflow: "hidden",
                         background: "#fff",
@@ -848,10 +848,10 @@ const getWeatherIcon = (code: number | null | undefined) => {
     return { symbol: "🌤️", label: "Peu nuageux", bg: "#e0f2fe" };
   }
   if (c === 3) {
-    return { symbol: "☁️", label: "Couvert", bg: "#e5e7eb" };
+    return { symbol: "☁️", label: "Couvert", bg: "#cbd5e1" };
   }
   if ([45, 48].includes(c)) {
-    return { symbol: "🌫️", label: "Brouillard", bg: "#e5e7eb" };
+    return { symbol: "🌫️", label: "Brouillard", bg: "#cbd5e1" };
   }
   if ([51, 53, 55, 61, 63, 65, 66, 67, 80, 81, 82].includes(c)) {
     return { symbol: "🌧️", label: "Pluie", bg: "#dbeafe" };
@@ -1021,7 +1021,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
                       key={d.date}
                       style={{
                         borderRadius: 12,
-                        border: "1px solid #e5e7eb",
+                        border: "1px solid #cbd5e1",
                         padding: 8,
                         background: "#f3f6fa",
                         fontSize: 12,
@@ -1101,7 +1101,7 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
           <img
             src={src}
             alt={caption || "Plan du snowpark"}
-            style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #e5e7eb" }}
+            style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #cbd5e1" }}
           />
         </div>
       ) : (
@@ -1109,7 +1109,7 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
         <img
           src={src}
           alt={caption || "Plan du snowpark"}
-          style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #e5e7eb" }}
+          style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #cbd5e1" }}
         />
       )}
       {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
@@ -1225,7 +1225,7 @@ const ResortSearchBox: React.FC<{ onPick: (slug: string) => void }> = ({ onPick 
             left: 0,
             right: 0,
             marginTop: 8,
-            border: "1px solid #e5e7eb",
+            border: "1px solid #cbd5e1",
             borderRadius: 12,
             background: "#fff",
             color: "#111827",
@@ -1352,8 +1352,8 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
         {/* Altitude */}
         <div
           style={{
-            background: "#f7f7fb",
-            border: "1px solid #eef0f4",
+            background: "#eef2f7",
+            border: "1px solid #d1d9e6",
             borderRadius: 16,
             padding: 16,
             display: "flex",
@@ -1656,8 +1656,8 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
                   height: 140,
                   borderRadius: 16,
                   overflow: "hidden",
-                  border: "1px solid #e5e7eb",
-                  background: "#e5e7eb",
+                  border: "1px solid #cbd5e1",
+                  background: "#cbd5e1",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
