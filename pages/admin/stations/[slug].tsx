@@ -995,63 +995,85 @@ const sections = [
   { id: "forfaits", label: "Forfaits", complete: sectionChecks.forfaits },
 ];
 
-  const addForfaitRow = () => {
-  const next = [
-    ...forfaitItems,
-    { id: createId("f"), title: "", columns: [{ id: createId("c"), label: "", value: "" }] },
-  ];
-  setW("forfaits.items", next);
+  const setForfaitsState = (nextColumns: ForfaitColumn[], nextItems: ForfaitItem[]) => {
+  setW("forfaits", {
+    ...(widgets?.forfaits || {}),
+    enabled: !!widgets?.forfaits?.enabled,
+    columns: nextColumns,
+    items: nextItems,
+  });
+};
+
+const addForfaitGlobalColumn = () => {
+  const nextColumns = [...forfaitColumns, { id: createId("fc"), label: "" }];
+  const nextItems = forfaitItems.map((row) => ({
+    ...row,
+    prices: { ...row.prices },
+  }));
+  setForfaitsState(nextColumns, nextItems);
+};
+
+const updateForfaitGlobalColumnLabel = (colIdx: number, value: string) => {
+  const nextColumns = forfaitColumns.map((col, idx) =>
+    idx === colIdx ? { ...col, label: value } : col
+  );
+  setForfaitsState(nextColumns, forfaitItems);
+};
+
+const removeForfaitGlobalColumn = (colIdx: number) => {
+  const removedColumn = forfaitColumns[colIdx];
+  const nextColumns = forfaitColumns.filter((_, idx) => idx !== colIdx);
+
+  const nextItems = forfaitItems.map((row) => {
+    const nextPrices = { ...row.prices };
+    if (removedColumn?.id) {
+      delete nextPrices[removedColumn.id];
+    }
+    return {
+      ...row,
+      prices: nextPrices,
+    };
+  });
+
+  setForfaitsState(nextColumns, nextItems);
+};
+
+const addForfaitRow = () => {
+  const prices: Record<string, string> = {};
+  forfaitColumns.forEach((col) => {
+    prices[col.id] = "";
+  });
+
+  const nextItems = [...forfaitItems, { id: createId("f"), title: "", prices }];
+  setForfaitsState(forfaitColumns, nextItems);
 };
 
 const updateForfaitRowTitle = (rowIdx: number, value: string) => {
-  const next = forfaitItems.map((row, idx) => (idx === rowIdx ? { ...row, title: value } : row));
-  setW("forfaits.items", next);
+  const nextItems = forfaitItems.map((row, idx) =>
+    idx === rowIdx ? { ...row, title: value } : row
+  );
+  setForfaitsState(forfaitColumns, nextItems);
+};
+
+const updateForfaitPrice = (rowIdx: number, columnId: string, value: string) => {
+  const nextItems = forfaitItems.map((row, idx) => {
+    if (idx !== rowIdx) return row;
+
+    return {
+      ...row,
+      prices: {
+        ...row.prices,
+        [columnId]: value,
+      },
+    };
+  });
+
+  setForfaitsState(forfaitColumns, nextItems);
 };
 
 const removeForfaitRow = (rowIdx: number) => {
-  const next = forfaitItems.filter((_, idx) => idx !== rowIdx);
-  setW("forfaits.items", next);
-};
-
-const addForfaitColumn = (rowIdx: number) => {
-  const next = forfaitItems.map((row, idx) =>
-    idx === rowIdx
-      ? { ...row, columns: [...row.columns, { id: createId("c"), label: "", value: "" }] }
-      : row
-  );
-  setW("forfaits.items", next);
-};
-
-const updateForfaitColumn = (
-  rowIdx: number,
-  colIdx: number,
-  key: keyof ForfaitColumn,
-  value: string
-) => {
-  const next = forfaitItems.map((row, rIdx) => {
-    if (rIdx !== rowIdx) return row;
-
-    return {
-      ...row,
-      columns: row.columns.map((col, cIdx) => (cIdx === colIdx ? { ...col, [key]: value } : col)),
-    };
-  });
-
-  setW("forfaits.items", next);
-};
-
-const removeForfaitColumn = (rowIdx: number, colIdx: number) => {
-  const next = forfaitItems.map((row, rIdx) => {
-    if (rIdx !== rowIdx) return row;
-
-    const updatedColumns = row.columns.filter((_, cIdx) => cIdx !== colIdx);
-    return {
-      ...row,
-      columns: updatedColumns.length ? updatedColumns : [{ id: createId("c"), label: "", value: "" }],
-    };
-  });
-
-  setW("forfaits.items", next);
+  const nextItems = forfaitItems.filter((_, idx) => idx !== rowIdx);
+  setForfaitsState(forfaitColumns, nextItems);
 };
   const updateForfaitColumn = (
     rowIdx: number,
