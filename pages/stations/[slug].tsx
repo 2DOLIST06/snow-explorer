@@ -76,7 +76,7 @@ const Card: React.FC<
 > = ({ title, style, bodyStyle, children }) => (
   <section
     style={{
-      border: "1px solid #e5e7eb",
+      border: "1px solid #cbd5e1",
       borderRadius: 12,
       background: "#fff",
       padding: 12,
@@ -84,7 +84,7 @@ const Card: React.FC<
     }}
   >
     {title ? (
-      <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>{title}</h2>
+      <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</h2>
     ) : null}
     <div style={bodyStyle}>{children}</div>
   </section>
@@ -198,8 +198,8 @@ const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[]
   return (
     <div
       style={{
-        background: "#f7f7fb",
-        border: "1px solid #eef0f4",
+        background: "#eef2f7",
+        border: "1px solid #d1d9e6",
         borderRadius: 16,
         padding: 16,
       }}
@@ -214,7 +214,7 @@ const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[]
                 marginTop: 4,
                 fontSize: 11,
                 letterSpacing: 0.6,
-                color: "#6b7280",
+                color: "#4b5563",
                 textTransform: "uppercase",
               }}
             >
@@ -286,33 +286,31 @@ const PistesTile: React.FC<{
 }> = ({ total, km, green, blue, red, black, snowparks, snowparksClickable, onSnowparkClick }) => (
   <div
     style={{
-      background: "#f7f7fb",
-      border: "1px solid #eef0f4",
+      background: "#eef2f7",
+      border: "1px solid #d1d9e6",
       borderRadius: 16,
       padding: 16,
     }}
   >
     <TileHeader icon={<IconPistes />} title="Pistes" />
 
-    {/* chiffres principaux */}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
       <div>
         <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#6b7280", textTransform: "uppercase" }}>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
           Pistes
         </div>
       </div>
       <div>
         <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{km}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#6b7280", textTransform: "uppercase" }}>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
           Domaine
         </div>
       </div>
     </div>
 
-    <div style={{ height: 1, background: "#e9edf3", margin: "8px 0 10px" }} />
+    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
 
-    {/* légendes couleurs */}
     <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
       <LegendRow left={<ColorDot c="#16a34a" label="Vertes" />} right={<span>{green}</span>} />
       <LegendRow left={<ColorDot c="#2563eb" label="Bleues" />} right={<span>{blue}</span>} />
@@ -359,8 +357,8 @@ const LiftsTile: React.FC<{
 }> = ({ total, typesLabel, drag, chair, cable }) => (
   <div
     style={{
-      background: "#f7f7fb",
-      border: "1px solid #eef0f4",
+      background: "#eef2f7",
+border: "1px solid #d1d9e6",
       borderRadius: 16,
       padding: 16,
     }}
@@ -371,19 +369,19 @@ const LiftsTile: React.FC<{
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
       <div>
         <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#6b7280", textTransform: "uppercase" }}>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
           Remontées
         </div>
       </div>
       <div>
         <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{typesLabel}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#6b7280", textTransform: "uppercase" }}>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
           Types
         </div>
       </div>
     </div>
 
-    <div style={{ height: 1, background: "#e9edf3", margin: "8px 0 10px" }} />
+    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
 
     {/* légendes types */}
     <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
@@ -482,7 +480,7 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
         />
         {caption ? (
           <figcaption
-            style={{ padding: 10, fontSize: 13, color: "#6b7280", borderTop: "1px solid #f3f4f6" }}
+            style={{ padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}
           >
             {caption}
           </figcaption>
@@ -617,10 +615,10 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
 
   return (
     <Card title="Webcam" style={{ width: "100%" }}>
-      {loading && <div style={{ fontSize: 13, color: "#6b7280" }}>Chargement…</div>}
+      {loading && <div style={{ fontSize: 13, color: "#4b5563" }}>Chargement…</div>}
       {err && !loading && <div style={{ fontSize: 13, color: "#dc2626" }}>Webcams : {err}</div>}
       {!loading && !err && cams.length === 0 && (
-        <div style={{ fontSize: 13, color: "#6b7280" }}>Aucune webcam trouvée à proximité.</div>
+        <div style={{ fontSize: 13, color: "#4b5563" }}>Aucune webcam trouvée à proximité.</div>
       )}
 
       {!loading && !err && cams.length > 0 && (
@@ -630,7 +628,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
             width: "100%",
             overflow: "hidden",
             borderRadius: 10,
-            background: "#f3f4f6",
+            background: "#e5e7eb",
             border: "1px solid #e5e7eb",
             cursor: "pointer",
           }}
@@ -661,7 +659,7 @@ const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | 
         </div>
       )}
 
-      <div style={{ marginTop: 8, fontSize: 11, color: "#6b7280" }}>Source : Windy Webcams API (attribution requise)</div>
+      <div style={{ marginTop: 8, fontSize: 11, color: "#4b5563" }}>Source : Windy Webcams API (attribution requise)</div>
 
       {open && (
         <div
@@ -956,7 +954,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
   if (!Number.isFinite(usedLat) || !Number.isFinite(usedLon)) {
     return (
       <Card title="Météo & neige">
-        <div style={{ fontSize: 13, color: "#6b7280" }}>Coordonnées indisponibles.</div>
+        <div style={{ fontSize: 13, color: "#4b5563" }}>Coordonnées indisponibles.</div>
       </Card>
     );
   }
@@ -965,7 +963,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
 
   return (
     <Card title="Météo & neige">
-      {loading && <div style={{ fontSize: 13, color: "#6b7280" }}>Chargement…</div>}
+      {loading && <div style={{ fontSize: 13, color: "#4b5563" }}>Chargement…</div>}
       {err && !loading && <div style={{ fontSize: 13, color: "#dc2626" }}>Erreur : {err}</div>}
 
       {!loading && !err && current && (
@@ -1003,7 +1001,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
                 style={{
                   fontSize: 12,
                   textTransform: "uppercase",
-                  color: "#6b7280",
+                  color: "#4b5563",
                   marginBottom: 6,
                 }}
               >
@@ -1025,7 +1023,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
                         borderRadius: 12,
                         border: "1px solid #e5e7eb",
                         padding: 8,
-                        background: "#f9fafb",
+                        background: "#f3f6fa",
                         fontSize: 12,
                         display: "flex",
                         flexDirection: "column",
@@ -1070,7 +1068,7 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
             </div>
           )}
 
-          <div style={{ marginTop: 8, fontSize: 11, color: "#6b7280" }}>Source : Open-Meteo</div>
+          <div style={{ marginTop: 8, fontSize: 11, color: "#4b5563" }}>Source : Open-Meteo</div>
         </>
       )}
     </Card>
@@ -1114,7 +1112,7 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
           style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #e5e7eb" }}
         />
       )}
-      {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#6b7280" }}>{caption}</p> : null}
+      {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
     </Card>
   );
 };
@@ -1212,11 +1210,11 @@ const ResortSearchBox: React.FC<{ onPick: (slug: string) => void }> = ({ onPick 
           width: "100%",
           padding: "14px 16px",
           borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.6)",
-          background: "rgba(255,255,255,0.95)",
+          border: "1px solid rgba(148,163,184,0.9)",
+          background: "rgba(255,255,255,0.98)",
           fontSize: 18,
           outline: "none",
-          color: "#111827",
+          color: "#0f172a",
         }}
       />
       {open && (
@@ -1264,7 +1262,7 @@ const ResortSearchBox: React.FC<{ onPick: (slug: string) => void }> = ({ onPick 
                 onMouseEnter={() => setCursor(i)}
               >
                 <div style={{ fontWeight: 600 }}>{r.name}</div>
-                <div style={{ color: "#6b7280" }}>{r.region?.name || ""}</div>
+                <div style={{ color: "#4b5563" }}>{r.region?.name || ""}</div>
               </div>
             ))}
         </div>
@@ -1391,7 +1389,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
                   marginTop: 4,
                   fontSize: 11,
                   letterSpacing: 0.6,
-                  color: "#6b7280",
+                  color: "#4b5563",
                   textTransform: "uppercase",
                 }}
               >
@@ -1408,7 +1406,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
                   marginTop: 4,
                   fontSize: 11,
                   letterSpacing: 0.6,
-                  color: "#6b7280",
+                  color: "#4b5563",
                   textTransform: "uppercase",
                 }}
               >
@@ -1425,7 +1423,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
                   marginTop: 4,
                   fontSize: 11,
                   letterSpacing: 0.6,
-                  color: "#6b7280",
+                  color: "#4b5563",
                   textTransform: "uppercase",
                 }}
               >
@@ -1659,7 +1657,7 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
                   borderRadius: 16,
                   overflow: "hidden",
                   border: "1px solid #e5e7eb",
-                  background: "#f3f4f6",
+                  background: "#e5e7eb",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1676,7 +1674,7 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
                   <span
                     style={{
                       fontSize: 12,
-                      color: "#6b7280",
+                      color: "#4b5563",
                       textAlign: "center",
                       padding: 8,
                     }}
