@@ -132,16 +132,24 @@ const normalizeForfaitConfig = (rawForfaits: any): { enabled: boolean; columns: 
       });
     }
 
-    if (Array.isArray(rawItem?.columns)) {
-      rawItem.columns.forEach((rawCol: any) => {
-        const label = typeof rawCol?.label === "string" ? rawCol.label : "";
-        const value = typeof rawCol?.value === "string" ? rawCol.value : "";
-        if (!label.trim()) return;
+    const hasExplicitGlobalColumns = Array.isArray(rawForfaits?.columns) && rawForfaits.columns.length > 0;
 
-        const colId = ensureColumn(label, rawCol?.id);
-        prices[colId] = value;
-      });
+if (!hasExplicitGlobalColumns && Array.isArray(rawItem?.columns)) {
+  rawItem.columns.forEach((rawCol: any) => {
+    const label = typeof rawCol?.label === "string" ? rawCol.label : "";
+    const value = typeof rawCol?.value === "string" ? rawCol.value : "";
+    if (!label.trim()) return;
+
+    const normalizedLabel = normalizeLabelKey(label);
+
+    if (normalizedLabel === "title" || normalizedLabel === "price") {
+      return;
     }
+
+    const colId = ensureColumn(label, rawCol?.id);
+    prices[colId] = value;
+  });
+}
 
     return {
       id: rowId,
@@ -688,6 +696,45 @@ function SaveButton({
   );
 }
 
+const buildCanonicalForfaitsPayload = (rawForfaits: any) => {
+  const normalized = normalizeForfaitConfig(rawForfaits);
+
+  const cleanColumns = normalized.columns
+    .map((col) => ({
+      id: typeof col.id === "string" && col.id.trim() !== "" ? col.id.trim() : createId("fc"),
+      label: typeof col.label === "string" ? col.label.trim() : "",
+    }))
+    .filter((col) => col.label !== "");
+
+  const allowedColumnIds = new Set(cleanColumns.map((col) => col.id));
+
+  const cleanItems = normalized.items
+    .map((item) => {
+      const cleanPrices: Record<string, string> = {};
+
+      Object.entries(item.prices || {}).forEach(([key, value]) => {
+        if (!allowedColumnIds.has(key)) return;
+        const cleanValue = typeof value === "string" ? value.trim() : "";
+        if (cleanValue !== "") {
+          cleanPrices[key] = cleanValue;
+        }
+      });
+
+      return {
+        id: typeof item.id === "string" && item.id.trim() !== "" ? item.id.trim() : createId("f"),
+        title: typeof item.title === "string" ? item.title.trim() : "",
+        prices: cleanPrices,
+      };
+    })
+    .filter((item) => item.title !== "");
+
+  return {
+    enabled: !!rawForfaits?.enabled,
+    columns: cleanColumns,
+    items: cleanItems,
+  };
+};
+
 export default function AdminStationEdit() {
   const router = useRouter();
 
@@ -866,28 +913,36 @@ setWidgets(w);
   };
 
   const patchWidgets = async () => {
-    setMsg("Enregistrement widgets…");
-    setErr("");
+  setMsg("Enregistrement widgets…");
+  setErr("");
 
-    try {
-      const r = await fetch(`${API}/api/admin/stations/${slug}/widgets`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(widgets),
-      });
+  try {
+    const payload = {
+      ...widgets,
+      forfaits: buildCanonicalForfaitsPayload(widgets?.forfaits),
+    };
 
-      if (!r.ok) {
-        const txt = await r.text();
-        throw new Error(`PATCH widgets failed ${r.status}: ${txt}`);
-      }
+    console.log("PATCH widgets payload =", payload);
 
-      await load(slug);
-      setMsg("Widgets enregistrés.");
-    } catch (e: any) {
-      setErr(e?.message || "Erreur API");
-      setMsg("");
+    const r = await fetch(`${API}/api/admin/stations/${slug}/widgets`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error(`PATCH widgets failed ${r.status}: ${txt}`);
     }
-  };
+
+    setWidgets(payload);
+    await load(slug);
+    setMsg("Widgets enregistrés.");
+  } catch (e: any) {
+    setErr(e?.message || "Erreur API");
+    setMsg("");
+  }
+};
 
   const patchPistesBoth = async () => {
     await patchWidgets();
@@ -996,12 +1051,21 @@ const sections = [
 ];
 
   const setForfaitsState = (nextColumns: ForfaitColumn[], nextItems: ForfaitItem[]) => {
-  setW("forfaits", {
-    ...(widgets?.forfaits || {}),
-    enabled: !!widgets?.forfaits?.enabled,
-    columns: nextColumns,
-    items: nextItems,
-  });
+  setWidgets((prev: any) => ({
+    ...prev,
+    forfaits: {
+      enabled: !!prev?.forfaits?.enabled,
+      columns: nextColumns.map((col) => ({
+        id: col.id,
+        label: (col.label || "").trim(),
+      })),
+      items: nextItems.map((item) => ({
+        id: item.id,
+        title: (item.title || "").trim(),
+        prices: { ...(item.prices || {}) },
+      })),
+    },
+  }));
 };
 
 const addForfaitGlobalColumn = () => {
