@@ -32,13 +32,12 @@ type ResortType = {
 type ForfaitColumn = {
   id: string;
   label: string;
-  value: string;
 };
 
 type ForfaitItem = {
   id: string;
   title: string;
-  columns: ForfaitColumn[];
+  prices: Record<string, string>;
 };
 
 // helpers
@@ -55,54 +54,109 @@ const toIntOrZero = (v: string): number => {
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 
-const normalizeForfaitItems = (rawItems: any): ForfaitItem[] => {
-  if (!Array.isArray(rawItems)) return [];
+const normalizeLabelKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-");
 
-  return rawItems.map((rawItem: any, itemIndex: number) => {
+const normalizeForfaitConfig = (rawForfaits: any): { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[] } => {
+  const enabled = !!rawForfaits?.enabled;
+
+  const columnMap = new Map<string, ForfaitColumn>();
+
+  const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
+    const label = typeof rawLabel === "string" ? rawLabel.trim() : "";
+    if (!label) {
+      const fallbackId =
+        typeof rawId === "string" && rawId.trim() !== "" ? rawId.trim() : createId("fc");
+      if (!columnMap.has(fallbackId)) {
+        columnMap.set(fallbackId, { id: fallbackId, label: "" });
+      }
+      return fallbackId;
+    }
+
+    const normalized = normalizeLabelKey(label);
+    const existing = Array.from(columnMap.values()).find(
+      (col) => normalizeLabelKey(col.label) === normalized
+    );
+    if (existing) return existing.id;
+
+    const id =
+      typeof rawId === "string" && rawId.trim() !== ""
+        ? rawId.trim()
+        : `fc-${normalized || Math.random().toString(36).slice(2, 8)}`;
+
+    columnMap.set(id, { id, label });
+    return id;
+  };
+
+  if (Array.isArray(rawForfaits?.columns)) {
+    rawForfaits.columns.forEach((rawCol: any) => {
+      ensureColumn(rawCol?.label, rawCol?.id);
+    });
+  }
+
+  const rawItems = Array.isArray(rawForfaits?.items) ? rawForfaits.items : [];
+
+  const items: ForfaitItem[] = rawItems.map((rawItem: any, itemIndex: number) => {
     const rowId =
       typeof rawItem?.id === "string" && rawItem.id.trim() !== ""
         ? rawItem.id
         : createId(`f${itemIndex + 1}`);
 
     const rowTitle = typeof rawItem?.title === "string" ? rawItem.title : "";
+    const prices: Record<string, string> = {};
+
+    if (rawItem?.prices && typeof rawItem.prices === "object" && !Array.isArray(rawItem.prices)) {
+      Object.entries(rawItem.prices).forEach(([key, value]) => {
+        const rawValue = typeof value === "string" ? value : "";
+        const existingById = Array.from(columnMap.values()).find((col) => col.id === key);
+        if (existingById) {
+          prices[existingById.id] = rawValue;
+          return;
+        }
+
+        const existingByLabel = Array.from(columnMap.values()).find(
+          (col) => normalizeLabelKey(col.label) === normalizeLabelKey(key)
+        );
+        if (existingByLabel) {
+          prices[existingByLabel.id] = rawValue;
+          return;
+        }
+
+        const newId = ensureColumn(key);
+        prices[newId] = rawValue;
+      });
+    }
 
     if (Array.isArray(rawItem?.columns)) {
-      const columns: ForfaitColumn[] = rawItem.columns.map((rawCol: any, colIndex: number) => ({
-        id:
-          typeof rawCol?.id === "string" && rawCol.id.trim() !== ""
-            ? rawCol.id
-            : createId(`c${colIndex + 1}`),
-        label: typeof rawCol?.label === "string" ? rawCol.label : "",
-        value: typeof rawCol?.value === "string" ? rawCol.value : "",
-      }));
+      rawItem.columns.forEach((rawCol: any) => {
+        const label = typeof rawCol?.label === "string" ? rawCol.label : "";
+        const value = typeof rawCol?.value === "string" ? rawCol.value : "";
+        if (!label.trim()) return;
 
-      return {
-        id: rowId,
-        title: rowTitle,
-        columns: columns.length ? columns : [{ id: createId("c"), label: "", value: "" }],
-      };
-    }
-
-    const legacyColumns: ForfaitColumn[] = [];
-
-    if (typeof rawItem?.price === "string" && rawItem.price.trim() !== "") {
-      legacyColumns.push({ id: createId("c"), label: "Prix", value: rawItem.price });
-    }
-
-    if (typeof rawItem?.url === "string" && rawItem.url.trim() !== "") {
-      legacyColumns.push({ id: createId("c"), label: "URL", value: rawItem.url });
-    }
-
-    if (typeof rawItem?.note === "string" && rawItem.note.trim() !== "") {
-      legacyColumns.push({ id: createId("c"), label: "Note", value: rawItem.note });
+        const colId = ensureColumn(label, rawCol?.id);
+        prices[colId] = value;
+      });
     }
 
     return {
       id: rowId,
       title: rowTitle,
-      columns: legacyColumns.length ? legacyColumns : [{ id: createId("c"), label: "", value: "" }],
+      prices,
     };
   });
+
+  const columns = Array.from(columnMap.values());
+
+  return {
+    enabled,
+    columns,
+    items,
+  };
 };
 
 // === Helpers image (resize via Canvas) ===
@@ -716,9 +770,9 @@ export default function AdminStationEdit() {
       if (!w.pistes.colors) w.pistes.colors = { green: 0, blue: 0, red: 0, black: 0 };
       if (!w.snowparks) w.snowparks = { count: 0 };
       if (!w.remontees) w.remontees = { tireFesses: 0, telesieges: 0, telepheriques: 0 };
-      if (!w.forfaits) w.forfaits = { enabled: false, items: [] };
-      w.forfaits.items = normalizeForfaitItems(w.forfaits.items);
-      setWidgets(w);
+      if (!w.forfaits) w.forfaits = { enabled: false, columns: [], items: [] };
+w.forfaits = normalizeForfaitConfig(w.forfaits);
+setWidgets(w);
 
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
       let regs: RegionRow[] = rr.ok ? await rr.json() : [];
@@ -855,7 +909,9 @@ export default function AdminStationEdit() {
     setWidgets(copy);
   };
 
-  const forfaitItems: ForfaitItem[] = normalizeForfaitItems(widgets?.forfaits?.items);
+  const forfaitConfig = normalizeForfaitConfig(widgets?.forfaits);
+const forfaitColumns: ForfaitColumn[] = forfaitConfig.columns;
+const forfaitItems: ForfaitItem[] = forfaitConfig.items;
 
 const isFilled = (v: any) => {
   if (v === null || v === undefined) return false;
@@ -867,14 +923,19 @@ const isFilledNumber = (v: any) => {
   return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
 };
 
-const areForfaitsComplete = (items: ForfaitItem[]) => {
+const areForfaitsComplete = (columns: ForfaitColumn[], items: ForfaitItem[]) => {
+  if (!Array.isArray(columns) || columns.length === 0) return false;
   if (!Array.isArray(items) || items.length === 0) return false;
-  return items.every((item) =>
-    isFilled(item.title) &&
-    Array.isArray(item.columns) &&
-    item.columns.length > 0 &&
-    item.columns.every((col) => isFilled(col.label) && isFilled(col.value))
-  );
+
+  const columnsOk = columns.every((col) => isFilled(col.label));
+
+  const itemsOk = items.every((item) => {
+    if (!isFilled(item.title)) return false;
+    const hasAtLeastOnePrice = columns.some((col) => isFilled(item.prices?.[col.id]));
+    return hasAtLeastOnePrice;
+  });
+
+  return columnsOk && itemsOk;
 };
 
 const sectionChecks = {
@@ -920,8 +981,8 @@ const sectionChecks = {
     isFilled(widgets?.snowpark?.descriptionHtml),
 
   forfaits:
-    !!widgets?.forfaits?.enabled &&
-    areForfaitsComplete(forfaitItems),
+  !!widgets?.forfaits?.enabled &&
+  areForfaitsComplete(forfaitColumns, forfaitItems),
 };
 
 const sections = [
@@ -935,32 +996,63 @@ const sections = [
 ];
 
   const addForfaitRow = () => {
-    const next = [
-      ...forfaitItems,
-      { id: createId("f"), title: "", columns: [{ id: createId("c"), label: "", value: "" }] },
-    ];
-    setW("forfaits.items", next);
-  };
+  const next = [
+    ...forfaitItems,
+    { id: createId("f"), title: "", columns: [{ id: createId("c"), label: "", value: "" }] },
+  ];
+  setW("forfaits.items", next);
+};
 
-  const updateForfaitRowTitle = (rowIdx: number, value: string) => {
-    const next = forfaitItems.map((row, idx) => (idx === rowIdx ? { ...row, title: value } : row));
-    setW("forfaits.items", next);
-  };
+const updateForfaitRowTitle = (rowIdx: number, value: string) => {
+  const next = forfaitItems.map((row, idx) => (idx === rowIdx ? { ...row, title: value } : row));
+  setW("forfaits.items", next);
+};
 
-  const removeForfaitRow = (rowIdx: number) => {
-    const next = forfaitItems.filter((_, idx) => idx !== rowIdx);
-    setW("forfaits.items", next);
-  };
+const removeForfaitRow = (rowIdx: number) => {
+  const next = forfaitItems.filter((_, idx) => idx !== rowIdx);
+  setW("forfaits.items", next);
+};
 
-  const addForfaitColumn = (rowIdx: number) => {
-    const next = forfaitItems.map((row, idx) =>
-      idx === rowIdx
-        ? { ...row, columns: [...row.columns, { id: createId("c"), label: "", value: "" }] }
-        : row
-    );
-    setW("forfaits.items", next);
-  };
+const addForfaitColumn = (rowIdx: number) => {
+  const next = forfaitItems.map((row, idx) =>
+    idx === rowIdx
+      ? { ...row, columns: [...row.columns, { id: createId("c"), label: "", value: "" }] }
+      : row
+  );
+  setW("forfaits.items", next);
+};
 
+const updateForfaitColumn = (
+  rowIdx: number,
+  colIdx: number,
+  key: keyof ForfaitColumn,
+  value: string
+) => {
+  const next = forfaitItems.map((row, rIdx) => {
+    if (rIdx !== rowIdx) return row;
+
+    return {
+      ...row,
+      columns: row.columns.map((col, cIdx) => (cIdx === colIdx ? { ...col, [key]: value } : col)),
+    };
+  });
+
+  setW("forfaits.items", next);
+};
+
+const removeForfaitColumn = (rowIdx: number, colIdx: number) => {
+  const next = forfaitItems.map((row, rIdx) => {
+    if (rIdx !== rowIdx) return row;
+
+    const updatedColumns = row.columns.filter((_, cIdx) => cIdx !== colIdx);
+    return {
+      ...row,
+      columns: updatedColumns.length ? updatedColumns : [{ id: createId("c"), label: "", value: "" }],
+    };
+  });
+
+  setW("forfaits.items", next);
+};
   const updateForfaitColumn = (
     rowIdx: number,
     colIdx: number,
@@ -1805,111 +1897,171 @@ const sections = [
             </SectionCard>
 
             <SectionCard
-              id="forfaits"
-              title="Forfaits"
-              description="Gestion des lignes de forfaits."
-              actions={<SaveButton onClick={patchWidgets} />}
+  id="forfaits"
+  title="Forfaits"
+  description="Définis d’abord les colonnes globales (Adulte, Enfant, Senior…), puis remplis les prix par type de forfait."
+  actions={<SaveButton onClick={patchWidgets} />}
+>
+  <div style={styles.stack}>
+    <label style={styles.checkboxRow}>
+      <input
+        type="checkbox"
+        checked={!!widgets?.forfaits?.enabled}
+        onChange={(e) => setW("forfaits.enabled", e.target.checked)}
+      />
+      Activer
+    </label>
+
+    <div style={styles.helperBox}>
+      Le tableau du site utilisera exactement ces colonnes globales.  
+      Exemple : Adulte / Enfant / Senior.  
+      Chaque ligne correspond à un type de forfait : Journée, 4 heures, 6 jours, etc.
+    </div>
+
+    <div style={styles.lineItem}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Colonnes du tableau</div>
+        <button onClick={addForfaitGlobalColumn} style={styles.ghostBtn}>
+          + Ajouter une colonne
+        </button>
+      </div>
+
+      {forfaitColumns.length === 0 ? (
+        <div style={styles.helperBox}>
+          Aucune colonne pour le moment. Commence par ajouter par exemple : Adulte, Enfant, Senior.
+        </div>
+      ) : (
+        <div style={styles.stack}>
+          {forfaitColumns.map((col, colIdx) => (
+            <div
+              key={col.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto",
+                gap: 10,
+                alignItems: "end",
+              }}
             >
+              <label style={styles.label}>
+                Nom de colonne
+                <input
+                  placeholder="Ex: Adulte"
+                  value={col.label}
+                  onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
+                  style={styles.input}
+                />
+              </label>
+
+              <button
+                onClick={() => removeForfaitGlobalColumn(colIdx)}
+                style={styles.secondaryBtn}
+                title="Supprimer la colonne"
+              >
+                Supprimer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div style={styles.lineItem}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Lignes de forfaits</div>
+        <button onClick={addForfaitRow} style={styles.ghostBtn}>
+          + Ajouter une ligne
+        </button>
+      </div>
+
+      {forfaitItems.length === 0 ? (
+        <div style={styles.helperBox}>
+          Aucun type de forfait pour le moment.
+        </div>
+      ) : (
+        <div style={styles.stack}>
+          {forfaitItems.map((row, rowIdx) => (
+            <div key={row.id} style={styles.lineItem}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Ligne {rowIdx + 1}
+                </div>
+                <button
+                  onClick={() => removeForfaitRow(rowIdx)}
+                  style={styles.secondaryBtn}
+                  title="Supprimer la ligne"
+                >
+                  Supprimer la ligne
+                </button>
+              </div>
+
               <div style={styles.stack}>
-                <label style={styles.checkboxRow}>
+                <label style={styles.label}>
+                  Type de forfait
                   <input
-                    type="checkbox"
-                    checked={!!widgets?.forfaits?.enabled}
-                    onChange={(e) => setW("forfaits.enabled", e.target.checked)}
+                    placeholder="Ex: Journée"
+                    value={row.title}
+                    onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                    style={styles.input}
                   />
-                  Activer
                 </label>
 
-                <div style={styles.stack}>
-                  {forfaitItems.map((row, rowIdx) => (
-                    <div key={row.id} style={styles.lineItem}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 10,
-                          marginBottom: 12,
-                        }}
-                      >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Ligne {rowIdx + 1}</div>
-                        <button
-                          onClick={() => removeForfaitRow(rowIdx)}
-                          style={styles.secondaryBtn}
-                          title="Supprimer la ligne"
-                        >
-                          Supprimer la ligne
-                        </button>
-                      </div>
-
-                      <label style={styles.label}>
-                        Nom du forfait
+                {forfaitColumns.length > 0 ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {forfaitColumns.map((col) => (
+                      <label key={col.id} style={styles.label}>
+                        {col.label || "Colonne sans nom"}
                         <input
-                          placeholder="Ex: Forfait journée"
-                          value={row.title}
-                          onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                          placeholder="Ex: 29.50"
+                          value={row.prices?.[col.id] || ""}
+                          onChange={(e) => updateForfaitPrice(rowIdx, col.id, e.target.value)}
                           style={styles.input}
                         />
                       </label>
-
-                      <div style={styles.stack}>
-                        {row.columns.map((col, colIdx) => (
-                          <div
-                            key={col.id}
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr) auto",
-                              gap: 10,
-                              alignItems: "end",
-                            }}
-                          >
-                            <label style={styles.label}>
-                              Nom de colonne
-                              <input
-                                placeholder="Ex: Adulte"
-                                value={col.label}
-                                onChange={(e) => updateForfaitColumn(rowIdx, colIdx, "label", e.target.value)}
-                                style={styles.input}
-                              />
-                            </label>
-
-                            <label style={styles.label}>
-                              Valeur
-                              <input
-                                placeholder="Ex: 49 €"
-                                value={col.value}
-                                onChange={(e) => updateForfaitColumn(rowIdx, colIdx, "value", e.target.value)}
-                                style={styles.input}
-                              />
-                            </label>
-
-                            <button
-                              onClick={() => removeForfaitColumn(rowIdx, colIdx)}
-                              style={styles.secondaryBtn}
-                              title="Supprimer la colonne"
-                            >
-                              Suppr. colonne
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ marginTop: 12 }}>
-                        <button onClick={() => addForfaitColumn(rowIdx)} style={styles.ghostBtn}>
-                          + Ajouter une colonne
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <button onClick={addForfaitRow} style={styles.ghostBtn}>
-                    + Ajouter une ligne
-                  </button>
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={styles.helperBox}>
+                    Ajoute d’abord les colonnes globales avant de saisir les prix.
+                  </div>
+                )}
               </div>
-            </SectionCard>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</SectionCard>
           </div>
         </div>
       </div>
