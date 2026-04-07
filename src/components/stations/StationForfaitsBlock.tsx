@@ -1,131 +1,221 @@
 import React from "react";
 import { ForfaitColumn, ForfaitItem } from "@/types/station";
 
-type DisplayForfaitItem = {
+type Props = {
+  enabled?: boolean;
+  items?: ForfaitItem[];
+};
+
+type DisplayColumn = {
+  id: string;
+  label: string;
+};
+
+type DisplayRow = {
   id: string;
   title: string;
-  columns: ForfaitColumn[];
+  values: Record<string, string>;
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
-const normalizeForfaits = (items: ForfaitItem[] | undefined): DisplayForfaitItem[] => {
-  if (!Array.isArray(items)) return [];
+const normalizeForfaits = (
+  items: ForfaitItem[] | undefined
+): { columns: DisplayColumn[]; rows: DisplayRow[] } => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { columns: [], rows: [] };
+  }
 
-  return items
-    .map((rawItem, index) => {
-      const rowId = text(rawItem?.id) || `forfait-${index + 1}`;
-      const rowTitle = text(rawItem?.title) || `Forfait ${index + 1}`;
+  const columnMap = new Map<string, DisplayColumn>();
 
-      const fromColumns = Array.isArray(rawItem?.columns)
-        ? rawItem.columns
-            .map((col, colIndex) => ({
-              id: text(col?.id) || `${rowId}-col-${colIndex + 1}`,
-              label: text(col?.label),
-              value: text(col?.value),
-            }))
-            .filter((col) => col.label || col.value)
-        : [];
+  const rows: DisplayRow[] = items.map((rawItem, index) => {
+    const rowId = text((rawItem as any)?.id) || `forfait-${index + 1}`;
+    const rowTitle = text((rawItem as any)?.title) || `Forfait ${index + 1}`;
 
-      if (fromColumns.length > 0) {
-        return { id: rowId, title: rowTitle, columns: fromColumns };
+    const rawColumns = Array.isArray((rawItem as any)?.columns)
+      ? ((rawItem as any).columns as ForfaitColumn[])
+      : [];
+
+    const values: Record<string, string> = {};
+
+    rawColumns.forEach((col, colIndex) => {
+      const colId = text((col as any)?.id) || `${rowId}-col-${colIndex + 1}`;
+      const label = text((col as any)?.label) || `Colonne ${colIndex + 1}`;
+      const value = text((col as any)?.value);
+
+      if (!columnMap.has(colId)) {
+        columnMap.set(colId, {
+          id: colId,
+          label,
+        });
       }
 
-      const legacyColumns: ForfaitColumn[] = [];
-
-      if (text(rawItem?.price)) {
-        legacyColumns.push({ id: `${rowId}-legacy-price`, label: "Prix", value: text(rawItem.price) });
-      }
-
-      if (text(rawItem?.url)) {
-        legacyColumns.push({ id: `${rowId}-legacy-url`, label: "Lien", value: text(rawItem.url) });
-      }
-
-      if (text(rawItem?.note)) {
-        legacyColumns.push({ id: `${rowId}-legacy-note`, label: "Note", value: text(rawItem.note) });
-      }
-
-      return {
-        id: rowId,
-        title: rowTitle,
-        columns: legacyColumns,
-      };
-    })
-    .filter((item) => item.columns.length > 0);
-};
-
-const collectHeaders = (rows: DisplayForfaitItem[]): string[] => {
-  const headers: string[] = [];
-
-  rows.forEach((row) => {
-    row.columns.forEach((col) => {
-      const label = text(col.label);
-      if (!label) return;
-      if (!headers.includes(label)) headers.push(label);
+      values[colId] = value || "—";
     });
+
+    return {
+      id: rowId,
+      title: rowTitle,
+      values,
+    };
   });
 
-  return headers;
+  const columns = Array.from(columnMap.values());
+
+  return { columns, rows };
 };
 
-const StationForfaitsBlock: React.FC<{ items: ForfaitItem[]; enabled?: boolean }> = ({ items, enabled }) => {
+export default function StationForfaitsBlock({ enabled, items }: Props) {
   if (!enabled) return null;
 
-  const rows = normalizeForfaits(items);
-  const headers = collectHeaders(rows);
+  const { columns, rows } = normalizeForfaits(items);
+
+  if (rows.length === 0 || columns.length === 0) {
+    return (
+      <section
+        style={{
+          border: "1px solid #cbd5e1",
+          borderRadius: 16,
+          background: "#fff",
+          padding: 16,
+        }}
+      >
+        <h2
+          style={{
+            margin: "0 0 12px",
+            fontSize: 20,
+            fontWeight: 800,
+            color: "#0f172a",
+          }}
+        >
+          Forfaits
+        </h2>
+        <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
+          Aucun forfait disponible pour le moment.
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <h2 className="mb-4 text-lg font-semibold text-neutral-900">Forfaits</h2>
+    <section
+      style={{
+        border: "1px solid #cbd5e1",
+        borderRadius: 16,
+        background: "#fff",
+        padding: 16,
+      }}
+    >
+      <h2
+        style={{
+          margin: "0 0 12px",
+          fontSize: 20,
+          fontWeight: 800,
+          color: "#0f172a",
+        }}
+      >
+        Forfaits
+      </h2>
 
-      {rows.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200">
-          <table className="min-w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-neutral-100 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                <th className="px-4 py-3">Type de forfait</th>
-                {headers.map((header) => (
-                  <th key={header} className="px-4 py-3">
-                    {header}
-                  </th>
+      <div
+        style={{
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          border: "1px solid #d1d9e6",
+          borderRadius: 12,
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            minWidth: 720,
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            background: "#fff",
+          }}
+        >
+          <thead>
+            <tr>
+              <th
+                style={{
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 2,
+                  textAlign: "left",
+                  padding: "14px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  background: "#e8eef6",
+                  borderBottom: "1px solid #cbd5e1",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Forfait
+              </th>
+
+              {columns.map((column) => (
+                <th
+                  key={column.id}
+                  style={{
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    background: "#e8eef6",
+                    borderBottom: "1px solid #cbd5e1",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={row.id}>
+                <th
+                  scope="row"
+                  style={{
+                    position: "sticky",
+                    left: 0,
+                    zIndex: 1,
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    background: rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.title}
+                </th>
+
+                {columns.map((column) => (
+                  <td
+                    key={`${row.id}-${column.id}`}
+                    style={{
+                      padding: "14px 16px",
+                      fontSize: 14,
+                      color: "#334155",
+                      background: rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc",
+                      borderBottom: "1px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {row.values[column.id] || "—"}
+                  </td>
                 ))}
               </tr>
-            </thead>
-
-            <tbody>
-              {rows.map((row, rowIndex) => {
-                const valuesByLabel = new Map<string, string>();
-                row.columns.forEach((col) => {
-                  const label = text(col.label);
-                  if (!label) return;
-                  valuesByLabel.set(label, text(col.value));
-                });
-
-                return (
-                  <tr
-                    key={row.id}
-                    className={rowIndex % 2 === 0 ? "bg-white" : "bg-neutral-50/50"}
-                  >
-                    <td className="whitespace-nowrap border-t border-neutral-200 px-4 py-3 font-semibold text-neutral-900">
-                      {row.title}
-                    </td>
-
-                    {headers.map((header) => (
-                      <td key={`${row.id}-${header}`} className="border-t border-neutral-200 px-4 py-3 text-neutral-700">
-                        {valuesByLabel.get(header) || "—"}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-sm text-neutral-500">Aucun forfait renseigné.</p>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
-};
-
-export default StationForfaitsBlock;
+}
