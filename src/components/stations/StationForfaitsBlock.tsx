@@ -1,5 +1,11 @@
 import React from "react";
 
+type LegacyForfaitColumn = {
+  id?: string;
+  label?: string;
+  value?: string;
+};
+
 type ForfaitColumn = {
   id: string;
   label: string;
@@ -8,7 +14,13 @@ type ForfaitColumn = {
 type ForfaitItem = {
   id: string;
   title: string;
-  prices: Record<string, string>;
+  prices?: Record<string, string>;
+
+  // ancien format
+  columns?: LegacyForfaitColumn[];
+  price?: string;
+  url?: string | null;
+  note?: string | null;
 };
 
 type Props = {
@@ -30,7 +42,7 @@ const normalizeLabelKey = (value: string) =>
 const normalizeForfaits = (
   rawColumns: ForfaitColumn[] | undefined,
   rawItems: ForfaitItem[] | undefined
-): { columns: ForfaitColumn[]; items: ForfaitItem[] } => {
+): { columns: ForfaitColumn[]; items: Array<{ id: string; title: string; prices: Record<string, string> }> } => {
   const columnMap = new Map<string, ForfaitColumn>();
 
   const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
@@ -70,16 +82,17 @@ const normalizeForfaits = (
     });
   }
 
-  const items: ForfaitItem[] = Array.isArray(rawItems)
+  const normalizedItems = Array.isArray(rawItems)
     ? rawItems.map((rawItem, index) => {
         const rowId =
           typeof rawItem?.id === "string" && rawItem.id.trim() !== ""
             ? rawItem.id
             : `f-${index + 1}`;
 
-        const rowTitle = text(rawItem?.title);
+        let rowTitle = text(rawItem?.title);
         const prices: Record<string, string> = {};
 
+        // nouveau format
         if (rawItem?.prices && typeof rawItem.prices === "object" && !Array.isArray(rawItem.prices)) {
           Object.entries(rawItem.prices).forEach(([key, value]) => {
             const rawValue = text(value);
@@ -103,6 +116,57 @@ const normalizeForfaits = (
           });
         }
 
+        // ancien format : item.columns
+        if (Array.isArray(rawItem?.columns)) {
+          let genericTitle = "";
+          let genericPrice = "";
+
+          rawItem.columns.forEach((rawCol) => {
+            const label = text(rawCol?.label);
+            const value = text(rawCol?.value);
+
+            if (!label) return;
+
+            const normalizedLabel = normalizeLabelKey(label);
+
+            if (normalizedLabel === "title") {
+              genericTitle = value;
+              return;
+            }
+
+            if (normalizedLabel === "price") {
+              genericPrice = value;
+              return;
+            }
+
+            const colId = ensureColumn(label, rawCol?.id);
+            prices[colId] = value;
+          });
+
+          if (genericTitle) {
+            rowTitle = genericTitle;
+          }
+
+          if (genericPrice) {
+            const prixId = ensureColumn("Prix", "prix");
+            prices[prixId] = genericPrice;
+          }
+        }
+
+        // ancien format ultra simple : price / url / note
+        if (text(rawItem?.price)) {
+          const prixId = ensureColumn("Prix", "prix");
+          prices[prixId] = text(rawItem.price);
+        }
+        if (text(rawItem?.url)) {
+          const urlId = ensureColumn("URL", "url");
+          prices[urlId] = text(rawItem.url);
+        }
+        if (text(rawItem?.note)) {
+          const noteId = ensureColumn("Note", "note");
+          prices[noteId] = text(rawItem.note);
+        }
+
         return {
           id: rowId,
           title: rowTitle,
@@ -113,7 +177,7 @@ const normalizeForfaits = (
 
   return {
     columns: Array.from(columnMap.values()),
-    items,
+    items: normalizedItems,
   };
 };
 
