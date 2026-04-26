@@ -343,22 +343,28 @@ const Home: NextPage = () => {
                 }}
               />
 
-              {open && (
+            <article
+              style={{
+                borderRadius: 20,
+                background: "rgba(255,255,255,0.92)",
+                border: "1px solid rgba(148,163,184,0.35)",
+                padding: 20,
+                display: "grid",
+                gap: 12,
+                alignContent: "start",
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: 22 }}>Rubriques à enrichir</h2>
+              {["Meilleures activités", "Forfaits & promos", "Snowparks", "Webcams live", "Séjours famille"].map((bloc) => (
                 <div
+                  key={bloc}
                   style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    marginTop: 8,
-                    border: "1px solid #e5e7eb",
                     borderRadius: 12,
                     background: "#fff",
                     maxHeight: 320,
                     overflowY: "auto",
                     boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
                   }}
-                  role="listbox"
                 >
                   {loading && <div style={{ padding: 12, color: "#666" }}>Chargement…</div>}
                   {!loading && items.length === 0 && <div style={{ padding: 12, color: "#666" }}>Aucun résultat</div>}
