@@ -20,6 +20,7 @@ export default function ProHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
+  const [stationsFilter, setStationsFilter] = useState("");
   const [cursor, setCursor] = useState(-1);
 
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -79,23 +80,36 @@ export default function ProHeader() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, Resort[]>();
+  const filteredResults = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return results;
+    return results.filter((station) => {
+      const haystack = `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [query, results]);
 
-    stations.forEach((station) => {
-      const zone = station?.department?.name || station?.region?.name || "Autres stations";
-      const current = map.get(zone) || [];
+  const stationsByLetter = useMemo(() => {
+    const needle = stationsFilter.trim().toLowerCase();
+    const filtered = stations
+      .filter((station) => {
+        if (!needle) return true;
+        const haystack = `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase();
+        return haystack.includes(needle);
+      })
+      .sort((a, b) => (a?.name || "").localeCompare(b?.name || "", "fr"));
+
+    const map = new Map<string, Resort[]>();
+    filtered.forEach((station) => {
+      const first = (station?.name || "").trim().charAt(0).toUpperCase();
+      const letter = /[A-ZÀ-ÖØ-Ý]/.test(first) ? first : "#";
+      const current = map.get(letter) || [];
       current.push(station);
-      map.set(zone, current);
+      map.set(letter, current);
     });
 
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b, "fr"))
-      .map(([zone, items]) => ({
-        zone,
-        items: items.sort((a, b) => (a.name || "").localeCompare(b.name || "", "fr")),
-      }));
-  }, [stations]);
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, "fr"));
+  }, [stations, stationsFilter]);
 
   function goToStation(station: Resort) {
     if (!station?.slug) return;
@@ -113,13 +127,13 @@ export default function ProHeader() {
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setCursor((c) => Math.min(c + 1, results.length - 1));
+      setCursor((c) => Math.min(c + 1, filteredResults.length - 1));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setCursor((c) => Math.max(c - 1, 0));
     } else if (event.key === "Enter") {
       event.preventDefault();
-      const station = results[cursor] || results[0];
+      const station = filteredResults[cursor] || filteredResults[0];
       if (station) goToStation(station);
     } else if (event.key === "Escape") {
       setSearchOpen(false);
@@ -154,8 +168,8 @@ export default function ProHeader() {
           />
           {searchOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 320, overflow: "auto", background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 12px 24px rgba(2,6,23,.16)", zIndex: 65 }} role="listbox">
-              {results.length === 0 && <div style={{ padding: 12, color: "#64748b" }}>Aucune station trouvée</div>}
-              {results.map((station, index) => (
+              {filteredResults.length === 0 && <div style={{ padding: 12, color: "#64748b" }}>Aucune station trouvée</div>}
+              {filteredResults.map((station, index) => (
                 <button
                   key={station.id || `${station.slug}-${index}`}
                   type="button"
@@ -186,14 +200,14 @@ export default function ProHeader() {
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.24)", borderBottom: "1px solid rgba(255,255,255,0.24)" }} ref={stationsRef}>
+      <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }} ref={stationsRef}>
         <div style={{ maxWidth: 1380, margin: "0 auto", padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: 10 }}>
           {navItems.map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => item === "Stations" && setStationsOpen((v) => !v)}
-              style={{ borderRadius: 999, border: "1px solid rgba(255,255,255,0.35)", padding: "10px 16px", background: item === "Stations" ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.1)", color: "white", fontWeight: 700, cursor: "pointer" }}
+              style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer" }}
             >
               {item}
             </button>
@@ -203,20 +217,29 @@ export default function ProHeader() {
 
       {stationsOpen && (
         <div style={{ background: "white", borderBottom: "1px solid #cbd5e1", boxShadow: "0 12px 26px rgba(15,23,42,.15)" }}>
-          <div style={{ maxWidth: 1500, margin: "0 auto", width: "100%", padding: "18px 22px", display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-            {groups.length === 0 && <div style={{ color: "#64748b" }}>Chargement des stations...</div>}
-            {groups.map((group) => (
-              <div key={group.zone}>
-                <h3 style={{ margin: 0, color: "#0f172a", fontSize: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>{group.zone}</h3>
+          <div style={{ maxWidth: 1500, margin: "0 auto", width: "100%", padding: "18px 22px" }}>
+            <input
+              type="text"
+              value={stationsFilter}
+              onChange={(event) => setStationsFilter(event.target.value)}
+              placeholder="Filtrer les stations (nom, région, département)"
+              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 12, padding: "12px 14px", marginBottom: 16, fontSize: 15 }}
+            />
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", alignItems: "start" }}>
+              {stationsByLetter.length === 0 && <div style={{ color: "#64748b" }}>Aucune station trouvée</div>}
+              {stationsByLetter.map(([letter, letterStations]) => (
+                <div key={letter}>
+                  <h3 style={{ margin: 0, color: "#0f172a", fontSize: 16, fontWeight: 800 }}>{letter}</h3>
                 <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-                  {group.items.map((station) => (
+                  {letterStations.map((station) => (
                     <button key={station.id || station.slug} type="button" onClick={() => goToStation(station)} style={{ textAlign: "left", border: "none", background: "transparent", padding: "4px 0", color: "#1e293b", cursor: "pointer" }}>
                       {station.name}
                     </button>
                   ))}
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
