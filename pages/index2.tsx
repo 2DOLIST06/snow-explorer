@@ -88,6 +88,11 @@ const Home: NextPage = () => {
       }));
   }, [allResorts]);
 
+  const featuredResorts = useMemo(() => {
+    const source = allResorts.length > 0 ? allResorts : items;
+    return source.slice(0, 6);
+  }, [allResorts, items]);
+
   // fermeture au clic extérieur
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -140,45 +145,42 @@ const Home: NextPage = () => {
       <main
         style={{
           minHeight: "100vh",
-          position: "relative",
+          background: "linear-gradient(180deg, #e2e8f0 0%, #f8fafc 35%, #eef2ff 100%)",
           color: "#0f172a",
         }}
       >
-        <div style={{ position: "fixed", inset: 0 }}>
-          <Image
-            src="https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg"
-            alt="Séjour au ski – Page d’accueil"
-            fill
-            priority
-            sizes="100vw"
-            style={{ objectFit: "cover" }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(2,6,23,0.80) 0%, rgba(15,23,42,0.45) 30%, rgba(15,23,42,0.20) 55%, rgba(248,250,252,0.95) 100%)",
-            }}
-          />
-        </div>
-
         <div
           style={{
-            position: "relative",
-            zIndex: 2,
             padding: "20px 24px 80px",
           }}
         >
+          <section
+            style={{
+              maxWidth: 1200,
+              margin: "0 auto 12px",
+              borderRadius: 14,
+              padding: "8px 14px",
+              background: "linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%)",
+              color: "white",
+              fontWeight: 600,
+              display: "flex",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <span>Ouverture hiver 2026 : comparez les stations en un clin d’œil.</span>
+            <span style={{ opacity: 0.9 }}>Météo • Webcams • Forfaits • Activités</span>
+          </section>
+
           <header
             style={{
               maxWidth: 1200,
               margin: "0 auto",
               borderRadius: 24,
-              border: "1px solid rgba(255,255,255,0.35)",
-              background: "rgba(15,23,42,0.45)",
-              backdropFilter: "blur(12px)",
-              padding: "14px 18px",
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "linear-gradient(120deg, #0f172a 0%, #1e3a8a 100%)",
+              padding: "14px 20px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -187,7 +189,10 @@ const Home: NextPage = () => {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: 0.3 }}>Snow Explorer</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Image src="/logo.png" alt="Snow Explorer logo" width={38} height={38} />
+              <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: 0.3 }}>Snow Explorer</div>
+            </div>
             <nav style={{ display: "flex", alignItems: "center", gap: 10 }} ref={menuRef}>
               <div style={{ position: "relative" }}>
                 <button
@@ -197,7 +202,7 @@ const Home: NextPage = () => {
                     borderRadius: 999,
                     border: "1px solid rgba(255,255,255,0.45)",
                     padding: "10px 14px",
-                    background: "rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.15)",
                     color: "white",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -224,6 +229,7 @@ const Home: NextPage = () => {
                       display: "grid",
                       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                       gap: 12,
+                      zIndex: 10,
                     }}
                   >
                     {resortsByRegion.map((group) => (
@@ -263,7 +269,7 @@ const Home: NextPage = () => {
                     borderRadius: 999,
                     border: "1px solid rgba(255,255,255,0.35)",
                     padding: "10px 14px",
-                    background: "rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.13)",
                     color: "white",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -277,152 +283,305 @@ const Home: NextPage = () => {
 
           <section
             style={{
+              maxWidth: 1200,
+              margin: "14px auto 0",
+              borderRadius: 20,
+              border: "1px solid rgba(148,163,184,0.3)",
+              background: "rgba(255,255,255,0.78)",
+              backdropFilter: "blur(4px)",
+              padding: "12px 16px",
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            {["Stations premium", "Comparateur forfaits", "Activités famille", "Neige en direct", "Guides & bons plans", "Séjours week-end"].map((rubrique) => (
+              <button
+                key={rubrique}
+                type="button"
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  padding: "9px 12px",
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {rubrique}
+              </button>
+            ))}
+          </section>
+
+          <section
+            style={{
               maxWidth: 1120,
-              margin: "34px auto 0",
+              margin: "20px auto 0",
             }}
           >
             <div
               style={{
                 padding: "48px 24px 40px",
                 borderRadius: 28,
-                background: "rgba(15,23,42,0.52)",
-                border: "1px solid rgba(255,255,255,0.28)",
-                backdropFilter: "blur(8px)",
-                textAlign: "center",
+                background: "linear-gradient(130deg, #0f172a 0%, #1d4ed8 52%, #06b6d4 100%)",
+                border: "1px solid rgba(59,130,246,0.45)",
+                color: "white",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 24,
+                alignItems: "center",
               }}
             >
-              <h1
-                style={{
-                  color: "white",
-                  fontWeight: 800,
-                  fontSize: "clamp(2rem, 5vw, 3.2rem)",
-                  lineHeight: 1.1,
-                  marginBottom: 14,
-                  textShadow: "0 3px 12px rgba(0,0,0,0.35)",
-                }}
-              >
-                Une page d’accueil premium pour vos séjours à la montagne
-              </h1>
-
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.95)",
-                  opacity: 0.95,
-                  fontSize: 18,
-                  marginBottom: 24,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.35)",
-                  maxWidth: 760,
-                  marginInline: "auto",
-                }}
-              >
-                Recherchez une station en quelques secondes puis découvrez des rubriques élégantes prêtes à être associées
-                à vos futurs contenus.
-              </p>
-
-              <div style={{ position: "relative", width: "100%", maxWidth: 840, margin: "0 auto" }} ref={boxRef}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Recherchez une station (ex. Auron, Val Thorens, Chamonix…)"
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setOpen(true); setCursor(-1); }}
-                  onFocus={() => setOpen(true)}
-                  onKeyDown={onKeyDown}
+              <div>
+                <h1
                   style={{
-                    width: "100%",
-                    padding: "18px 20px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.6)",
-                    background: "rgba(255,255,255,0.96)",
-                    fontSize: 18,
-                    outline: "none",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: "clamp(2rem, 5vw, 3.1rem)",
+                    lineHeight: 1.1,
+                    marginBottom: 14,
                   }}
-                />
+                >
+                  Le guide complet des stations de ski françaises
+                </h1>
 
-                {open && (
-                  <div
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.95)",
+                    fontSize: 18,
+                    marginBottom: 24,
+                    maxWidth: 620,
+                  }}
+                >
+                  Stations triées par région, météo, activités, webcams et forfaits : tout est prêt pour construire une
+                  expérience premium.
+                </p>
+
+                <div style={{ position: "relative", width: "100%", maxWidth: 760 }} ref={boxRef}>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Recherchez une station (ex. Auron, Val Thorens, Chamonix…)"
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); setOpen(true); setCursor(-1); }}
+                    onFocus={() => setOpen(true)}
+                    onKeyDown={onKeyDown}
                     style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: 0,
-                      right: 0,
-                      marginTop: 8,
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 12,
-                      background: "#fff",
-                      maxHeight: 320,
-                      overflowY: "auto",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                      width: "100%",
+                      padding: "18px 20px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.6)",
+                      background: "rgba(255,255,255,0.96)",
+                      fontSize: 18,
+                      outline: "none",
                     }}
-                    role="listbox"
-                  >
-                    {loading && (
-                      <div style={{ padding: 12, color: "#666" }}>Chargement…</div>
-                    )}
+                  />
 
-                    {!loading && items.length === 0 && (
-                      <div style={{ padding: 12, color: "#666" }}>Aucun résultat</div>
-                    )}
+                  {open && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        marginTop: 8,
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        background: "#fff",
+                        maxHeight: 320,
+                        overflowY: "auto",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                      }}
+                      role="listbox"
+                    >
+                      {loading && (
+                        <div style={{ padding: 12, color: "#666" }}>Chargement…</div>
+                      )}
 
-                    {!loading &&
-                      items.map((r, i) => (
-                        <div
-                          key={r.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handlePick(r)}
-                          role="option"
-                          aria-selected={cursor === i}
-                          style={{
-                            padding: "12px 14px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            cursor: "pointer",
-                            background: cursor === i ? "#f3f4f6" : "#fff",
-                            borderBottom: "1px solid #f3f4f6",
-                          }}
-                          onMouseEnter={() => setCursor(i)}
-                        >
-                          <div style={{ fontWeight: 600 }}>{r.name}</div>
-                          <div style={{ color: "#6b7280" }}>{r.region?.name || ""}</div>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                      {!loading && items.length === 0 && (
+                        <div style={{ padding: 12, color: "#666" }}>Aucun résultat</div>
+                      )}
+
+                      {!loading &&
+                        items.map((r, i) => (
+                          <div
+                            key={r.id}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handlePick(r)}
+                            role="option"
+                            aria-selected={cursor === i}
+                            style={{
+                              padding: "12px 14px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 12,
+                              cursor: "pointer",
+                              background: cursor === i ? "#f3f4f6" : "#fff",
+                              borderBottom: "1px solid #f3f4f6",
+                            }}
+                            onMouseEnter={() => setCursor(i)}
+                          >
+                            <div style={{ fontWeight: 600 }}>{r.name}</div>
+                            <div style={{ color: "#6b7280" }}>{r.region?.name || ""}</div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  position: "relative",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  minHeight: 280,
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  boxShadow: "0 12px 30px rgba(2,6,23,0.25)",
+                }}
+              >
+                <Image
+                  src="/images/plan-pistes-auron.png"
+                  alt="Plan de pistes"
+                  fill
+                  priority
+                  sizes="(max-width: 900px) 100vw, 420px"
+                  style={{ objectFit: "cover" }}
+                />
               </div>
             </div>
           </section>
 
           <section
             style={{
-              maxWidth: 1120,
-              margin: "28px auto 0",
+              maxWidth: 1200,
+              margin: "24px auto 0",
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: 18,
+            }}
+          >
+            <article
+              style={{
+                borderRadius: 20,
+                background: "rgba(255,255,255,0.92)",
+                border: "1px solid rgba(148,163,184,0.35)",
+                padding: 20,
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: 24 }}>Top stations du moment</h2>
+              <p style={{ margin: "8px 0 16px", color: "#475569" }}>
+                Sélection éditoriale inspirée de vos pages stations, météo et activités.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                {featuredResorts.map((resort) => (
+                  <button
+                    key={resort.id}
+                    type="button"
+                    onClick={() => handlePick(resort)}
+                    style={{
+                      borderRadius: 14,
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                      padding: "12px 14px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{resort.name}</div>
+                    <div style={{ color: "#64748b", marginTop: 4 }}>{resort.region?.name || "Région à définir"}</div>
+                  </button>
+                ))}
+              </div>
+            </article>
+
+            <article
+              style={{
+                borderRadius: 20,
+                background: "rgba(255,255,255,0.92)",
+                border: "1px solid rgba(148,163,184,0.35)",
+                padding: 20,
+                display: "grid",
+                gap: 12,
+                alignContent: "start",
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: 22 }}>Rubriques à enrichir</h2>
+              {["Meilleures activités", "Forfaits & promos", "Snowparks", "Webcams live", "Séjours famille"].map((bloc) => (
+                <div
+                  key={bloc}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px dashed #94a3b8",
+                    padding: "12px 10px",
+                    color: "#1e293b",
+                    fontWeight: 600,
+                    background: "#f8fafc",
+                  }}
+                >
+                  {bloc}
+                </div>
+              ))}
+            </article>
+          </section>
+
+          <section
+            style={{
+              maxWidth: 1200,
+              margin: "18px auto 0",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
               gap: 16,
             }}
           >
             {[
-              { title: "Meilleures stations", text: "Un top dynamique des stations les plus recherchées." },
-              { title: "Meilleures activités", text: "Ski, snowpark, luge, spa, randonnée et plus encore." },
-              { title: "Idées de séjours", text: "Des blocs éditoriaux pour week-end, famille, expert, détente." },
-              { title: "Rubriques à associer", text: "Espace prévu pour vos futurs modules personnalisés." },
+              {
+                title: "Expériences neige",
+                text: "Ski alpin, raquettes, snowboard, détente spa et soirées en altitude.",
+              },
+              {
+                title: "Préparer son séjour",
+                text: "Hébergements, transports, location matériel et checklist départ.",
+              },
+              {
+                title: "Actualités stations",
+                text: "Neige fraîche, ouvertures de domaines et conditions en direct.",
+              },
             ].map((card) => (
               <article
                 key={card.title}
                 style={{
-                  borderRadius: 20,
-                  background: "rgba(255,255,255,0.92)",
-                  border: "1px solid rgba(148,163,184,0.35)",
-                  padding: "20px 18px",
-                  boxShadow: "0 8px 24px rgba(2,6,23,0.08)",
+                  borderRadius: 18,
+                  background: "#ffffffcc",
+                  border: "1px solid #cbd5e1",
+                  padding: "16px 14px",
                 }}
               >
-                <h2 style={{ margin: 0, fontSize: 20, color: "#0f172a" }}>{card.title}</h2>
-                <p style={{ margin: "10px 0 0", color: "#334155", lineHeight: 1.45 }}>{card.text}</p>
+                <h3 style={{ margin: 0, fontSize: 19 }}>{card.title}</h3>
+                <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>{card.text}</p>
               </article>
             ))}
           </section>
+
+          <footer
+            style={{
+              maxWidth: 1200,
+              margin: "22px auto 0",
+              borderRadius: 16,
+              border: "1px solid #cbd5e1",
+              background: "rgba(255,255,255,0.7)",
+              padding: "14px 16px",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+              color: "#334155",
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Snow Explorer</span>
+            <span>Prototype homepage premium — modules prêts à connecter</span>
+          </footer>
         </div>
       </main>
     </>
