@@ -3,7 +3,7 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
@@ -1118,160 +1118,6 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
 };
 
 /* =========================
- * Search box
- * =======================*/
-const ResortSearchBox: React.FC<{ onPick: (slug: string) => void }> = ({ onPick }) => {
-  type LiteResort = { id: string; name: string; slug: string; region?: { name?: string } };
-
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [items, setItems] = useState<LiteResort[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [cursor, setCursor] = useState<number>(-1);
-  const boxRef = useRef<HTMLDivElement | null>(null);
-
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5001";
-  const fetchUrl = useMemo(() => {
-    const base = typeof window !== "undefined" ? "/api/ski/resorts/" : `${apiBase}/api/resorts/`;
-    const q = query.trim();
-    return q ? `${base}?q=${encodeURIComponent(q)}` : base;
-  }, [apiBase, query]);
-
-  useEffect(() => {
-    let cancel = false;
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const r = await fetch(fetchUrl);
-        if (!r.ok) throw new Error("failed");
-        const data: LiteResort[] = await r.json();
-        if (!cancel) setItems(data);
-      } catch {
-        if (!cancel) setItems([]);
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    }, 250);
-    return () => {
-      cancel = true;
-      clearTimeout(t);
-    };
-  }, [fetchUrl]);
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!boxRef.current) return;
-      if (!boxRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
-      setOpen(true);
-      return;
-    }
-    if (!open) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setCursor((c) => Math.min(c + 1, items.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setCursor((c) => Math.max(c - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const picked = items[cursor] || items[0];
-      if (picked) {
-        onPick(picked.slug);
-        setOpen(false);
-        setCursor(-1);
-      }
-    } else if (e.key === "Escape") {
-      setOpen(false);
-      setCursor(-1);
-    }
-  }
-
-  return (
-    <div ref={boxRef} style={{ position: "relative" }}>
-      <input
-        type="text"
-        placeholder="Recherchez une station (ex. Auron, Val Thorens, …)"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-          setCursor(-1);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        style={{
-          width: "100%",
-          padding: "14px 16px",
-          borderRadius: 12,
-          border: "1px solid rgba(148,163,184,0.9)",
-          background: "rgba(255,255,255,0.98)",
-          fontSize: 18,
-          outline: "none",
-          color: "#0f172a",
-        }}
-      />
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            marginTop: 8,
-            border: "1px solid #cbd5e1",
-            borderRadius: 12,
-            background: "#fff",
-            color: "#111827",
-            maxHeight: 320,
-            overflowY: "auto",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-            zIndex: 20,
-          }}
-          role="listbox"
-        >
-          {loading && <div style={{ padding: 12, color: "#666" }}>Chargement…</div>}
-          {!loading && items.length === 0 && <div style={{ padding: 12, color: "#666" }}>Aucun résultat</div>}
-          {!loading &&
-            items.map((r, i) => (
-              <div
-                key={r.id}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onPick(r.slug);
-                  setOpen(false);
-                  setCursor(-1);
-                }}
-                role="option"
-                aria-selected={cursor === i}
-                style={{
-                  padding: "12px 14px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  cursor: "pointer",
-                  background: cursor === i ? "#f3f4f6" : "#fff",
-                  borderBottom: "1px solid #f3f4f6",
-                }}
-                onMouseEnter={() => setCursor(i)}
-              >
-                <div style={{ fontWeight: 600 }}>{r.name}</div>
-                <div style={{ color: "#4b5563" }}>{r.region?.name || ""}</div>
-              </div>
-            ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* =========================
  * Panneaux d'infos étendus (tuiles compactes)
  * =======================*/
 const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
@@ -1563,7 +1409,6 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
     };
   }, [resort.name, resort.latitude, resort.longitude]);
 
-  const handlePick = (slug: string) => router.push(`/stations/${slug}`);
 
   // Snowpark (config)
   const snowparkUrl: string | null =
@@ -1633,7 +1478,6 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
               {resort.region.name}
             </p>
           )}
-          <ResortSearchBox onPick={handlePick} />
         </div>
       </section>
 
