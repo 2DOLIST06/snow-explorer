@@ -15,7 +15,6 @@ type Resort = {
 
 const Home: NextPage = () => {
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Resort[]>([]);
@@ -23,7 +22,6 @@ const Home: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<number>(-1);
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const heroSlides = useMemo(
     () => [
@@ -78,25 +76,6 @@ const Home: NextPage = () => {
     return () => { cancel = true; };
   }, [apiBase]);
 
-  const resortsByRegion = useMemo(() => {
-    const grouped = new Map<string, Resort[]>();
-    allResorts.forEach((resort) => {
-      const region = resort.region?.name?.trim() || "Autres régions";
-      const existing = grouped.get(region) || [];
-      existing.push(resort);
-      grouped.set(region, existing);
-    });
-
-    return Array.from(grouped.entries())
-      .sort(([a], [b]) => a.localeCompare(b, "fr"))
-      .map(([region, resorts]) => ({
-        region,
-        resorts: resorts
-          .sort((a, b) => a.name.localeCompare(b.name, "fr"))
-          .slice(0, 8),
-      }));
-  }, [allResorts]);
-
   const featuredResorts = useMemo(() => {
     const source = allResorts.length > 0 ? allResorts : items;
     return source.slice(0, 6);
@@ -116,7 +95,6 @@ const Home: NextPage = () => {
     function onDocClick(e: MouseEvent) {
       if (!boxRef.current) return;
       if (!boxRef.current.contains(e.target as Node)) setOpen(false);
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -167,126 +145,6 @@ const Home: NextPage = () => {
           color: "#0f172a",
         }}
       >
-        <header
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 30,
-            width: "100%",
-            background: "linear-gradient(95deg, #0f172a 0%, #1d4ed8 62%, #0284c7 100%)",
-            boxShadow: "0 8px 22px rgba(2,6,23,0.25)",
-            borderBottom: "1px solid rgba(255,255,255,0.2)",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 1440,
-              margin: "0 auto",
-              padding: "16px 24px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 16,
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12, color: "white" }}>
-              <Image src="/logo.png" alt="Snow Explorer logo" width={56} height={56} />
-              <div>
-                <div style={{ fontWeight: 900, fontSize: 28, lineHeight: 1 }}>Snow Explorer</div>
-                <div style={{ opacity: 0.9 }}>Le portail premium des stations françaises</div>
-              </div>
-            </div>
-
-            <nav style={{ display: "flex", alignItems: "center", gap: 10 }} ref={menuRef}>
-              <div style={{ position: "relative" }}>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen((v) => !v)}
-                  style={{
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.55)",
-                    padding: "12px 16px",
-                    background: "rgba(255,255,255,0.14)",
-                    color: "white",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  Stations ▾
-                </button>
-                {menuOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 8px)",
-                      right: 0,
-                      width: 520,
-                      maxWidth: "94vw",
-                      maxHeight: 380,
-                      overflow: "auto",
-                      borderRadius: 16,
-                      border: "1px solid #dbeafe",
-                      background: "white",
-                      color: "#0f172a",
-                      padding: 14,
-                      boxShadow: "0 22px 44px rgba(2,6,23,0.25)",
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                      gap: 12,
-                      zIndex: 40,
-                    }}
-                  >
-                    {resortsByRegion.map((group) => (
-                      <div key={group.region}>
-                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.2, color: "#475569" }}>
-                          {group.region}
-                        </div>
-                        <div style={{ marginTop: 6, display: "grid", gap: 4 }}>
-                          {group.resorts.map((resort) => (
-                            <button
-                              key={resort.id}
-                              type="button"
-                              onClick={() => handlePick(resort)}
-                              style={{
-                                textAlign: "left",
-                                border: "none",
-                                background: "transparent",
-                                padding: "4px 0",
-                                color: "#0f172a",
-                                cursor: "pointer",
-                              }}
-                            >
-                              {resort.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {["Stations", "Activités", "Forfaits", "Guides", "Contact"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  style={{
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    padding: "12px 16px",
-                    background: "rgba(255,255,255,0.11)",
-                    color: "white",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {item}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </header>
 
         <section style={{ width: "100%", minHeight: 560, position: "relative" }}>
           <Image
