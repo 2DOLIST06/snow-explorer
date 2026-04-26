@@ -88,6 +88,11 @@ const Home: NextPage = () => {
       }));
   }, [allResorts]);
 
+  const featuredResorts = useMemo(() => {
+    const source = allResorts.length > 0 ? allResorts : items;
+    return source.slice(0, 6);
+  }, [allResorts, items]);
+
   // fermeture au clic extérieur
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -149,6 +154,25 @@ const Home: NextPage = () => {
             padding: "20px 24px 80px",
           }}
         >
+          <section
+            style={{
+              maxWidth: 1200,
+              margin: "0 auto 12px",
+              borderRadius: 14,
+              padding: "8px 14px",
+              background: "linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%)",
+              color: "white",
+              fontWeight: 600,
+              display: "flex",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <span>Ouverture hiver 2026 : comparez les stations en un clin d’œil.</span>
+            <span style={{ opacity: 0.9 }}>Météo • Webcams • Forfaits • Activités</span>
+          </section>
+
           <header
             style={{
               maxWidth: 1200,
@@ -205,6 +229,7 @@ const Home: NextPage = () => {
                       display: "grid",
                       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                       gap: 12,
+                      zIndex: 10,
                     }}
                   >
                     {resortsByRegion.map((group) => (
@@ -450,7 +475,7 @@ const Home: NextPage = () => {
                 Sélection éditoriale inspirée de vos pages stations, météo et activités.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                {items.slice(0, 6).map((resort) => (
+                {featuredResorts.map((resort) => (
                   <button
                     key={resort.id}
                     type="button"
@@ -506,7 +531,7 @@ const Home: NextPage = () => {
               maxWidth: 1200,
               margin: "18px auto 0",
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
               gap: 16,
             }}
           >
@@ -538,6 +563,25 @@ const Home: NextPage = () => {
               </article>
             ))}
           </section>
+
+          <footer
+            style={{
+              maxWidth: 1200,
+              margin: "22px auto 0",
+              borderRadius: 16,
+              border: "1px solid #cbd5e1",
+              background: "rgba(255,255,255,0.7)",
+              padding: "14px 16px",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+              color: "#334155",
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Snow Explorer</span>
+            <span>Prototype homepage premium — modules prêts à connecter</span>
+          </footer>
         </div>
       </main>
     </>
