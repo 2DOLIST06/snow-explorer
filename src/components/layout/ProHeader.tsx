@@ -152,7 +152,7 @@ export default function ProHeader() {
           </div>
         </button>
 
-        <div style={{ position: "relative" }} ref={searchRef}>
+        <div style={{ position: "relative", border: "1px solid #cbd5e1", borderRadius: 16, padding: 4, background: "#ffffff" }} ref={searchRef}>
           <input
             type="text"
             placeholder="Rechercher une station (Auron, Chamonix, Val Thorens...)"
@@ -164,7 +164,7 @@ export default function ProHeader() {
             }}
             onFocus={() => setSearchOpen(true)}
             onKeyDown={onSearchKeyDown}
-            style={{ width: "100%", border: "1px solid rgba(255,255,255,0.45)", borderRadius: 14, padding: "14px 16px", fontSize: 16, background: "rgba(255,255,255,0.97)", outline: "none" }}
+            style={{ width: "100%", border: "1px solid #94a3b8", borderRadius: 12, padding: "14px 16px", fontSize: 16, background: "#ffffff", outline: "none" }}
           />
           {searchOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 320, overflow: "auto", background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 12px 24px rgba(2,6,23,.16)", zIndex: 65 }} role="listbox">
@@ -185,7 +185,7 @@ export default function ProHeader() {
         </div>
 
         <div style={{ position: "relative" }} ref={accountRef}>
-          <button type="button" style={{ width: "100%", borderRadius: 12, padding: "12px 14px", fontWeight: 700, cursor: "pointer", border: "1px solid rgba(255,255,255,0.5)", color: "white", background: "rgba(255,255,255,0.12)" }} onClick={() => setAccountOpen((v) => !v)}>
+          <button type="button" style={{ width: "100%", borderRadius: 12, padding: "12px 14px", fontWeight: 700, cursor: "pointer", border: "1px solid #1d4ed8", color: "#ffffff", background: "#1d4ed8" }} onClick={() => setAccountOpen((v) => !v)}>
             Mon compte ▾
           </button>
           {accountOpen && (
@@ -201,7 +201,7 @@ export default function ProHeader() {
       </div>
 
       <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }} ref={stationsRef}>
-        <div style={{ maxWidth: 1380, margin: "0 auto", padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ maxWidth: 1380, margin: "0 auto", padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
           {navItems.map((item) => (
             <button
               key={item}
