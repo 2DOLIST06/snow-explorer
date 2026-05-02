@@ -142,13 +142,13 @@ export default function ProHeader() {
   }
 
   return (
-    <header style={{ position: "sticky", top: 0, zIndex: 60, background: "linear-gradient(100deg, #0f172a, #1d4ed8 65%, #0284c7)", boxShadow: "0 12px 30px rgba(2,6,23,0.3)" }}>
+    <header style={{ position: "sticky", top: 0, zIndex: 60, background: "#ffffff", boxShadow: "0 12px 30px rgba(2,6,23,0.08)" }}>
       <div style={{ maxWidth: 1380, margin: "0 auto", padding: "16px 22px", display: "grid", gridTemplateColumns: "300px minmax(260px, 1fr) 220px", gap: 16, alignItems: "center" }}>
-        <button type="button" onClick={() => router.push("/")} style={{ display: "flex", gap: 10, color: "white", alignItems: "center", cursor: "pointer", border: "none", background: "transparent", padding: 0, textAlign: "left" }}>
+        <button type="button" onClick={() => router.push("/")} style={{ display: "flex", gap: 10, color: "#1d4ed8", alignItems: "center", cursor: "pointer", border: "none", background: "transparent", padding: 0, textAlign: "left" }}>
           <Image src="/logo.png" alt="Snow Explorer" width={62} height={62} />
           <div>
             <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1 }}>Snow Explorer</div>
-            <div style={{ opacity: 0.9, fontSize: 13 }}>Votre guide montagne premium</div>
+            <div style={{ color: "#1d4ed8", fontSize: 13 }}>Votre guide montagne premium</div>
           </div>
         </button>
 
