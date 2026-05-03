@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
-type Resort = { id: string; name: string; slug: string; region?: { name?: string } };
+type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string } };
 
 export default function StationsList() {
   const [q, setQ] = useState("");
@@ -21,7 +21,8 @@ export default function StationsList() {
         const r = await fetch(url);
         if (!r.ok) throw new Error("fetch_failed");
         const j: Resort[] = await r.json();
-        if (!cancel) setData(j);
+        const onlyActive = Array.isArray(j) ? j.filter((x) => x?.is_active !== false) : [];
+        if (!cancel) setData(onlyActive);
       } catch {
         if (!cancel) setData([]);
       } finally {
