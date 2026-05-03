@@ -1629,7 +1629,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://127.0.0.1:5001";
 
-    const r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
+    const r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    console.info(`[stations/[slug]] GET /api/resorts/${slug} -> ${r.status}`);
+    if (r.status === 404) {
+      return { notFound: true };
+    }
     if (r.ok) {
       const data = await r.json();
       resort = (data?.resort ?? null) as Resort | null;
@@ -1637,14 +1641,22 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       lifts = Array.isArray(data?.lifts) ? data.lifts : [];
     }
   } catch {
-    resort = null;
+    return { notFound: true };
+  }
+
+  if (!resort || resort.is_active === false) {
+    return { notFound: true };
   }
 
   // 2) Widgets config
   let cfg: StationWidgetsConfig | null = null;
   try {
     cfg = await fetchStationWidgetsConfig(slug);
-  } catch {
+  } catch (e: any) {
+    if (e?.status === 404) {
+      console.info(`[stations/[slug]] widgets 404 for ${slug} -> notFound`);
+      return { notFound: true };
+    }
     cfg = null;
   }
 
