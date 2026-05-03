@@ -18,6 +18,7 @@ type Resort = {
   id: string;
   name: string;
   slug: string;
+  is_active?: boolean;
   region?: { id?: string; name?: string; country_code?: string };
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
@@ -1647,8 +1648,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = null;
   }
 
+  if (!resort || resort.is_active === false) {
+    return { notFound: true };
+  }
+
   return { props: { slug, resort, pistes, lifts, cfg } };
 };
 
 export default ResortPage;
-
