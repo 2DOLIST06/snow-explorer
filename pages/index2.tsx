@@ -242,7 +242,7 @@ const Home: NextPage = () => {
           }}
           onMouseEnter={() => setCursor(i)}
         >
-          <div style={{ fontWeight: 700 }}>{r.name}</div>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>{r.name}</div>
           <div style={{ color: "#6b7280" }}>{r.region?.name || ""}</div>
         </div>
       ))}
