@@ -36,7 +36,7 @@ export default function ProHeader() {
         const res = await fetch(url);
         if (!res.ok) throw new Error("search_failed");
         const data = await res.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false) : [];
+        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active === true) : [];
         if (!cancelled) setResults(activeOnly);
       } catch {
         if (!cancelled) setResults([]);
@@ -57,7 +57,7 @@ export default function ProHeader() {
         const res = await fetch("/api/ski/resorts/");
         if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false) : [];
+        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active === true) : [];
         if (!cancelled) setStations(activeOnly);
       } catch {
         if (!cancelled) setStations([]);
