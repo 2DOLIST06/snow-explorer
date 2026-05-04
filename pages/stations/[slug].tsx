@@ -1644,7 +1644,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     return { notFound: true };
   }
 
-  if (!resort || resort.is_active === false) {
+  if (!resort) {
     return { notFound: true };
   }
 
