@@ -132,6 +132,7 @@ export default function AdminStationsList() {
 
       `${API}/api/admin/resort/${encodeURIComponent(stationSlug)}`,
       `${API}/api/admin/resorts/${encodeURIComponent(stationSlug)}`,
+
       `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`,
     ];
 
