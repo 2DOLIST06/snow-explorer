@@ -50,7 +50,7 @@ const Home: NextPage = () => {
         const r = await fetch(fetchUrl);
         if (!r.ok) throw new Error("failed");
         const data: Resort[] = await r.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active !== false) : [];
+        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active === true) : [];
         if (!cancel) setItems(activeOnly);
       } catch {
         if (!cancel) setItems([]);
@@ -69,7 +69,7 @@ const Home: NextPage = () => {
         const r = await fetch(base);
         if (!r.ok) throw new Error("failed");
         const data: Resort[] = await r.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active !== false) : [];
+        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active === true) : [];
         if (!cancel) setAllResorts(activeOnly);
       } catch {
         if (!cancel) setAllResorts([]);
