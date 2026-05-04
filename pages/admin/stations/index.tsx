@@ -9,6 +9,7 @@ function toRows(payload: any) {
     id: String(x.id || ""),
     slug: x.slug,
     name: x.name,
+    is_active: x?.is_active !== false,
     latitude: x.latitude,
     longitude: x.longitude,
     region: x?.region?.name || x?.region || null,
@@ -24,6 +25,7 @@ export default function AdminStationsList() {
   const [lon, setLon] = useState<string>("");
   const [msg, setMsg] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [bulkUpdating, setBulkUpdating] = useState<boolean>(false);
   const [err, setErr] = useState<string>("");
 
   async function load() {
@@ -120,6 +122,75 @@ export default function AdminStationsList() {
       (s.name || "").toLowerCase().includes(q.toLowerCase()) ||
       (s.slug || "").toLowerCase().includes(q.toLowerCase())
   );
+
+  const activeCount = items.filter((s) => s?.is_active !== false).length;
+  const allDisabled = items.length > 0 && activeCount === 0;
+
+  const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
+    const payload = { is_active: Boolean(nextActive) };
+    const endpoints = [
+      `${API}/api/admin/resort/${encodeURIComponent(stationSlug)}`,
+      `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`,
+    ];
+
+    let lastError = "";
+    for (const endpoint of endpoints) {
+      const r = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      console.info("[AdminStationsList] PATCH toggle", {
+        endpoint,
+        payload,
+        status: r.status,
+      });
+
+      if (r.ok) return;
+
+      const text = await r.text();
+      lastError = `${endpoint} -> ${r.status}: ${text}`;
+
+      if (r.status === 400 && text.includes("is_active_must_be_boolean")) {
+        throw new Error("Le backend attend un booléen JSON strict: {\"is_active\": false}.");
+      }
+
+      if (r.status !== 404) {
+        throw new Error(`PATCH ${stationSlug} failed: ${lastError}`);
+      }
+    }
+
+    throw new Error(`PATCH ${stationSlug} failed: ${lastError || "no endpoint available"}`);
+  };
+
+  const toggleOneStation = async (stationSlug: string, nextActive: boolean) => {
+    try {
+      setMsg(`Mise à jour de ${stationSlug}…`);
+      await patchStationActive(stationSlug, nextActive);
+      setItems((prev) => prev.map((x) => (x.slug === stationSlug ? { ...x, is_active: nextActive } : x)));
+      setMsg(nextActive ? "Station activée." : "Station désactivée.");
+    } catch (e: any) {
+      setMsg(`Erreur: ${e?.message || "inconnue"}`);
+    }
+  };
+
+  const toggleAllStations = async (nextActive: boolean) => {
+    if (items.length === 0) return;
+    setBulkUpdating(true);
+    try {
+      setMsg(nextActive ? "Activation de toutes les stations…" : "Désactivation de toutes les stations…");
+      for (const station of items) {
+        await patchStationActive(station.slug, nextActive);
+      }
+      setItems((prev) => prev.map((x) => ({ ...x, is_active: nextActive })));
+      setMsg(nextActive ? "Toutes les stations sont activées." : "Toutes les stations sont désactivées.");
+    } catch (e: any) {
+      setMsg(`Erreur: ${e?.message || "inconnue"}`);
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
 
   function slugify(s: string) {
     return s
@@ -224,28 +295,71 @@ export default function AdminStationsList() {
         placeholder="Rechercher…"
         style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb", margin: "12px 0" }}
       />
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button
+          onClick={() => toggleAllStations(allDisabled)}
+          disabled={loading || bulkUpdating}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            cursor: loading || bulkUpdating ? "not-allowed" : "pointer",
+          }}
+        >
+          {allDisabled ? "Activer toutes les stations" : "Désactiver toutes les stations"}
+        </button>
+        <div style={{ alignSelf: "center", fontSize: 12, color: "#6b7280" }}>
+          {activeCount}/{items.length} actives
+        </div>
+      </div>
 
       {loading && <div>Chargement…</div>}
 
       <div style={{ display: "grid", gap: 8, opacity: loading ? 0.6 : 1 }}>
         {filtered.map((s) => (
-          <a
+          <div
             key={s.slug}
-            href={`/admin/stations/${s.slug}`}
             style={{
               padding: 12,
               border: "1px solid #e5e7eb",
               borderRadius: 8,
               background: "#fff",
-              textDecoration: "none",
-              color: "#111827",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            <div style={{ fontWeight: 700 }}>{s.name}</div>
-            <div style={{ fontSize: 12, color: "#6b7280" }}>
-              {s.slug} — {s.region}
-            </div>
-          </a>
+            <a
+              href={`/admin/stations/${s.slug}`}
+              style={{
+                textDecoration: "none",
+                color: "#111827",
+                flex: 1,
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{s.name}</div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                {s.slug} — {s.region} — {s?.is_active === false ? "désactivée" : "active"}
+              </div>
+            </a>
+            <button
+              onClick={() => toggleOneStation(s.slug, s?.is_active === false)}
+              disabled={loading || bulkUpdating}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #e5e7eb",
+                background: s?.is_active === false ? "#dcfce7" : "#fee2e2",
+                color: "#111827",
+                cursor: loading || bulkUpdating ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {s?.is_active === false ? "Activer" : "Désactiver"}
+            </button>
+          </div>
         ))}
 
         {!loading && !err && filtered.length === 0 && <div style={{ color: "#6b7280" }}>Aucune station trouvée.</div>}
