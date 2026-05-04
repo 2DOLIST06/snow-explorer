@@ -129,7 +129,10 @@ export default function AdminStationsList() {
   const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
     const payload = { is_active: Boolean(nextActive) };
     const endpoints = [
+
       `${API}/api/admin/resort/${encodeURIComponent(stationSlug)}`,
+      `${API}/api/admin/resorts/${encodeURIComponent(stationSlug)}`,
+
       `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`,
     ];
 
