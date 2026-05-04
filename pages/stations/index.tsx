@@ -21,7 +21,7 @@ export default function StationsList() {
         const r = await fetch(url);
         if (!r.ok) throw new Error("fetch_failed");
         const j: Resort[] = await r.json();
-        const onlyActive = Array.isArray(j) ? j.filter((x) => x?.is_active !== false) : [];
+        const onlyActive = Array.isArray(j) ? j.filter((x) => x?.is_active !== false && x?.is_active !== null) : [];
         if (!cancel) setData(onlyActive);
       } catch {
         if (!cancel) setData([]);
