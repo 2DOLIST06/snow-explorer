@@ -665,7 +665,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     const proxyUrl = `http://${host}/api/ski/resorts/${encodeURIComponent(slug)}`;
     let r = await fetch(proxyUrl);
     if (r.ok) {
-      resort = (await r.json()) as Resort;
+      const data = await r.json();
+      resort = (data?.resort ?? data ?? null) as Resort;
     } else {
       const api =
         process.env.NEXT_PUBLIC_SKI_API_BASE ||
@@ -673,8 +674,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
         process.env.API_URL ||
         process.env.BACKEND_URL ||
         "http://127.0.0.1:5001";
-      r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
-      if (r.ok) resort = (await r.json()) as Resort;
+      r = await fetch(`${api}/api/admin/stations/${encodeURIComponent(slug)}`);
+      if (r.ok) {
+        const data = await r.json();
+        resort = (data?.resort ?? data ?? null) as Resort;
+      }
     }
   } catch {
     resort = null;
