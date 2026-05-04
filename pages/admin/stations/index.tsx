@@ -9,7 +9,7 @@ function toRows(payload: any) {
     id: String(x.id || ""),
     slug: x.slug,
     name: x.name,
-    is_active: x?.is_active !== false,
+    is_active: x?.is_active ?? x?.isActive ?? x?.active ?? true,
     latitude: x.latitude,
     longitude: x.longitude,
     region: x?.region?.name || x?.region || null,
@@ -128,13 +128,19 @@ export default function AdminStationsList() {
 
   const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
     const payload = { is_active: Boolean(nextActive) };
-    const endpoints = [
+    const station = items.find((x) => x.slug === stationSlug);
+    const stationId = station?.id;
 
-      `${API}/api/admin/resort/${encodeURIComponent(stationSlug)}`,
-      `${API}/api/admin/resorts/${encodeURIComponent(stationSlug)}`,
+    const candidateKeys = [stationId, stationSlug].filter(Boolean).map((v) => encodeURIComponent(String(v)));
 
-      `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`,
-    ];
+    const endpoints = candidateKeys.flatMap((key) => [
+      `${API}/api/admin/resort/${key}`,
+      `${API}/api/admin/resort/${key}/`,
+      `${API}/api/admin/resorts/${key}`,
+      `${API}/api/admin/resorts/${key}/`,
+      `${API}/api/admin/stations/${key}`,
+      `${API}/api/admin/stations/${key}/`,
+    ]);
 
     let lastError = "";
     for (const endpoint of endpoints) {
@@ -172,6 +178,7 @@ export default function AdminStationsList() {
       setMsg(`Mise à jour de ${stationSlug}…`);
       await patchStationActive(stationSlug, nextActive);
       setItems((prev) => prev.map((x) => (x.slug === stationSlug ? { ...x, is_active: nextActive } : x)));
+      await load();
       setMsg(nextActive ? "Station activée." : "Station désactivée.");
     } catch (e: any) {
       setMsg(`Erreur: ${e?.message || "inconnue"}`);
