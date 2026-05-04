@@ -127,15 +127,41 @@ export default function AdminStationsList() {
   const allDisabled = items.length > 0 && activeCount === 0;
 
   const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
-    const r = await fetch(`${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_active: nextActive }),
-    });
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`PATCH ${stationSlug} failed ${r.status}: ${txt}`);
+    const payload = { is_active: Boolean(nextActive) };
+    const endpoints = [
+      `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`,
+      `${API}/api/admin/resorts/${encodeURIComponent(stationSlug)}`,
+    ];
+
+    let lastError = "";
+    for (const endpoint of endpoints) {
+      const r = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      console.info("[AdminStationsList] PATCH toggle", {
+        endpoint,
+        payload,
+        status: r.status,
+      });
+
+      if (r.ok) return;
+
+      const text = await r.text();
+      lastError = `${endpoint} -> ${r.status}: ${text}`;
+
+      if (r.status === 400 && text.includes("is_active_must_be_boolean")) {
+        throw new Error("Le backend attend un booléen JSON strict: {\"is_active\": false}.");
+      }
+
+      if (r.status !== 404) {
+        throw new Error(`PATCH ${stationSlug} failed: ${lastError}`);
+      }
     }
+
+    throw new Error(`PATCH ${stationSlug} failed: ${lastError || "no endpoint available"}`);
   };
 
   const toggleOneStation = async (stationSlug: string, nextActive: boolean) => {
