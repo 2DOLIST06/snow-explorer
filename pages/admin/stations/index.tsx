@@ -2,14 +2,13 @@ import React, { useEffect, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
 
-type EndpointStatus = number | "network_error" | "not_tested";
 
 function toRows(payload: any) {
   return (payload?.items || payload || []).map((x: any) => ({
     id: String(x.id || ""),
     slug: x.slug,
     name: x.name,
-    is_active: x?.is_active ?? x?.isActive ?? x?.active ?? true,
+    is_active: x?.is_active ?? true,
     latitude: x.latitude,
     longitude: x.longitude,
     region: x?.region?.name || x?.region || null,
@@ -32,81 +31,21 @@ export default function AdminStationsList() {
     setLoading(true);
     setErr("");
 
-    const status: { stations: EndpointStatus; resortsAdmin: EndpointStatus; resortsPublic: EndpointStatus } = {
-      stations: "not_tested",
-      resortsAdmin: "not_tested",
-      resortsPublic: "not_tested",
-    };
-
     const stationsUrl = `${API}/api/admin/stations/`;
-    const resortsAdminUrl = `${API}/api/admin/resorts/`;
-    const resortsPublicUrl = `${API}/api/resorts/`;
-
-    const fmtStatus = (value: EndpointStatus) => String(value);
-    const diagnostics = () =>
-      `stations=${fmtStatus(status.stations)}, resorts=${fmtStatus(status.resortsAdmin)}, public=${fmtStatus(status.resortsPublic)}`;
 
     try {
-      let rows: any[] = [];
+      const resp = await fetch(stationsUrl, { cache: "no-store" });
+      console.info(`[AdminStationsList] GET ${stationsUrl} -> ${resp.status}`);
 
-      let stationsResp: Response | null = null;
-      try {
-        stationsResp = await fetch(stationsUrl, { cache: "no-store" });
-        status.stations = stationsResp.status;
-        console.info(`[AdminStationsList] GET ${stationsUrl} -> ${stationsResp.status}`);
-      } catch (e) {
-        status.stations = "network_error";
-        console.error(`[AdminStationsList] GET ${stationsUrl} -> network_error`, e);
+      if (!resp.ok) {
+        throw new Error(`GET ${stationsUrl} failed with ${resp.status}`);
       }
 
-      if (stationsResp?.ok) {
-        const stationsJson = await stationsResp.json();
-        rows = toRows(stationsJson);
-      }
-
-      const shouldTryLegacyAdminResorts =
-        !stationsResp?.ok &&
-        (status.stations === 404 || status.stations === 405 || status.stations === "network_error");
-
-      if (rows.length === 0 && shouldTryLegacyAdminResorts) {
-        try {
-          const resortsResp = await fetch(resortsAdminUrl, { cache: "no-store" });
-          status.resortsAdmin = resortsResp.status;
-          console.info(`[AdminStationsList] GET ${resortsAdminUrl} -> ${resortsResp.status}`);
-          if (resortsResp.ok) {
-            const resortsJson = await resortsResp.json();
-            rows = toRows(resortsJson);
-          }
-        } catch (e) {
-          status.resortsAdmin = "network_error";
-          console.error(`[AdminStationsList] GET ${resortsAdminUrl} -> network_error`, e);
-        }
-      }
-
-      if (rows.length === 0) {
-        try {
-          const publicResp = await fetch(resortsPublicUrl, { cache: "no-store" });
-          status.resortsPublic = publicResp.status;
-          console.info(`[AdminStationsList] GET ${resortsPublicUrl} -> ${publicResp.status}`);
-          if (publicResp.ok) {
-            const publicJson = await publicResp.json();
-            rows = toRows(publicJson);
-          }
-        } catch (e) {
-          status.resortsPublic = "network_error";
-          console.error(`[AdminStationsList] GET ${resortsPublicUrl} -> network_error`, e);
-        }
-      }
-
+      const json = await resp.json();
+      const rows = toRows(json);
       setItems(rows);
-
-      if (rows.length === 0) {
-        setErr(`Impossible de charger les stations: ${diagnostics()} — API=${API}`);
-      } else if (!stationsResp?.ok) {
-        setErr(`Données chargées via fallback: ${diagnostics()} — API=${API}`);
-      }
     } catch (e: any) {
-      setErr(`Erreur API: ${e?.message || "inconnue"} — ${diagnostics()} — API=${API}`);
+      setErr(`Impossible de charger les stations: ${e?.message || "inconnue"} — API=${API}`);
       setItems([]);
     } finally {
       setLoading(false);
@@ -128,49 +67,28 @@ export default function AdminStationsList() {
 
   const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
     const payload = { is_active: Boolean(nextActive) };
-    const station = items.find((x) => x.slug === stationSlug);
-    const stationId = station?.id;
+    const endpoint = `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`;
 
-    const candidateKeys = [stationId, stationSlug].filter(Boolean).map((v) => encodeURIComponent(String(v)));
+    const r = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    const endpoints = candidateKeys.flatMap((key) => [
-      `${API}/api/admin/resort/${key}`,
-      `${API}/api/admin/resort/${key}/`,
-      `${API}/api/admin/resorts/${key}`,
-      `${API}/api/admin/resorts/${key}/`,
-      `${API}/api/admin/stations/${key}`,
-      `${API}/api/admin/stations/${key}/`,
-    ]);
+    console.info("[AdminStationsList] PATCH toggle", {
+      endpoint,
+      payload,
+      status: r.status,
+    });
 
-    let lastError = "";
-    for (const endpoint of endpoints) {
-      const r = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
+    if (r.ok) return;
 
-      console.info("[AdminStationsList] PATCH toggle", {
-        endpoint,
-        payload,
-        status: r.status,
-      });
-
-      if (r.ok) return;
-
-      const text = await r.text();
-      lastError = `${endpoint} -> ${r.status}: ${text}`;
-
-      if (r.status === 400 && text.includes("is_active_must_be_boolean")) {
-        throw new Error("Le backend attend un booléen JSON strict: {\"is_active\": false}.");
-      }
-
-      if (r.status !== 404) {
-        throw new Error(`PATCH ${stationSlug} failed: ${lastError}`);
-      }
+    const text = await r.text();
+    if (r.status === 400 && text.includes("is_active_must_be_boolean")) {
+      throw new Error('Le backend attend un booléen JSON strict: {"is_active": false}.');
     }
 
-    throw new Error(`PATCH ${stationSlug} failed: ${lastError || "no endpoint available"}`);
+    throw new Error(`PATCH ${stationSlug} failed: ${endpoint} -> ${r.status}: ${text}`);
   };
 
   const toggleOneStation = async (stationSlug: string, nextActive: boolean) => {
