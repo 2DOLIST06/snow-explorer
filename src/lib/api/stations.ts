@@ -19,11 +19,19 @@ const EMPTY_CFG: StationWidgetsConfig = {
 
 export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
   try {
-    const url = `${API_BASE}/api/admin/stations/${encodeURIComponent(stationSlug)}/widgets`;
+    const url = `${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/widgets`;
     const res = await fetch(url, {
       headers: { accept: "application/json" },
       cache: "no-store",
     });
+
+    console.info(`[fetchStationWidgetsConfig] GET ${url} -> ${res.status}`);
+
+    if (res.status === 404) {
+      const notFoundError: any = new Error("widgets_not_found");
+      notFoundError.status = 404;
+      throw notFoundError;
+    }
 
     if (!res.ok || res.status === 204) {
       return { ...EMPTY_CFG, stationSlug };
@@ -69,6 +77,6 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
     };
   } catch (err) {
     console.error("❌ fetchStationWidgetsConfig error:", err);
-    return { ...EMPTY_CFG, stationSlug };
+    throw err;
   }
 }

@@ -9,6 +9,7 @@ type Resort = {
   id: string;
   name: string;
   slug: string;
+  is_active?: boolean;
   region?: { name?: string };
   imageUrl?: string;
 };
@@ -49,7 +50,8 @@ const Home: NextPage = () => {
         const r = await fetch(fetchUrl);
         if (!r.ok) throw new Error("failed");
         const data: Resort[] = await r.json();
-        if (!cancel) setItems(data);
+        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active !== false) : [];
+        if (!cancel) setItems(activeOnly);
       } catch {
         if (!cancel) setItems([]);
       } finally {
@@ -67,7 +69,8 @@ const Home: NextPage = () => {
         const r = await fetch(base);
         if (!r.ok) throw new Error("failed");
         const data: Resort[] = await r.json();
-        if (!cancel) setAllResorts(data);
+        const activeOnly = Array.isArray(data) ? data.filter((x) => x?.is_active !== false) : [];
+        if (!cancel) setAllResorts(activeOnly);
       } catch {
         if (!cancel) setAllResorts([]);
       }

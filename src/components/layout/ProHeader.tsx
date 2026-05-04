@@ -6,6 +6,7 @@ type Resort = {
   id?: string;
   name: string;
   slug: string;
+  is_active?: boolean;
   region?: { name?: string };
   department?: { name?: string };
 };
@@ -35,7 +36,8 @@ export default function ProHeader() {
         const res = await fetch(url);
         if (!res.ok) throw new Error("search_failed");
         const data = await res.json();
-        if (!cancelled) setResults(Array.isArray(data) ? data : []);
+        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false) : [];
+        if (!cancelled) setResults(activeOnly);
       } catch {
         if (!cancelled) setResults([]);
       }
@@ -55,7 +57,8 @@ export default function ProHeader() {
         const res = await fetch("/api/ski/resorts/");
         if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
-        if (!cancelled) setStations(Array.isArray(data) ? data : []);
+        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false) : [];
+        if (!cancelled) setStations(activeOnly);
       } catch {
         if (!cancelled) setStations([]);
       }
