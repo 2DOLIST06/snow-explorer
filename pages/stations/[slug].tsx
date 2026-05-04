@@ -1660,7 +1660,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = null;
   }
 
-  if (!resort || resort.is_active !== true) {
+  if (!resort || resort.is_active === false || resort.is_active === null) {
     return { notFound: true };
   }
 
