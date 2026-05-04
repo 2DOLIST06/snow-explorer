@@ -1625,7 +1625,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   let lifts: Lift[] = [];
   try {
     const api =
+      process.env.NEXT_PUBLIC_SKI_API_BASE ||
       process.env.SKI_API_URL ||
+      process.env.API_URL ||
+      process.env.BACKEND_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       "http://127.0.0.1:5001";
 

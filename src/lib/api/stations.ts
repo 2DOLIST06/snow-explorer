@@ -2,7 +2,10 @@ import axios from "@/config/axios";
 import type { StationWidgetsConfig } from "@/types/station";
 
 const API_BASE =
+  process.env.NEXT_PUBLIC_SKI_API_BASE ||
   process.env.SKI_API_URL ||
+  process.env.API_URL ||
+  process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   "http://127.0.0.1:5001";
 

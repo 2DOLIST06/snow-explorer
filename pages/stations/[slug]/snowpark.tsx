@@ -667,7 +667,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     if (r.ok) {
       resort = (await r.json()) as Resort;
     } else {
-      const api = process.env.SKI_API_URL || "http://127.0.0.1:5001";
+      const api =
+        process.env.NEXT_PUBLIC_SKI_API_BASE ||
+        process.env.SKI_API_URL ||
+        process.env.API_URL ||
+        process.env.BACKEND_URL ||
+        "http://127.0.0.1:5001";
       r = await fetch(`${api}/api/resorts/${encodeURIComponent(slug)}`);
       if (r.ok) resort = (await r.json()) as Resort;
     }

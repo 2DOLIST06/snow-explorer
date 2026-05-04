@@ -1,7 +1,12 @@
 // src/pages/api/ski/resorts/[slug].ts
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const API = process.env.SKI_API_URL || "http://127.0.0.1:5001";
+const API =
+  process.env.NEXT_PUBLIC_SKI_API_BASE ||
+  process.env.SKI_API_URL ||
+  process.env.API_URL ||
+  process.env.BACKEND_URL ||
+  "http://127.0.0.1:5001";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
