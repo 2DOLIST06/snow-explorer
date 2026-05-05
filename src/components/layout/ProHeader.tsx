@@ -23,6 +23,7 @@ export default function ProHeader() {
   const [stationsOpen, setStationsOpen] = useState(false);
   const [stationsFilter, setStationsFilter] = useState("");
   const [cursor, setCursor] = useState(-1);
+  const [isMobile, setIsMobile] = useState(false);
 
   const searchRef = useRef<HTMLDivElement | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
@@ -69,6 +70,15 @@ export default function ProHeader() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    function onResize() {
+      setIsMobile(window.innerWidth < 900);
+    }
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -146,19 +156,19 @@ export default function ProHeader() {
 
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 60, background: "#ffffff", boxShadow: "0 12px 30px rgba(2,6,23,0.08)" }}>
-      <div style={{ maxWidth: 1380, margin: "0 auto", padding: "16px 22px", display: "grid", gridTemplateColumns: "300px minmax(260px, 1fr) 220px", gap: 16, alignItems: "center" }}>
+      <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "12px 12px" : "16px 22px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "300px minmax(260px, 1fr) 220px", gap: isMobile ? 10 : 16, alignItems: "center" }}>
         <button type="button" onClick={() => router.push("/")} style={{ display: "flex", gap: 10, color: "#1d4ed8", alignItems: "center", cursor: "pointer", border: "none", background: "transparent", padding: 0, textAlign: "left" }}>
-          <Image src="/logo.png" alt="Snow Explorer" width={62} height={62} />
+          <Image src="/logo.png" alt="Snow Explorer" width={isMobile ? 46 : 62} height={isMobile ? 46 : 62} />
           <div>
-            <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1 }}>Snow Explorer</div>
-            <div style={{ color: "#1d4ed8", fontSize: 13 }}>Votre guide montagne premium</div>
+            <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 900, lineHeight: 1 }}>Snow Explorer</div>
+            {!isMobile && <div style={{ color: "#1d4ed8", fontSize: 13 }}>Votre guide montagne premium</div>}
           </div>
         </button>
 
         <div style={{ position: "relative", border: "1px solid #cbd5e1", borderRadius: 16, padding: 4, background: "#ffffff" }} ref={searchRef}>
           <input
             type="text"
-            placeholder="Rechercher une station (Auron, Chamonix, Val Thorens...)"
+            placeholder={isMobile ? "Rechercher une station…" : "Rechercher une station (Auron, Chamonix, Val Thorens...)"}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -167,7 +177,7 @@ export default function ProHeader() {
             }}
             onFocus={() => setSearchOpen(true)}
             onKeyDown={onSearchKeyDown}
-            style={{ width: "100%", border: "1px solid #94a3b8", borderRadius: 12, padding: "14px 16px", fontSize: 16, background: "#ffffff", outline: "none" }}
+            style={{ width: "100%", border: "1px solid #94a3b8", borderRadius: 12, padding: isMobile ? "11px 12px" : "14px 16px", fontSize: isMobile ? 15 : 16, background: "#ffffff", outline: "none" }}
           />
           {searchOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 320, overflow: "auto", background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 12px 24px rgba(2,6,23,.16)", zIndex: 65 }} role="listbox">
@@ -188,11 +198,11 @@ export default function ProHeader() {
         </div>
 
         <div style={{ position: "relative" }} ref={accountRef}>
-          <button type="button" style={{ width: "100%", borderRadius: 12, padding: "12px 14px", fontWeight: 700, cursor: "pointer", border: "1px solid #1d4ed8", color: "#ffffff", background: "#1d4ed8" }} onClick={() => setAccountOpen((v) => !v)}>
+          <button type="button" style={{ width: "100%", borderRadius: 12, padding: isMobile ? "10px 12px" : "12px 14px", fontWeight: 700, cursor: "pointer", border: "1px solid #1d4ed8", color: "#ffffff", background: "#1d4ed8" }} onClick={() => setAccountOpen((v) => !v)}>
             Mon compte ▾
           </button>
           {accountOpen && (
-            <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 280, background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 16px 30px rgba(2,6,23,.22)", padding: 12, display: "grid", gap: 8, zIndex: 65 }}>
+            <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: isMobile ? "min(92vw, 320px)" : 280, background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 16px 30px rgba(2,6,23,.22)", padding: 12, display: "grid", gap: 8, zIndex: 65 }}>
               <button type="button" style={{ border: "1px solid #1d4ed8", borderRadius: 10, padding: "10px 12px", background: "white", cursor: "pointer", fontWeight: 700 }} onClick={() => router.push("/mon-compte")}>Aller à mon compte</button>
               <div style={{ color: "#64748b", textAlign: "center", fontSize: 13 }}>ou se connecter</div>
               <input type="email" placeholder="Email" style={{ border: "1px solid #cbd5e1", borderRadius: 10, padding: "10px 12px" }} />
@@ -204,13 +214,13 @@ export default function ProHeader() {
       </div>
 
       <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }} ref={stationsRef}>
-        <div style={{ maxWidth: 1380, margin: "0 auto", padding: "12px 22px", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+        <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "10px 8px" : "12px 22px", display: "flex", flexWrap: isMobile ? "nowrap" : "wrap", gap: 10, justifyContent: isMobile ? "flex-start" : "center", overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
           {navItems.map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => item === "Stations" && setStationsOpen((v) => !v)}
-              style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer" }}
+              style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: isMobile ? "8px 12px" : "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flex: "0 0 auto" }}
             >
               {item}
             </button>
