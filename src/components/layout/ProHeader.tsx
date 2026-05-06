@@ -219,7 +219,10 @@ export default function ProHeader() {
             <button
               key={item}
               type="button"
-              onClick={() => item === "Stations" && setStationsOpen((v) => !v)}
+              onClick={() => {
+                if (item === "Stations") setStationsOpen((v) => !v);
+                if (item === "Météo") router.push("/meteo");
+              }}
               style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: isMobile ? "8px 12px" : "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flex: "0 0 auto" }}
             >
               {item}
