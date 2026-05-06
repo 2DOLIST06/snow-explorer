@@ -231,34 +231,29 @@ export default function ProHeader() {
         </div>
       </div>
 
-      {stationsOpen && (
-        <div style={{ background: "white", borderBottom: "1px solid #cbd5e1", boxShadow: "0 12px 26px rgba(15,23,42,.15)" }}>
-          <div style={{ maxWidth: 1500, margin: "0 auto", width: "100%", padding: "18px 22px" }}>
-            <input
-              type="text"
-              value={stationsFilter}
-              onChange={(event) => setStationsFilter(event.target.value)}
-              placeholder="Filtrer les stations (nom, région, département)"
-              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 12, padding: "12px 14px", marginBottom: 16, fontSize: 15 }}
-            />
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", alignItems: "start" }}>
-              {stationsByLetter.length === 0 && <div style={{ color: "#64748b" }}>Aucune station trouvée</div>}
-              {stationsByLetter.map(([letter, letterStations]) => (
-                <div key={letter}>
-                  <h3 style={{ margin: 0, color: "#0f172a", fontSize: 16, fontWeight: 800 }}>{letter}</h3>
-                <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-                  {letterStations.map((station) => (
-                    <button key={station.id || station.slug} type="button" onClick={() => goToStation(station)} style={{ textAlign: "left", border: "none", background: "transparent", padding: "4px 0", color: "#1e293b", cursor: "pointer" }}>
-                      {station.name}
-                    </button>
-                  ))}
-                </div>
+          {stationsByLetter.map(([letter, letterStations]) => (
+            <div key={letter}>
+              <h3 style={{ margin: 0, color: "#0f172a", fontSize: 16, fontWeight: 800 }}>{letter}</h3>
+
+              <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                {letterStations.map((station) => (
+                  <button
+                    key={station.id || station.slug}
+                    type="button"
+                    onClick={() => goToStation(station)}
+                    style={{ textAlign: "left", border: "none", background: "transparent", padding: "4px 0", color: "#1e293b", cursor: "pointer" }}
+                  >
+                    {station.name}
+                  </button>
+                ))}
               </div>
-              ))}
             </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+    </div>
+  )}
+</div>
     </header>
   );
 }
