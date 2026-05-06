@@ -213,23 +213,38 @@ export default function ProHeader() {
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }} ref={stationsRef}>
-        <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "10px 8px" : "12px 22px", display: "flex", flexWrap: isMobile ? "nowrap" : "wrap", gap: 10, justifyContent: isMobile ? "flex-start" : "center", overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
-          {navItems.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => {
-                if (item === "Stations") setStationsOpen((v) => !v);
-                if (item === "Météo") router.push("/meteo");
-              }}
-              style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: isMobile ? "8px 12px" : "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flex: "0 0 auto" }}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
+     <div ref={stationsRef}>
+  <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }}>
+    <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "10px 8px" : "12px 22px", display: "flex", flexWrap: isMobile ? "nowrap" : "wrap", gap: 10, justifyContent: isMobile ? "flex-start" : "center", overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
+      {navItems.map((item) => (
+        <button
+          key={item}
+          type="button"
+          onClick={() => {
+            if (item === "Stations") setStationsOpen((v) => !v);
+            if (item === "Météo") router.push("/meteo");
+          }}
+          style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: isMobile ? "8px 12px" : "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flex: "0 0 auto" }}
+        >
+          {item}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {stationsOpen && (
+    <div style={{ background: "white", borderBottom: "1px solid #cbd5e1", boxShadow: "0 12px 26px rgba(15,23,42,.15)" }}>
+      <div style={{ maxWidth: 1500, margin: "0 auto", width: "100%", padding: "18px 22px" }}>
+        <input
+          type="text"
+          value={stationsFilter}
+          onChange={(event) => setStationsFilter(event.target.value)}
+          placeholder="Filtrer les stations (nom, région, département)"
+          style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 12, padding: "12px 14px", marginBottom: 16, fontSize: 15 }}
+        />
+
+        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", alignItems: "start" }}>
+          {stationsByLetter.length === 0 && <div style={{ color: "#64748b" }}>Aucune station trouvée</div>}
 
           {stationsByLetter.map(([letter, letterStations]) => (
             <div key={letter}>
