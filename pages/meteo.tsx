@@ -7,16 +7,12 @@ type Resort = {
   region?: { name?: string };
 };
 
-type StationDetail = {
-  widgets?: {
-    meteo?: {
-      enabled?: boolean;
-      iframeUrl?: string | null;
-      iframe_url?: string | null;
-    };
+type StationWidgets = {
+  meteo?: {
+    enabled?: boolean;
+    iframeUrl?: string | null;
+    iframe_url?: string | null;
   };
-  meteo_iframe_url?: string | null;
-  weather_iframe_url?: string | null;
 };
 
 export default function MeteoPage() {
@@ -33,7 +29,7 @@ export default function MeteoPage() {
       setLoadingStations(true);
       try {
         const query = q.trim();
-        const url = query ? `/api/ski/resorts/?q=${encodeURIComponent(query)}` : "/api/ski/resorts/";
+        const url = query ? `/api/ski/stations?q=${encodeURIComponent(query)}` : "/api/ski/stations";
         const r = await fetch(url);
         if (!r.ok) throw new Error("fetch_failed");
         const data = await r.json();
@@ -60,16 +56,11 @@ export default function MeteoPage() {
 
       setLoadingWidget(true);
       try {
-        const r = await fetch(`/api/ski/resorts/${encodeURIComponent(selected.slug)}`);
+        const r = await fetch(`/api/ski/stations/${encodeURIComponent(selected.slug)}-widgets`);
         if (!r.ok) throw new Error("station_fetch_failed");
-        const detail: StationDetail = await r.json();
+        const detail: StationWidgets = await r.json();
 
-        const url =
-          detail?.widgets?.meteo?.iframeUrl ||
-          detail?.widgets?.meteo?.iframe_url ||
-          detail?.meteo_iframe_url ||
-          detail?.weather_iframe_url ||
-          null;
+        const url = detail?.meteo?.iframeUrl || detail?.meteo?.iframe_url || null;
 
         setIframeUrl(url);
       } catch {
