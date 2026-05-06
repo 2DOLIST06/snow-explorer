@@ -13,6 +13,13 @@ type StationWidgets = {
     iframeUrl?: string | null;
     iframe_url?: string | null;
   };
+  widgets?: {
+    meteo?: {
+      enabled?: boolean;
+      iframeUrl?: string | null;
+      iframe_url?: string | null;
+    };
+  };
 };
 
 export default function MeteoPage() {
@@ -89,7 +96,12 @@ export default function MeteoPage() {
         const r = await fetch(`/api/ski/stations/${encodeURIComponent(selected.slug)}-widgets`);
         if (!r.ok) throw new Error("station_fetch_failed");
         const detail: StationWidgets = await r.json();
-        const url = detail?.meteo?.iframeUrl || detail?.meteo?.iframe_url || null;
+        const url =
+          detail?.meteo?.iframeUrl ||
+          detail?.meteo?.iframe_url ||
+          detail?.widgets?.meteo?.iframeUrl ||
+          detail?.widgets?.meteo?.iframe_url ||
+          null;
         setIframeUrl(url);
       } catch {
         setIframeUrl(null);
