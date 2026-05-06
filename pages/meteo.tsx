@@ -34,10 +34,13 @@ export default function MeteoPage() {
           fetch("/api/ski/resorts/").catch(() => null),
         ]);
 
-        const adminData = adminRes?.ok ? await adminRes.json().catch(() => []) : [];
-        const publicData = publicRes?.ok ? await publicRes.json().catch(() => []) : [];
+        const adminPayload = adminRes?.ok ? await adminRes.json().catch(() => []) : [];
+        const publicPayload = publicRes?.ok ? await publicRes.json().catch(() => []) : [];
 
-        const merged = [...(Array.isArray(adminData) ? adminData : []), ...(Array.isArray(publicData) ? publicData : [])];
+        const adminData = Array.isArray(adminPayload) ? adminPayload : Array.isArray(adminPayload?.items) ? adminPayload.items : [];
+        const publicData = Array.isArray(publicPayload) ? publicPayload : Array.isArray(publicPayload?.items) ? publicPayload.items : [];
+
+        const merged = [...adminData, ...publicData];
 
         const bySlug = new Map<string, Resort>();
         merged.forEach((s: any) => {

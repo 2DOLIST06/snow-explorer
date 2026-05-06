@@ -21,7 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const r = await fetch(url);
     const data = await r.json().catch(() => []);
-    return res.status(r.ok ? 200 : r.status).json(data);
+    const list = Array.isArray(data) ? data : Array.isArray((data as any)?.items) ? (data as any).items : [];
+    return res.status(r.ok ? 200 : r.status).json(list);
   } catch (e: any) {
     return res.status(500).json({ error: "proxy_error", detail: e?.message });
   }
