@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import SkiWeatherWidget from "@/components/SkiWeatherWidget";
 
 type Resort = {
   id?: string;
   name: string;
   slug: string;
   region?: { name?: string };
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type StationWidgets = {
@@ -58,6 +61,22 @@ export default function MeteoPage() {
               slug: s.slug,
               name: s.name || s.slug,
               region: s.region,
+              latitude:
+                typeof s.latitude === "number"
+                  ? s.latitude
+                  : typeof s.lat === "number"
+                  ? s.lat
+                  : typeof s.location?.lat === "number"
+                  ? s.location.lat
+                  : null,
+              longitude:
+                typeof s.longitude === "number"
+                  ? s.longitude
+                  : typeof s.lon === "number"
+                  ? s.lon
+                  : typeof s.location?.lon === "number"
+                  ? s.location.lon
+                  : null,
             });
           }
         });
@@ -152,7 +171,10 @@ export default function MeteoPage() {
         {!selected && <p style={{ color: "#64748b" }}>Sélectionnez une station pour afficher son widget météo.</p>}
         {loadingWidget && <p style={{ color: "#64748b" }}>Chargement du widget météo…</p>}
         {selected && !loadingWidget && iframeUrl && <div style={{ aspectRatio: "16 / 10", width: "100%", overflow: "hidden", borderRadius: 12 }}><iframe src={iframeUrl} title={`Météo ${selected.name}`} style={{ width: "100%", height: "100%", border: 0 }} loading="lazy" /></div>}
-        {selected && !loadingWidget && !iframeUrl && <p style={{ color: "#64748b" }}>Aucun widget météo configuré pour cette station.</p>}
+        {selected && !loadingWidget && !iframeUrl && selected.latitude != null && selected.longitude != null && (
+          <SkiWeatherWidget name={selected.name} lat={selected.latitude} lon={selected.longitude} />
+        )}
+        {selected && !loadingWidget && !iframeUrl && !(selected.latitude != null && selected.longitude != null) && <p style={{ color: "#64748b" }}>Aucun widget météo configuré pour cette station.</p>}
       </section>
     </main>
   );
