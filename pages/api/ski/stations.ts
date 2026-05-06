@@ -14,9 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).end("Method Not Allowed");
     }
 
-    const { slug } = req.query as { slug: string };
-    const r = await fetch(`${API}/api/stations/${encodeURIComponent(slug)}/widgets`);
-    const data = await r.json().catch(() => ({}));
+    const q = (req.query.q ?? "").toString().trim();
+    const url = q.length
+      ? `${API}/api/admin/stations/?q=${encodeURIComponent(q)}`
+      : `${API}/api/admin/stations/`;
+
+    const r = await fetch(url);
+    const data = await r.json().catch(() => []);
     return res.status(r.ok ? 200 : r.status).json(data);
   } catch (e: any) {
     return res.status(500).json({ error: "proxy_error", detail: e?.message });
