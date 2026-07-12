@@ -1353,31 +1353,10 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
 
   const descriptionHtml: string = ((cfg?.description?.html as string) || resort.description_md || "").trim();
 
-  // Debug temporaire
-  // eslint-disable-next-line no-console
-  console.log("pistes source =", {
-    fromCfg: Boolean(cfg?.pistes),
-    fromResortWidgets: Boolean((resort as any)?.widgets?.pistes),
-    mapSmall,
-    mapLarge,
-    mapCaption,
-  });
-
   const hasDescription = Boolean(descriptionHtml);
-  const hasLogo = Boolean(resort.logo_url);
-
   // Coords
   const [geoLat, setGeoLat] = useState<number | null>(resort.latitude ?? null);
   const [geoLon, setGeoLon] = useState<number | null>(resort.longitude ?? null);
-
-  // TEMP Auron
-  useEffect(() => {
-    const s = (slug || "").toLowerCase().trim();
-    if (s === "auron") {
-      setGeoLat(44.255);
-      setGeoLon(6.934);
-    }
-  }, [slug]);
 
   useEffect(() => {
     const hasDbCoords =
@@ -1433,119 +1412,52 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
       </Head>
 
       {/* HERO */}
-      <section style={{ position: "relative", width: "100%", height: 270 }}>
-        <Image src={cover} alt={`Photo de ${resort.name}`} fill sizes="100vw" priority style={{ objectFit: "cover" }} />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.5))",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "100%",
-            maxWidth: 960,
-            padding: "0 16px",
-            color: "white",
-          }}
-        >
-          <h1
-            style={{
-              textAlign: "center",
-              fontWeight: 800,
-              fontSize: 32,
-              lineHeight: 1.15,
-              marginBottom: 12,
-              textShadow: "0 2px 8px rgba(0,0,0,0.35)",
-            }}
-          >
-            {resort.name}
-          </h1>
-          {resort.region?.name && (
-            <p
-              style={{
-                marginTop: 2,
-                marginBottom: 12,
-                opacity: 0.95,
-                textAlign: "center",
-                textShadow: "0 2px 8px rgba(0,0,0,0.35)",
-              }}
-            >
-              {resort.region.name}
-            </p>
-          )}
+      <section className="station-profile-hero">
+        <Image src={cover} alt={`Photo de ${resort.name}`} fill sizes="100vw" priority className="station-profile-hero__image" />
+        <div className="station-profile-hero__overlay" />
+        <div className="station-profile-hero__content">
+          <p className="eyebrow">Fiche station</p>
+          <h1>{resort.name}</h1>
+          <p>{resort.region?.name || "Destination montagne"}</p>
+          <div className="station-profile-hero__actions">
+            {resort.website_url ? <a className="btn btn--primary" href={resort.website_url} target="_blank" rel="noreferrer">Site officiel</a> : null}
+            <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
+          </div>
         </div>
       </section>
 
       {/* LAYOUT */}
-      <main style={{ maxWidth: 1200, margin: "24px auto 40px", padding: "0 16px" }}>
-        {/* Description + logo station */}
-        {(hasLogo || hasDescription) && (
-          <section style={{ marginTop: 16, marginBottom: 20 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "160px minmax(0, 1fr)",
-                gap: 16,
-                alignItems: "flex-start",
-              }}
-            >
-              <div
-                style={{
-                  width: 140,
-                  height: 140,
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  border: "1px solid #cbd5e1",
-                  background: "#cbd5e1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {resort.logo_url ? (
-                  <img
-                    src={resort.logo_url}
-                    alt={`Logo ${resort.name}`}
-                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#4b5563",
-                      textAlign: "center",
-                      padding: 8,
-                    }}
-                  >
-                    Pas de logo pour l’instant
-                  </span>
-                )}
-              </div>
-
-              {hasDescription && (
-                <Card title="Description de la station">
-                  <div
-                    style={{ fontSize: 15, lineHeight: 1.7, color: "#374151" }}
-                    dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                  />
-                </Card>
-              )}
-            </div>
-          </section>
-        )}
+      <main className="station-profile-page">
+        <section className="station-overview-card">
+          <div className="station-overview-card__logo">
+            {resort.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resort.logo_url} alt={`Logo ${resort.name}`} />
+            ) : (
+              <span>{resort.name.slice(0, 2).toUpperCase()}</span>
+            )}
+          </div>
+          <div>
+            <p className="eyebrow">Résumé</p>
+            <h2>{resort.name}</h2>
+            {hasDescription ? (
+              <div className="station-description" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+            ) : (
+              <p className="station-description station-description--empty">Description détaillée à venir.</p>
+            )}
+          </div>
+          <dl className="station-overview-card__facts">
+            <div><dt>Altitude</dt><dd>{dash(resort.altitude_base_m)} m – {dash(resort.altitude_top_m)} m</dd></div>
+            <div><dt>Domaine</dt><dd>{dash(resort.ski_area_km)} km</dd></div>
+            <div><dt>Pistes</dt><dd>{dash(resort.pistes_count)}</dd></div>
+          </dl>
+        </section>
 
         {/* Tuiles info */}
         <StationExtraPanels resort={resort} cfg={cfg as any} />
 
         {/* Ligne A : plan + widgets droite */}
-        <section className="stations-layout">
+        <section id="station-conditions" className="stations-layout">
           <div>
             <PlanPistesFigure small={mapSmall} large={mapLarge} caption={mapCaption} />
           </div>
