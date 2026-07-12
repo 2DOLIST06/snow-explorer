@@ -1,51 +1,30 @@
 import Image from "next/image";
 
+const groups = [
+  { title: "Découvrir", links: ["Stations", "Destinations", "Domaines skiables", "Bons plans"] },
+  { title: "Météo & neige", links: ["Météo des stations", "Prévisions neige", "Webcams", "Bulletins"] },
+  { title: "Pratique", links: ["Forfaits", "Activités", "Contact", "Aide"] },
+  { title: "Snow Explorer", links: ["À propos", "Mentions légales", "Confidentialité", "Cookies"] },
+];
+
 export default function Footer() {
   return (
-    <footer
-      style={{
-        marginTop: 36,
-        width: "100%",
-        background: "linear-gradient(90deg, #0f172a 0%, #1e293b 45%, #0f172a 100%)",
-        color: "white",
-        padding: "36px 24px 42px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1320,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 20,
-          alignItems: "start",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Image src="/logo.png" alt="Logo Snow Explorer" width={44} height={44} />
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 22 }}>Snow Explorer</div>
-            <div style={{ opacity: 0.8 }}>Votre référence montagne</div>
-          </div>
+    <footer className="site-footer">
+      <div className="site-footer__inner">
+        <div className="site-footer__brand">
+          <div className="brand brand--footer"><Image src="/logo.png" alt="" width={46} height={46} /><span><strong>Snow Explorer</strong><small>Préparer la montagne avec des informations claires, fiables et lisibles.</small></span></div>
+          <p>Stations, météo, neige et informations pratiques réunies dans une expérience pensée pour décider vite et partir sereinement.</p>
         </div>
-        <div>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>Nous contacter</div>
-          <div>contact@snowexplorer.fr</div>
-          <div>+33 4 00 00 00 00</div>
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>Navigation</div>
-          <div>Stations</div>
-          <div>Forfaits</div>
-          <div>Activités</div>
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>Informations</div>
-          <div>Mentions légales</div>
-          <div>Politique de confidentialité</div>
-          <div>Partenaires</div>
-        </div>
+        <nav className="footer-links" aria-label="Liens de pied de page">
+          {groups.map((group) => (
+            <details key={group.title} open>
+              <summary>{group.title}</summary>
+              <ul>{group.links.map((link) => <li key={link}><a href="#">{link}</a></li>)}</ul>
+            </details>
+          ))}
+        </nav>
       </div>
+      <div className="site-footer__bottom"><span>© {new Date().getFullYear()} Snow Explorer</span><span>Données météo indicatives, à vérifier avant toute sortie.</span></div>
     </footer>
   );
 }

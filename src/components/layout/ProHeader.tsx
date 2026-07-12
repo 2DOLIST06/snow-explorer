@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Loader2, MapPin, Menu, Search, UserRound, X } from "lucide-react";
 
 type Resort = {
   id?: string;
@@ -11,7 +12,14 @@ type Resort = {
   department?: { name?: string };
 };
 
-const navItems = ["Stations", "Météo", "Forfaits", "Activités", "Bons plans", "Contact"];
+const navItems = [
+  { label: "Stations", kind: "stations" },
+  { label: "Météo", href: "/meteo" },
+  { label: "Forfaits", href: "/stations" },
+  { label: "Activités", href: "/stations" },
+  { label: "Bons plans", href: "/stations" },
+  { label: "Contact", href: "/contact" },
+];
 
 export default function ProHeader() {
   const router = useRouter();
@@ -21,9 +29,11 @@ export default function ProHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [stationsFilter, setStationsFilter] = useState("");
   const [cursor, setCursor] = useState(-1);
-  const [isMobile, setIsMobile] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const searchRef = useRef<HTMLDivElement | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
@@ -31,6 +41,7 @@ export default function ProHeader() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoadingSearch(true);
     const timer = setTimeout(async () => {
       try {
         const url = query.trim() ? `/api/ski/resorts/?q=${encodeURIComponent(query.trim())}` : "/api/ski/resorts/";
@@ -38,21 +49,18 @@ export default function ProHeader() {
         if (!res.ok) throw new Error("search_failed");
         const data = await res.json();
         const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false && x?.is_active !== null) : [];
-        if (!cancelled) setResults(activeOnly);
+        if (!cancelled) setResults(activeOnly.slice(0, 8));
       } catch {
         if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoadingSearch(false);
       }
     }, 220);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [query]);
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadStations() {
       try {
         const res = await fetch("/api/ski/resorts/");
@@ -60,215 +68,99 @@ export default function ProHeader() {
         const data = await res.json();
         const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false && x?.is_active !== null) : [];
         if (!cancelled) setStations(activeOnly);
-      } catch {
-        if (!cancelled) setStations([]);
-      }
+      } catch { if (!cancelled) setStations([]); }
     }
-
     loadStations();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    function onResize() {
-      setIsMobile(window.innerWidth < 900);
-    }
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  useEffect(() => {
+    function onScroll() { setScrolled(window.scrollY > 12); }
     function onDocClick(event: MouseEvent) {
       const target = event.target as Node;
       if (searchRef.current && !searchRef.current.contains(target)) setSearchOpen(false);
       if (accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false);
       if (stationsRef.current && !stationsRef.current.contains(target)) setStationsOpen(false);
     }
-
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    return () => { window.removeEventListener("scroll", onScroll); document.removeEventListener("mousedown", onDocClick); };
   }, []);
 
   const filteredResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return results;
-    return results.filter((station) => {
-      const haystack = `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase();
-      return haystack.includes(needle);
-    });
+    return results.filter((station) => `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle));
   }, [query, results]);
 
   const stationsByLetter = useMemo(() => {
     const needle = stationsFilter.trim().toLowerCase();
-    const filtered = stations
-      .filter((station) => {
-        if (!needle) return true;
-        const haystack = `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase();
-        return haystack.includes(needle);
-      })
-      .sort((a, b) => (a?.name || "").localeCompare(b?.name || "", "fr"));
-
+    const filtered = stations.filter((station) => !needle || `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle)).sort((a, b) => (a?.name || "").localeCompare(b?.name || "", "fr"));
     const map = new Map<string, Resort[]>();
     filtered.forEach((station) => {
       const first = (station?.name || "").trim().charAt(0).toUpperCase();
       const letter = /[A-ZÀ-ÖØ-Ý]/.test(first) ? first : "#";
-      const current = map.get(letter) || [];
-      current.push(station);
-      map.set(letter, current);
+      map.set(letter, [...(map.get(letter) || []), station]);
     });
-
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, "fr"));
   }, [stations, stationsFilter]);
 
   function goToStation(station: Resort) {
     if (!station?.slug) return;
     router.push(`/stations/${station.slug}`);
-    setSearchOpen(false);
-    setStationsOpen(false);
+    setSearchOpen(false); setStationsOpen(false); setMobileOpen(false);
   }
 
   function onSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (!searchOpen && (event.key === "ArrowDown" || event.key === "Enter")) {
-      setSearchOpen(true);
-      return;
-    }
+    if (!searchOpen && (event.key === "ArrowDown" || event.key === "Enter")) { setSearchOpen(true); return; }
     if (!searchOpen) return;
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setCursor((c) => Math.min(c + 1, filteredResults.length - 1));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setCursor((c) => Math.max(c - 1, 0));
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      const station = filteredResults[cursor] || filteredResults[0];
-      if (station) goToStation(station);
-    } else if (event.key === "Escape") {
-      setSearchOpen(false);
-      setCursor(-1);
-    }
+    if (event.key === "ArrowDown") { event.preventDefault(); setCursor((c) => Math.min(c + 1, filteredResults.length - 1)); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    else if (event.key === "Enter") { event.preventDefault(); const station = filteredResults[cursor] || filteredResults[0]; if (station) goToStation(station); }
+    else if (event.key === "Escape") { setSearchOpen(false); setCursor(-1); }
   }
 
   return (
-    <header style={{ position: "sticky", top: 0, zIndex: 60, background: "#ffffff", boxShadow: "0 12px 30px rgba(2,6,23,0.08)" }}>
-      <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "12px 12px" : "16px 22px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "300px minmax(260px, 1fr) 220px", gap: isMobile ? 10 : 16, alignItems: "center" }}>
-        <button type="button" onClick={() => router.push("/")} style={{ display: "flex", gap: 10, color: "#1d4ed8", alignItems: "center", cursor: "pointer", border: "none", background: "transparent", padding: 0, textAlign: "left" }}>
-          <Image src="/logo.png" alt="Snow Explorer" width={isMobile ? 46 : 62} height={isMobile ? 46 : 62} />
-          <div>
-            <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 900, lineHeight: 1 }}>Snow Explorer</div>
-            {!isMobile && <div style={{ color: "#1d4ed8", fontSize: 13 }}>Votre guide montagne premium</div>}
-          </div>
+    <header className={`site-header ${scrolled ? "site-header--compact" : ""}`}>
+      <div className="site-header__bar">
+        <button type="button" className="brand" onClick={() => router.push("/")} aria-label="Accueil Snow Explorer">
+          <Image src="/logo.png" alt="" width={48} height={48} priority />
+          <span><strong>Snow Explorer</strong><small>Stations, neige et météo</small></span>
         </button>
 
-        <div style={{ position: "relative", border: "1px solid #cbd5e1", borderRadius: 16, padding: 4, background: "#ffffff" }} ref={searchRef}>
-          <input
-            type="text"
-            placeholder={isMobile ? "Rechercher une station…" : "Rechercher une station (Auron, Chamonix, Val Thorens...)"}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSearchOpen(true);
-              setCursor(-1);
-            }}
-            onFocus={() => setSearchOpen(true)}
-            onKeyDown={onSearchKeyDown}
-            style={{ width: "100%", border: "1px solid #94a3b8", borderRadius: 12, padding: isMobile ? "11px 12px" : "14px 16px", fontSize: isMobile ? 15 : 16, background: "#ffffff", outline: "none" }}
-          />
+        <div className="global-search" ref={searchRef}>
+          <label className="sr-only" htmlFor="global-station-search">Rechercher une station, ville ou destination</label>
+          <Search className="global-search__icon" size={20} aria-hidden="true" />
+          <input id="global-station-search" value={query} onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); setCursor(-1); }} onFocus={() => setSearchOpen(true)} onKeyDown={onSearchKeyDown} placeholder="Station, ville, domaine skiable…" aria-expanded={searchOpen} aria-controls="global-search-results" autoComplete="off" />
+          {loadingSearch && <Loader2 className="global-search__loader" size={18} aria-label="Recherche en cours" />}
           {searchOpen && (
-            <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 320, overflow: "auto", background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 12px 24px rgba(2,6,23,.16)", zIndex: 65 }} role="listbox">
-              {filteredResults.length === 0 && <div style={{ padding: 12, color: "#64748b" }}>Aucune station trouvée</div>}
+            <div id="global-search-results" className="search-panel" role="listbox">
+              <div className="search-panel__title">Suggestions</div>
+              {filteredResults.length === 0 && <div className="empty-state empty-state--small"><Search size={18} />Aucune station trouvée. Essayez une région ou une autre orthographe.</div>}
               {filteredResults.map((station, index) => (
-                <button
-                  key={station.id || `${station.slug}-${index}`}
-                  type="button"
-                  onClick={() => goToStation(station)}
-                  style={{ width: "100%", border: 0, background: cursor === index ? "#eff6ff" : "white", textAlign: "left", padding: "11px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", borderBottom: "1px solid #eff6ff" }}
-                >
-                  <span>{station.name}</span>
-                  <span style={{ color: "#64748b" }}>{station?.region?.name || station?.department?.name || ""}</span>
+                <button key={station.id || `${station.slug}-${index}`} type="button" role="option" aria-selected={cursor === index} onClick={() => goToStation(station)} className={`search-result ${cursor === index ? "is-active" : ""}`}>
+                  <span className="search-result__mark"><MapPin size={16} /></span><span><strong>{station.name}</strong><small>{station?.region?.name || station?.department?.name || "Station de ski"}</small></span><ChevronDown size={16} />
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div style={{ position: "relative" }} ref={accountRef}>
-          <button type="button" style={{ width: "100%", borderRadius: 12, padding: isMobile ? "10px 12px" : "12px 14px", fontWeight: 700, cursor: "pointer", border: "1px solid #1d4ed8", color: "#ffffff", background: "#1d4ed8" }} onClick={() => setAccountOpen((v) => !v)}>
-            Mon compte ▾
-          </button>
-          {accountOpen && (
-            <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: isMobile ? "min(92vw, 320px)" : 280, background: "white", borderRadius: 12, border: "1px solid #dbeafe", boxShadow: "0 16px 30px rgba(2,6,23,.22)", padding: 12, display: "grid", gap: 8, zIndex: 65 }}>
-              <button type="button" style={{ border: "1px solid #1d4ed8", borderRadius: 10, padding: "10px 12px", background: "white", cursor: "pointer", fontWeight: 700 }} onClick={() => router.push("/mon-compte")}>Aller à mon compte</button>
-              <div style={{ color: "#64748b", textAlign: "center", fontSize: 13 }}>ou se connecter</div>
-              <input type="email" placeholder="Email" style={{ border: "1px solid #cbd5e1", borderRadius: 10, padding: "10px 12px" }} />
-              <input type="password" placeholder="Mot de passe" style={{ border: "1px solid #cbd5e1", borderRadius: 10, padding: "10px 12px" }} />
-              <button type="button" style={{ border: "none", borderRadius: 10, padding: "10px 12px", background: "#1d4ed8", color: "white", cursor: "pointer", fontWeight: 700 }}>Se connecter</button>
-            </div>
-          )}
+        <nav className="desktop-nav" aria-label="Navigation principale">
+          {navItems.slice(0, 4).map((item) => <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">{item.label}</button>)}
+        </nav>
+
+        <div className="header-actions" ref={accountRef}>
+          <button type="button" className="btn btn--ghost btn--icon" onClick={() => setAccountOpen((v) => !v)}><UserRound size={18} /> <span>Compte</span></button>
+          <button type="button" className="mobile-menu-btn" onClick={() => setMobileOpen((v) => !v)} aria-expanded={mobileOpen}>{mobileOpen ? <X /> : <Menu />}<span className="sr-only">Menu</span></button>
+          {accountOpen && <div className="account-menu"><p className="eyebrow">Espace membre</p><button type="button" className="btn btn--secondary" onClick={() => router.push("/mon-compte")}>Aller à mon compte</button><label>Email<input type="email" placeholder="vous@exemple.fr" /></label><label>Mot de passe<input type="password" placeholder="••••••••" /></label><button type="button" className="btn btn--primary">Se connecter</button></div>}
         </div>
       </div>
 
-     <div ref={stationsRef}>
-  <div style={{ borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }}>
-    <div style={{ maxWidth: 1380, margin: "0 auto", padding: isMobile ? "10px 8px" : "12px 22px", display: "flex", flexWrap: isMobile ? "nowrap" : "wrap", gap: 10, justifyContent: isMobile ? "flex-start" : "center", overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
-      {navItems.map((item) => (
-        <button
-          key={item}
-          type="button"
-          onClick={() => {
-            if (item === "Stations") setStationsOpen((v) => !v);
-            if (item === "Météo") router.push("/meteo");
-          }}
-          style={{ borderRadius: 999, border: "1px solid #cbd5e1", padding: isMobile ? "8px 12px" : "10px 16px", background: item === "Stations" ? "#eff6ff" : "#ffffff", color: "#0f172a", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flex: "0 0 auto" }}
-        >
-          {item}
-        </button>
-      ))}
-    </div>
-  </div>
+      {mobileOpen && <nav className="mobile-nav" aria-label="Navigation mobile">{navItems.map((item) => <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">{item.label}</button>)}</nav>}
 
-  {stationsOpen && (
-    <div style={{ background: "white", borderBottom: "1px solid #cbd5e1", boxShadow: "0 12px 26px rgba(15,23,42,.15)" }}>
-      <div style={{ maxWidth: 1500, margin: "0 auto", width: "100%", padding: "18px 22px" }}>
-        <input
-          type="text"
-          value={stationsFilter}
-          onChange={(event) => setStationsFilter(event.target.value)}
-          placeholder="Filtrer les stations (nom, région, département)"
-          style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 12, padding: "12px 14px", marginBottom: 16, fontSize: 15 }}
-        />
-
-        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", alignItems: "start" }}>
-          {stationsByLetter.length === 0 && <div style={{ color: "#64748b" }}>Aucune station trouvée</div>}
-
-          {stationsByLetter.map(([letter, letterStations]) => (
-            <div key={letter}>
-              <h3 style={{ margin: 0, color: "#0f172a", fontSize: 16, fontWeight: 800 }}>{letter}</h3>
-
-              <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-                {letterStations.map((station) => (
-                  <button
-                    key={station.id || station.slug}
-                    type="button"
-                    onClick={() => goToStation(station)}
-                    style={{ textAlign: "left", border: "none", background: "transparent", padding: "4px 0", color: "#1e293b", cursor: "pointer" }}
-                  >
-                    {station.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )}
-</div>
+      <div ref={stationsRef}>{stationsOpen && <div className="stations-mega"><div className="stations-mega__head"><div><p className="eyebrow">Explorer</p><h2>Stations par nom</h2></div><label className="field field--compact"><span>Filtrer</span><input value={stationsFilter} onChange={(event) => setStationsFilter(event.target.value)} placeholder="Nom, région, département" /></label></div><div className="stations-grid">{stationsByLetter.length === 0 && <div className="empty-state">Aucune station trouvée</div>}{stationsByLetter.map(([letter, letterStations]) => <section key={letter} className="station-letter"><h3>{letter}</h3>{letterStations.slice(0, 12).map((station) => <button key={station.id || station.slug} type="button" onClick={() => goToStation(station)}>{station.name}<small>{station.region?.name || station.department?.name || ""}</small></button>)}</section>)}</div></div>}</div>
     </header>
   );
 }
