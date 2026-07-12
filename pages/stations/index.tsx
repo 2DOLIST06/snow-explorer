@@ -1,6 +1,6 @@
-﻿// src/pages/stations/index.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, Loader2, MapPin, Search, SlidersHorizontal } from "lucide-react";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string } };
 
@@ -15,9 +15,7 @@ export default function StationsList() {
       setLoading(true);
       try {
         const query = q.trim();
-        const url = query.length
-          ? `/api/ski/resorts/?q=${encodeURIComponent(query)}`
-          : `/api/ski/resorts/`;
+        const url = query.length ? `/api/ski/resorts/?q=${encodeURIComponent(query)}` : `/api/ski/resorts/`;
         const r = await fetch(url);
         if (!r.ok) throw new Error("fetch_failed");
         const j: Resort[] = await r.json();
@@ -29,71 +27,49 @@ export default function StationsList() {
         if (!cancel) setLoading(false);
       }
     }, 200);
-
-    return () => {
-      cancel = true;
-      clearTimeout(t);
-    };
+    return () => { cancel = true; clearTimeout(t); };
   }, [q]);
 
+  const regionsCount = useMemo(() => new Set(data.map((r) => r.region?.name).filter(Boolean)).size, [data]);
+
   return (
-    <main style={{ maxWidth: 900, margin: "24px auto", padding: "0 16px" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Stations</h1>
+    <main className="stations-directory">
+      <section className="stations-directory__hero">
+        <div>
+          <p className="eyebrow">Explorer les domaines</p>
+          <h1>Stations de ski</h1>
+          <p>Trouvez rapidement une station, comparez sa région et ouvrez une fiche détaillée avec météo, webcams, pistes et informations pratiques.</p>
+        </div>
+        <div className="station-directory-stats" aria-label="Résumé des résultats">
+          <div><strong>{data.length}</strong><span>stations</span></div>
+          <div><strong>{regionsCount || "—"}</strong><span>régions</span></div>
+        </div>
+      </section>
 
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Filtrer (ex. Auron, Val Thorens...)"
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          marginBottom: 12,
-        }}
-      />
+      <section className="station-search-card" aria-label="Recherche de station">
+        <label className="station-search-field">
+          <span>Rechercher une station</span>
+          <div><Search size={20} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Auron, Val Thorens, Chamonix…" /></div>
+        </label>
+        <button type="button" className="btn btn--secondary"><SlidersHorizontal size={18} /> Filtres</button>
+      </section>
 
-      {loading && <div style={{ color: "#666", marginBottom: 8 }}>Chargement…</div>}
+      {loading && <div className="station-list-skeleton"><Loader2 size={18} /> Chargement des stations…</div>}
 
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "grid",
-          gap: 8,
-        }}
-      >
+      <section className="station-results-grid" aria-label="Résultats stations">
         {data.map((r) => (
-          <li
-            key={r.id}
-            style={{
-              border: "1px solid #eee",
-              borderRadius: 10,
-              padding: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              background: "#fff",
-            }}
-          >
+          <article key={r.id} className="station-result-card">
+            <div className="station-result-card__icon"><MapPin size={20} /></div>
             <div>
-              <div style={{ fontWeight: 700 }}>{r.name}</div>
-              <div style={{ color: "#666", fontSize: 14 }}>{r.region?.name || ""}</div>
+              <h2>{r.name}</h2>
+              <p>{r.region?.name || "Station de ski"}</p>
             </div>
-            <Link
-              href={`/stations/${r.slug}`}
-              style={{ fontWeight: 700, color: "#2563eb", textDecoration: "none" }}
-            >
-              Voir la fiche →
-            </Link>
-          </li>
+            <Link href={`/stations/${r.slug}`} className="station-result-card__link">Voir la fiche <ArrowRight size={16} /></Link>
+          </article>
         ))}
-      </ul>
+      </section>
 
-      {!loading && data.length === 0 && (
-        <div style={{ color: "#666", marginTop: 12 }}>Aucun résultat</div>
-      )}
+      {!loading && data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
     </main>
   );
 }
