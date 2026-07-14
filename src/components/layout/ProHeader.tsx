@@ -147,16 +147,22 @@ export default function ProHeader() {
           )}
         </div>
 
-        <nav className="desktop-nav" aria-label="Navigation principale">
-          {navItems.slice(0, 4).map((item) => <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">{item.label}</button>)}
-        </nav>
-
         <div className="header-actions" ref={accountRef}>
           <button type="button" className="btn btn--ghost btn--icon" onClick={() => setAccountOpen((v) => !v)}><UserRound size={18} /> <span>Compte</span></button>
           <button type="button" className="mobile-menu-btn" onClick={() => setMobileOpen((v) => !v)} aria-expanded={mobileOpen}>{mobileOpen ? <X /> : <Menu />}<span className="sr-only">Menu</span></button>
           {accountOpen && <div className="account-menu"><p className="eyebrow">Espace membre</p><button type="button" className="btn btn--secondary" onClick={() => router.push("/mon-compte")}>Aller à mon compte</button><label>Email<input type="email" placeholder="vous@exemple.fr" /></label><label>Mot de passe<input type="password" placeholder="••••••••" /></label><button type="button" className="btn btn--primary">Se connecter</button></div>}
         </div>
       </div>
+
+      <nav className="desktop-nav desktop-nav--tier" aria-label="Navigation principale">
+        <div className="desktop-nav__inner">
+          {navItems.map((item) => (
+            <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       {mobileOpen && <nav className="mobile-nav" aria-label="Navigation mobile">{navItems.map((item) => <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">{item.label}</button>)}</nav>}
 
