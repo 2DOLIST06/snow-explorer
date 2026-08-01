@@ -3,6 +3,7 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
@@ -19,6 +20,8 @@ type Resort = {
   name: string;
   slug: string;
   is_active?: boolean;
+  is_public?: boolean;
+  is_published?: boolean;
   region?: { id?: string; name?: string; country_code?: string };
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
@@ -32,6 +35,8 @@ type Resort = {
   logo_url?: string | null;
   amenities?: string | null;
   description_md?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -40,27 +45,8 @@ type Resort = {
   season_close_date?: string | null;
 };
 
-type Piste = {
-  id: string;
-  resort_id: string;
-  name?: string | null;
-  difficulty?: string | null;
-  length_m?: number | null;
-  elevation_diff_m?: number | null;
-};
-
-type Lift = {
-  id: string;
-  resort_id: string;
-  type?: string | null;
-  category?: string | null;
-};
-
 interface Props {
-  slug: string;
-  resort: Resort | null;
-  pistes: Piste[];
-  lifts: Lift[];
+  resort: Resort;
   cfg: StationWidgetsConfig | null;
 }
 
@@ -107,6 +93,11 @@ const formatBig = (v: string | number | null | undefined) => {
   const n = Number(v);
   if (Number.isFinite(n)) return n.toLocaleString("fr-FR");
   return String(v);
+};
+
+const sumAvailable = (...values: Array<number | null | undefined>) => {
+  const available = values.filter((value): value is number => Number.isFinite(value));
+  return available.length ? available.reduce((total, value) => total + value, 0) : null;
 };
 
 /* =========================
@@ -418,29 +409,10 @@ border: "1px solid #d1d9e6",
 );
 
 /* =========================
- * Description (hauteur fixe)
- * =======================*/
-const DescriptionCard: React.FC<{ html: string }> = ({ html }) => {
-  const safe = textOrEmpty(html);
-  if (!safe) return null;
-  return (
-    <Card
-      title="Description"
-      style={{ height: PANEL_HEIGHT, display: "flex", flexDirection: "column" }}
-      bodyStyle={{ overflow: "auto", flex: 1 }}
-    >
-      <div
-        style={{ fontSize: 15, lineHeight: 1.7, color: "#374151" }}
-        dangerouslySetInnerHTML={{ __html: safe }}
-      />
-    </Card>
-  );
-};
-
-/* =========================
  * Plan des pistes
  * =======================*/
-const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null; caption?: string | null }> = ({
+const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; caption?: string | null }> = ({
+  name,
   small,
   large,
   caption,
@@ -459,26 +431,15 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
           borderRadius: 12,
           overflow: "hidden",
           background: "#fff",
-          cursor: "zoom-in",
           height: PANEL_HEIGHT,
           display: "flex",
           flexDirection: "column",
         }}
-        onClick={() => setOpen(true)}
-        aria-label="Agrandir le plan des pistes"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={caption || "Plan des pistes"}
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            background: "#fff",
-          }}
-        />
+        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes de ${name}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt={`Plan des pistes de ${name}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
+        </button>
         {caption ? (
           <figcaption
             style={{ padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}
@@ -513,6 +474,7 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
             }}
           >
             <button
+              type="button"
               onClick={() => setOpen(false)}
               aria-label="Fermer"
               style={{
@@ -535,7 +497,7 @@ const PlanPistesFigure: React.FC<{ small?: string | null; large?: string | null;
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={big}
-              alt={caption || "Plan des pistes"}
+              alt={`Plan des pistes de ${name}`}
               style={{ maxWidth: "96vw", maxHeight: "86vh", objectFit: "contain", borderRadius: 8 }}
             />
             {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
@@ -1079,7 +1041,8 @@ const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; h
 /* =========================
  * Snowpark
  * =======================*/
-const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; clickable?: boolean; onClick?: () => void }> = ({
+const SnowparkCard: React.FC<{ name: string; url?: string | null; caption?: string | null; clickable?: boolean; onClick?: () => void }> = ({
+  name,
   url,
   caption,
   clickable,
@@ -1090,26 +1053,24 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
   return (
     <Card title="Snowpark">
       {clickable ? (
-        <div
+        <button
+          type="button"
           onClick={onClick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
-          style={{ cursor: "pointer" }}
+          style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}
           aria-label="Voir la page snowpark"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
-            alt={caption || "Plan du snowpark"}
+            alt={`Plan du snowpark de ${name}`}
             style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #cbd5e1" }}
           />
-        </div>
+        </button>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
-          alt={caption || "Plan du snowpark"}
+          alt={`Plan du snowpark de ${name}`}
           style={{ width: "100%", height: "auto", display: "block", borderRadius: 10, border: "1px solid #cbd5e1" }}
         />
       )}
@@ -1121,9 +1082,16 @@ const SnowparkCard: React.FC<{ url?: string | null; caption?: string | null; cli
 /* =========================
  * Panneaux d'infos étendus (tuiles compactes)
  * =======================*/
-const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
+const StationExtraPanels: React.FC<{
+  resort: Resort;
+  cfg: StationWidgetsConfig | null;
+  computedPistesCount: number | null;
+  computedLiftsCount: number | null;
+}> = ({
   resort,
   cfg,
+  computedPistesCount,
+  computedLiftsCount,
 }) => {
   const router = useRouter();
 
@@ -1140,13 +1108,11 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
     (resort as any)?.season_open_date ??
     cfg?.snow?.season?.openingDate ??
     cfg?.snow?.openingDate ??
-    cfg?.forfaits?.openingDate ??
     null;
   const closeRaw =
     (resort as any)?.season_close_date ??
     cfg?.snow?.season?.closingDate ??
     cfg?.snow?.closingDate ??
-    cfg?.forfaits?.closingDate ??
     null;
   const seasonStr =
     openRaw && closeRaw
@@ -1159,7 +1125,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
 
     // Domaine / pistes
   const km = Number.isFinite(resort.ski_area_km as any) ? `${formatBig(resort.ski_area_km)} km` : "—";
-  const pistesTotal = Number.isFinite(resort.pistes_count as any) ? formatBig(resort.pistes_count) : "—";
+  const pistesTotal = formatBig(computedPistesCount);
 
   const pc = cfg?.pistes?.colors || {};
   const pistesGreen = Number.isFinite(pc.green) ? formatBig(pc.green) : "—";
@@ -1171,8 +1137,6 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
   const snowparksCountRaw =
     typeof cfg?.snowparks?.count === "number"
       ? cfg.snowparks.count
-      : typeof cfg?.widgets?.snowparks?.count === "number"
-      ? cfg.widgets.snowparks.count
       : 0;
   const snowparksLabel = formatBig(snowparksCountRaw);
   const snowparksClickable = (snowparksCountRaw ?? 0) > 0;
@@ -1184,11 +1148,7 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
   const liftsChairs = Number.isFinite(rm.telesieges) ? Number(rm.telesieges) : 0;
   const liftsCable = Number.isFinite(rm.telepheriques) ? Number(rm.telepheriques) : 0;
 
-  const liftsTotal = Number.isFinite(resort.lifts_count as any)
-    ? formatBig(resort.lifts_count)
-    : [liftsDrag, liftsChairs, liftsCable].some((v) => v > 0)
-    ? formatBig(liftsDrag + liftsChairs + liftsCable)
-    : "—";
+  const liftsTotal = formatBig(computedLiftsCount);
 
   const liftTypesCount = [liftsDrag, liftsChairs, liftsCable].filter((v) => v > 0).length;
   const liftTypesLabel = liftTypesCount ? `${liftTypesCount}` : "—";
@@ -1312,26 +1272,19 @@ const StationExtraPanels: React.FC<{ resort: Resort; cfg?: any }> = ({
 /* =========================
  * Page
  * =======================*/
-const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
+const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   const router = useRouter();
-  if (!resort) {
-    return (
-      <main style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px" }}>
-        <h1>Station introuvable</h1>
-        <p>La station demandée n’existe pas ou a été désactivée.</p>
-      </main>
-    );
-  }
 
-  const title =
-    textOrEmpty(cfg?.description?.metaTitle) ||
+  const seoTitle =
+    textOrEmpty(resort.meta_title) || textOrEmpty(cfg?.description?.metaTitle) ||
     `${resort.name} – Station de ski${resort.region?.name ? " • " + resort.region.name : ""}`;
 
-  const metaDesc =
-    textOrEmpty(cfg?.description?.metaDescription) ||
+  const seoDescription =
+    textOrEmpty(resort.meta_description) || textOrEmpty(cfg?.description?.metaDescription) ||
     `Infos ${resort.name}${resort.region?.name ? " (" + resort.region.name + ")" : ""} : altitude, pistes, remontées, carte.`;
 
   const cover = resort.cover_image_url || "https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg";
+  const canonicalUrl = `https://www.snow-explorer.com/stations/${resort.slug}`;
 
   // URLs plan (ordre de priorité : cfg.pistes → resort.* à plat)
   const pistesCfg = cfg?.pistes || null;
@@ -1351,9 +1304,10 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
 
   const mapCaption: string | null = pistesCfg?.caption ?? (resort as any)?.pistes_caption ?? null;
 
-  const descriptionHtml: string = ((cfg?.description?.html as string) || resort.description_md || "").trim();
-
-  const hasDescription = Boolean(descriptionHtml);
+  const description = resort.description_md || cfg?.description?.html || "";
+  const descriptionParagraphs = description
+    ? description.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean)
+    : [];
   // Coords
   const [geoLat, setGeoLat] = useState<number | null>(resort.latitude ?? null);
   const [geoLon, setGeoLon] = useState<number | null>(resort.longitude ?? null);
@@ -1396,19 +1350,52 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
   const snowparkCaption: string | null = (cfg as any)?.snowpark?.caption || null;
 
   // clics snowpark (ligne + plan)
-  const snowparksCountForCard =
-    (typeof (cfg as any)?.snowparks?.count === "number" ? (cfg as any).snowparks.count : null) ??
-    (typeof (cfg as any)?.widgets?.snowparks?.count === "number" ? (cfg as any).widgets.snowparks.count : null) ??
-    0;
+  const snowparksCountForCard = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
   const goSnowpark = () => router.push(`/stations/${resort.slug}/snowpark`);
+  const hasConditionsAside = Boolean(cfg?.webcams?.enabled || cfg?.meteo?.enabled || snowparkUrl);
+
+  const pisteColors = cfg?.pistes?.colors;
+  const computedPistesCount = resort.pistes_count ?? sumAvailable(
+    pisteColors?.green, pisteColors?.blue, pisteColors?.red, pisteColors?.black
+  );
+  const computedLiftsCount = resort.lifts_count ?? sumAvailable(
+    cfg?.remontees?.tireFesses, cfg?.remontees?.telesieges, cfg?.remontees?.telepheriques
+  );
+  const webPageStructuredData = {
+    "@context": "https://schema.org", "@type": "WebPage", name: seoTitle, url: canonicalUrl,
+    inLanguage: "fr-FR", ...(seoDescription ? { description: seoDescription } : {}),
+    ...(resort.cover_image_url ? { primaryImageOfPage: { "@type": "ImageObject", url: resort.cover_image_url } } : {}),
+  };
+  const breadcrumbStructuredData = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: "https://www.snow-explorer.com/" },
+      { "@type": "ListItem", position: 2, name: "Stations", item: "https://www.snow-explorer.com/stations" },
+      { "@type": "ListItem", position: 3, name: resort.name, item: canonicalUrl },
+    ],
+  };
 
   return (
     <>
       <Head>
-        <title>{title}</title>
-        <meta name="description" content={metaDesc} />
-        <meta property="og:title" content={title} />
-        <meta property="og:image" content={cover} />
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:site_name" content="Snow Explorer" />
+        <meta property="og:title" content={seoTitle} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        {resort.cover_image_url ? <meta property="og:image" content={resort.cover_image_url} /> : null}
+        {resort.cover_image_url ? <meta property="og:image:alt" content={`Photo de ${resort.name}`} /> : null}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        {resort.cover_image_url ? <meta name="twitter:image" content={resort.cover_image_url} /> : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageStructuredData) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }} />
       </Head>
 
       {/* HERO */}
@@ -1428,6 +1415,11 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
 
       {/* LAYOUT */}
       <main className="station-profile-page">
+        <nav aria-label="Fil d’Ariane" style={{ margin: "16px 0", color: "#4b5563", fontSize: 14 }}>
+          <Link href="/">Accueil</Link><span aria-hidden="true"> &gt; </span>
+          <Link href="/stations">Stations</Link><span aria-hidden="true"> &gt; </span>
+          <span aria-current="page">{resort.name}</span>
+        </nav>
         <section className="station-overview-card">
           <div className="station-overview-card__logo">
             {resort.logo_url ? (
@@ -1440,8 +1432,10 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
           <div>
             <p className="eyebrow">Résumé</p>
             <h2>{resort.name}</h2>
-            {hasDescription ? (
-              <div className="station-description" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+            {descriptionParagraphs.length ? (
+              <div className="station-description">
+                {descriptionParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+              </div>
             ) : (
               <p className="station-description station-description--empty">Description détaillée à venir.</p>
             )}
@@ -1449,39 +1443,38 @@ const ResortPage: NextPage<Props> = ({ slug, resort, pistes, lifts, cfg }) => {
           <dl className="station-overview-card__facts">
             <div><dt>Altitude</dt><dd>{dash(resort.altitude_base_m)} m – {dash(resort.altitude_top_m)} m</dd></div>
             <div><dt>Domaine</dt><dd>{dash(resort.ski_area_km)} km</dd></div>
-            <div><dt>Pistes</dt><dd>{dash(resort.pistes_count)}</dd></div>
+            <div><dt>Pistes</dt><dd>{dash(computedPistesCount)}</dd></div>
           </dl>
         </section>
 
         {/* Tuiles info */}
-        <StationExtraPanels resort={resort} cfg={cfg as any} />
+        <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} />
 
         {/* Ligne A : plan + widgets droite */}
-        <section id="station-conditions" className="stations-layout">
-          <div>
-            <PlanPistesFigure small={mapSmall} large={mapLarge} caption={mapCaption} />
-          </div>
+        {(mapSmall || mapLarge || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
+          {(mapSmall || mapLarge) ? <div>
+            <PlanPistesFigure name={resort.name} small={mapSmall} large={mapLarge} caption={mapCaption} />
+          </div> : null}
 
-          <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} />
-            <MeteoblueSkiWidget lat={geoLat} lon={geoLon} />
+          {hasConditionsAside ? <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {cfg?.webcams?.enabled ? <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} /> : null}
+            {cfg?.meteo?.enabled ? <MeteoblueSkiWidget lat={geoLat} lon={geoLon} /> : null}
             <SnowparkCard
+              name={resort.name}
               url={snowparkUrl}
               caption={snowparkCaption || undefined}
               clickable={snowparksCountForCard > 0}
               onClick={snowparksCountForCard > 0 ? goSnowpark : undefined}
             />
-          </aside>
-        </section>
+          </aside> : null}
+        </section> : null}
 
         {/* Forfaits */}
-        <section style={{ marginTop: 20 }}>
-  <StationForfaitsBlock
+        {cfg?.forfaits?.enabled ? <div style={{ marginTop: 20 }}><StationForfaitsBlock
     enabled={cfg?.forfaits?.enabled}
     columns={cfg?.forfaits?.columns || []}
     items={cfg?.forfaits?.items || []}
-  />
-</section>
+        /></div> : null}
       </main>
 
       <style jsx global>{`
@@ -1533,8 +1526,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   // 1) Resort depuis l'API Render (ou local en dev)
   let resort: Resort | null = null;
-  let pistes: Piste[] = [];
-  let lifts: Lift[] = [];
   try {
     const api =
       process.env.NEXT_PUBLIC_SKI_API_BASE ||
@@ -1552,10 +1543,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     if (r.ok) {
       const data = await r.json();
       resort = (data?.resort ?? data ?? null) as Resort | null;
-      pistes = Array.isArray(data?.pistes) ? data.pistes : [];
-      lifts = Array.isArray(data?.lifts) ? data.lifts : [];
     }
-  } catch {
+  } catch (error) {
+    console.error(`[stations/[slug]] resort request failed for ${slug}`, error instanceof Error ? error.message : "unknown_error");
     return { notFound: true };
   }
 
@@ -1569,17 +1559,67 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = await fetchStationWidgetsConfig(slug);
   } catch (e: any) {
     if (e?.status === 404) {
-      console.info(`[stations/[slug]] widgets 404 for ${slug} -> notFound`);
-      return { notFound: true };
+      console.info(`[stations/[slug]] widgets not configured for ${slug}`);
+    } else {
+      console.error(`[stations/[slug]] widgets request failed for ${slug}`, e instanceof Error ? e.message : "unknown_error");
     }
     cfg = null;
   }
 
-  if (!resort || resort.is_active === false || resort.is_active === null) {
+  if (
+    !resort ||
+    resort.is_active === false ||
+    resort.is_active === null ||
+    resort.is_public === false ||
+    resort.is_published === false
+  ) {
     return { notFound: true };
   }
 
-  return { props: { slug, resort, pistes, lifts, cfg } };
+  const cleanCfg: StationWidgetsConfig | null = cfg ? {
+    stationSlug: resort.slug,
+    pistes: {
+      enabled: Boolean(cfg.pistes?.enabled),
+      smallMapUrl: cfg.pistes?.smallMapUrl || null,
+      largeMapUrl: cfg.pistes?.largeMapUrl || null,
+      caption: cfg.pistes?.caption || null,
+      ...(cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
+    },
+    meteo: { enabled: Boolean(cfg.meteo?.enabled), iframeUrl: cfg.meteo?.iframeUrl || null },
+    description: {
+      enabled: Boolean(cfg.description?.enabled),
+      html: cfg.description?.html || null,
+      metaTitle: cfg.description?.metaTitle || null,
+      metaDescription: cfg.description?.metaDescription || null,
+    },
+    forfaits: {
+      enabled: Boolean(cfg.forfaits?.enabled),
+      columns: cfg.forfaits?.columns || [],
+      items: cfg.forfaits?.items || [],
+    },
+    webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
+    snow: {
+      enabled: Boolean(cfg.snow?.enabled),
+      iframeUrl: cfg.snow?.iframeUrl || null,
+      openingDate: cfg.snow?.openingDate || null,
+      closingDate: cfg.snow?.closingDate || null,
+      ...(cfg.snow?.season ? { season: {
+        openingDate: cfg.snow.season.openingDate || null,
+        closingDate: cfg.snow.season.closingDate || null,
+      } } : {}),
+    },
+    snowpark: {
+      enabled: Boolean(cfg.snowpark?.enabled),
+      mapUrl: cfg.snowpark?.mapUrl || null,
+      imageUrl: cfg.snowpark?.imageUrl || null,
+      caption: cfg.snowpark?.caption || null,
+    },
+    ...(cfg.remontees ? { remontees: cfg.remontees } : {}),
+    ...(cfg.snowparks ? { snowparks: cfg.snowparks } : {}),
+  } : null;
+
+  const serializedResort = JSON.parse(JSON.stringify(resort)) as Resort;
+  return { props: { resort: serializedResort, cfg: cleanCfg } };
 };
 
 export default ResortPage;
