@@ -1,28 +1,20 @@
 ﻿// src/pages/api/ski/resorts/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const API =
-  process.env.NEXT_PUBLIC_SKI_API_BASE ||
-  process.env.SKI_API_URL ||
-  process.env.API_URL ||
-  process.env.BACKEND_URL ||
-  "http://127.0.0.1:5001";
+import { getResortsApiUrl, getServerApiBase } from "@/lib/api/resorts";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
       const q = (req.query.q ?? "").toString().trim();
-      // ✅ ici on utilise les backticks pour interpoler la variable API
-      const url = q.length
-        ? `${API}/api/resorts/?q=${encodeURIComponent(q)}`
-        : `${API}/api/resorts/`;
+      const url = getResortsApiUrl({ query: q, server: true });
       const r = await fetch(url);
       const data = await r.json().catch(() => []);
       return res.status(r.ok ? 200 : r.status).json(data);
     }
 
     if (req.method === "POST") {
-      const r = await fetch(`${API}/api/admin/resorts/`, {
+      const apiBase = getServerApiBase();
+      const r = await fetch(`${apiBase}/api/admin/resorts/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req.body || {}),

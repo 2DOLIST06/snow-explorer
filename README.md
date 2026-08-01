@@ -2,6 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Backend configuration
+
+Server-side rendering and production builds require the backend origin in
+`API_URL` (for example, `https://api.example.com`, without an API path).
+`NEXT_PUBLIC_API_URL` is supported as a fallback when the deployment platform
+only exposes that existing variable. The legacy `SKI_API_URL`, `BACKEND_URL`,
+and `NEXT_PUBLIC_SKI_API_BASE` names remain supported for current deployments.
+
+The homepage and the `/api/ski/resorts/` browser proxy both request the real
+backend resource at `/api/resorts/`. A localhost default is available only in
+development; a production build fails explicitly when none of the variables
+above is configured.
+
 First, run the development server:
 
 ```bash

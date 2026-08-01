@@ -5,17 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-
-type Resort = {
-  id: string;
-  name: string;
-  slug: string;
-  is_active?: boolean;
-  region?: {
-    name?: string;
-  };
-  imageUrl?: string;
-};
+import {
+  getResortsApiUrl,
+  getValidActiveResorts,
+  parseResortsPayload,
+  type Resort,
+} from "@/lib/api/resorts";
 
 type HomeProps = {
   initialResorts: Resort[];
@@ -59,21 +54,9 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     [],
   );
 
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5001";
-
   const fetchUrl = useMemo(() => {
-    const base =
-      typeof window !== "undefined"
-        ? "/api/ski/resorts/"
-        : `${apiBase}/api/resorts/`;
-
-    const trimmedQuery = query.trim();
-
-    return trimmedQuery
-      ? `${base}?q=${encodeURIComponent(trimmedQuery)}`
-      : base;
-  }, [apiBase, query]);
+    return getResortsApiUrl({ query });
+  }, [query]);
 
   useEffect(() => {
     let cancel = false;
@@ -88,19 +71,15 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
           throw new Error("Impossible de récupérer les stations");
         }
 
-        const data: Resort[] = await response.json();
-
-        const activeOnly = Array.isArray(data)
-          ? data.filter(
-              (resort) =>
-                resort?.is_active !== false && resort?.is_active !== null,
-            )
-          : [];
+        const activeOnly = getValidActiveResorts(
+          parseResortsPayload(await response.json()),
+        );
 
         if (!cancel) {
           setItems(activeOnly);
         }
-      } catch {
+      } catch (error) {
+        console.error("Échec de la recherche de stations:", error);
         if (!cancel) {
           setItems([]);
         }
@@ -122,33 +101,21 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
 
     async function loadAllResorts() {
       try {
-        const base =
-          typeof window !== "undefined"
-            ? "/api/ski/resorts/"
-            : `${apiBase}/api/resorts/`;
-
-        const response = await fetch(base);
+        const response = await fetch(getResortsApiUrl());
 
         if (!response.ok) {
           throw new Error("Impossible de récupérer les stations");
         }
 
-        const data: Resort[] = await response.json();
-
-        const activeOnly = Array.isArray(data)
-          ? data.filter(
-              (resort) =>
-                resort?.is_active !== false && resort?.is_active !== null,
-            )
-          : [];
+        const activeOnly = getValidActiveResorts(
+          parseResortsPayload(await response.json()),
+        );
 
         if (!cancel) {
           setAllResorts(activeOnly);
         }
-      } catch {
-        if (!cancel) {
-          setAllResorts([]);
-        }
+      } catch (error) {
+        console.error("Échec du rafraîchissement des stations:", error);
       }
     }
 
@@ -157,7 +124,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     return () => {
       cancel = true;
     };
-  }, [apiBase]);
+  }, []);
 
   const featuredResorts = useMemo(() => {
     const source = allResorts.length > 0 ? allResorts : items;
@@ -978,30 +945,35 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
 export default Home;
 
 export const getStaticProps: GetStaticProps<HomeProps> = async () => {
-  const apiBase =
-    process.env.SKI_API_URL ||
-    process.env.API_URL ||
-    process.env.BACKEND_URL ||
-    process.env.NEXT_PUBLIC_SKI_API_BASE ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:5001";
+  const url = getResortsApiUrl({ server: true });
+  console.info(`[homepage:getStaticProps] GET ${url}`);
 
   try {
-    const response = await fetch(`${apiBase}/api/resorts/`);
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
+    const contentType = response.headers.get("content-type") || "unknown";
+    console.info(
+      `[homepage:getStaticProps] status=${response.status} content-type=${contentType}`,
+    );
+
     if (!response.ok) {
-      throw new Error(`Impossible de récupérer les stations (${response.status})`);
+      throw new Error(`GET ${url} failed with HTTP ${response.status}`);
+    }
+    if (!contentType.toLowerCase().includes("application/json")) {
+      throw new Error(`GET ${url} returned an unexpected content-type: ${contentType}`);
     }
 
-    const data: Resort[] = await response.json();
-    const initialResorts = Array.isArray(data)
-      ? data.filter(
-          (resort) => resort?.is_active !== false && resort?.is_active !== null,
-        )
-      : [];
+    const resorts = parseResortsPayload(await response.json());
+    const activeResorts = getValidActiveResorts(resorts);
+    const initialResorts = activeResorts.slice(0, 6);
+    console.info(
+      `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
+    );
 
     return { props: { initialResorts }, revalidate: 3600 };
   } catch (error) {
-    console.error("Échec du préchargement des stations de la page d’accueil:", error);
-    return { props: { initialResorts: [] }, revalidate: 3600 };
+    console.error(`[homepage:getStaticProps] GET ${url} failed:`, error);
+    throw error;
   }
 };
