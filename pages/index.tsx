@@ -1,7 +1,8 @@
 // src/pages/index.tsx
-import type { NextPage } from "next";
+import type { GetStaticProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 
@@ -16,13 +17,33 @@ type Resort = {
   imageUrl?: string;
 };
 
-const Home: NextPage = () => {
+type HomeProps = {
+  initialResorts: Resort[];
+};
+
+const websiteStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Snow Explorer",
+  url: "https://www.snow-explorer.com/",
+  inLanguage: "fr-FR",
+};
+
+const organizationStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Snow Explorer",
+  url: "https://www.snow-explorer.com/",
+  logo: "https://www.snow-explorer.com/logo.png",
+};
+
+const Home: NextPage<HomeProps> = ({ initialResorts }) => {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Resort[]>([]);
-  const [allResorts, setAllResorts] = useState<Resort[]>([]);
+  const [allResorts, setAllResorts] = useState<Resort[]>(initialResorts);
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<number>(-1);
 
@@ -261,6 +282,32 @@ const Home: NextPage = () => {
         <meta
           name="description"
           content="Découvrez et comparez les stations de ski en France selon leur domaine skiable, leur altitude, leurs pistes, la météo, la neige et les webcams."
+        />
+        <link rel="canonical" href="https://www.snow-explorer.com/" />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:site_name" content="Snow Explorer" />
+        <meta property="og:title" content="Guide des stations de ski en France | Snow Explorer" />
+        <meta property="og:description" content="Découvrez et comparez les stations de ski en France selon leur domaine skiable, leur altitude, leurs pistes, la météo, la neige et les webcams." />
+        <meta property="og:url" content="https://www.snow-explorer.com/" />
+        <meta property="og:image" content="https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg" />
+        <meta property="og:image:alt" content="Station de ski en France entourée de montagnes enneigées" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Guide des stations de ski en France | Snow Explorer" />
+        <meta name="twitter:description" content="Découvrez et comparez les stations de ski en France selon leur domaine skiable, leur altitude, leurs pistes, la météo, la neige et les webcams." />
+        <meta name="twitter:image" content="https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteStructuredData),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationStructuredData),
+          }}
         />
       </Head>
 
@@ -507,10 +554,9 @@ const Home: NextPage = () => {
               }}
             >
               {featuredResortsWithImage.map((resort) => (
-                <button
+                <Link
                   key={resort.id}
-                  type="button"
-                  onClick={() => handlePick(resort)}
+                  href={`/stations/${resort.slug}`}
                   style={{
                     minWidth: 320,
                     maxWidth: 340,
@@ -578,7 +624,7 @@ const Home: NextPage = () => {
                       </div>
                     </div>
                   </div>
-                </button>
+                </Link>
               ))}
             </div>
           </section>
@@ -930,3 +976,32 @@ const Home: NextPage = () => {
 };
 
 export default Home;
+
+export const getStaticProps: GetStaticProps<HomeProps> = async () => {
+  const apiBase =
+    process.env.SKI_API_URL ||
+    process.env.API_URL ||
+    process.env.BACKEND_URL ||
+    process.env.NEXT_PUBLIC_SKI_API_BASE ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:5001";
+
+  try {
+    const response = await fetch(`${apiBase}/api/resorts/`);
+    if (!response.ok) {
+      throw new Error(`Impossible de récupérer les stations (${response.status})`);
+    }
+
+    const data: Resort[] = await response.json();
+    const initialResorts = Array.isArray(data)
+      ? data.filter(
+          (resort) => resort?.is_active !== false && resort?.is_active !== null,
+        )
+      : [];
+
+    return { props: { initialResorts }, revalidate: 3600 };
+  } catch (error) {
+    console.error("Échec du préchargement des stations de la page d’accueil:", error);
+    return { props: { initialResorts: [] }, revalidate: 3600 };
+  }
+};

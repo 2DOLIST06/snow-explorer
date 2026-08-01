@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, MapPin, Menu, Search, UserRound, X } from "lucide-react";
@@ -13,12 +14,13 @@ type Resort = {
 };
 
 const navItems = [
-  { label: "Stations", kind: "stations" },
+  { label: "Stations", href: "/stations", kind: "stations" },
   { label: "Météo", href: "/meteo" },
-  { label: "Forfaits", href: "/stations" },
-  { label: "Activités", href: "/stations" },
-  { label: "Bons plans", href: "/stations" },
-  { label: "Contact", href: "/contact" },
+  // TODO: rendre ces entrées cliquables lorsque leurs pages dédiées existeront.
+  { label: "Forfaits" },
+  { label: "Activités" },
+  { label: "Bons plans" },
+  { label: "Contact" },
 ];
 
 export default function ProHeader() {
@@ -124,15 +126,15 @@ export default function ProHeader() {
   return (
     <header className={`site-header ${scrolled ? "site-header--compact" : ""}`}>
       <div className="site-header__bar">
-        <button type="button" className="brand" onClick={() => router.push("/")} aria-label="Accueil Snow Explorer">
-          <Image src="/logo.png" alt="" width={48} height={48} priority />
+        <Link href="/" className="brand" aria-label="Accueil Snow Explorer">
+          <Image src="/logo.png" alt="Snow Explorer" width={48} height={48} priority />
           <span><strong>Snow Explorer</strong><small>Stations, neige et météo</small></span>
-        </button>
+        </Link>
 
         <div className="global-search" ref={searchRef}>
           <label className="sr-only" htmlFor="global-station-search">Rechercher une station, ville ou destination</label>
           <Search className="global-search__icon" size={20} aria-hidden="true" />
-          <input id="global-station-search" value={query} onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); setCursor(-1); }} onFocus={() => setSearchOpen(true)} onKeyDown={onSearchKeyDown} placeholder="Station, ville, domaine skiable…" aria-expanded={searchOpen} aria-controls="global-search-results" autoComplete="off" />
+          <input id="global-station-search" role="combobox" aria-autocomplete="list" value={query} onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); setCursor(-1); }} onFocus={() => setSearchOpen(true)} onKeyDown={onSearchKeyDown} placeholder="Station, ville, domaine skiable…" aria-expanded={searchOpen} aria-controls="global-search-results" autoComplete="off" />
           {loadingSearch && <Loader2 className="global-search__loader" size={18} aria-label="Recherche en cours" />}
           {searchOpen && (
             <div id="global-search-results" className="search-panel" role="listbox">
@@ -156,15 +158,15 @@ export default function ProHeader() {
 
       <nav className="desktop-nav desktop-nav--tier" aria-label="Navigation principale">
         <div className="desktop-nav__inner">
-          {navItems.map((item) => (
-            <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">
-              {item.label}
-            </button>
+          {navItems.map((item) => item.href ? (
+            <Link key={item.label} href={item.href} className="nav-link">{item.label}</Link>
+          ) : (
+            <span key={item.label} className="nav-link" aria-disabled="true">{item.label}</span>
           ))}
         </div>
       </nav>
 
-      {mobileOpen && <nav className="mobile-nav" aria-label="Navigation mobile">{navItems.map((item) => <button key={item.label} type="button" onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : router.push(item.href || "/")} className="nav-link">{item.label}</button>)}</nav>}
+      {mobileOpen && <nav className="mobile-nav" aria-label="Navigation mobile">{navItems.map((item) => <button key={item.label} type="button" disabled={!item.href} onClick={() => item.kind === "stations" ? setStationsOpen((v) => !v) : item.href && router.push(item.href)} className="nav-link">{item.label}</button>)}</nav>}
 
       <div ref={stationsRef}>{stationsOpen && <div className="stations-mega"><div className="stations-mega__head"><div><p className="eyebrow">Explorer</p><h2>Stations par nom</h2></div><label className="field field--compact"><span>Filtrer</span><input value={stationsFilter} onChange={(event) => setStationsFilter(event.target.value)} placeholder="Nom, région, département" /></label></div><div className="stations-grid">{stationsByLetter.length === 0 && <div className="empty-state">Aucune station trouvée</div>}{stationsByLetter.map(([letter, letterStations]) => <section key={letter} className="station-letter"><h3>{letter}</h3>{letterStations.slice(0, 12).map((station) => <button key={station.id || station.slug} type="button" onClick={() => goToStation(station)}>{station.name}<small>{station.region?.name || station.department?.name || ""}</small></button>)}</section>)}</div></div>}</div>
     </header>

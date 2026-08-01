@@ -1,10 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 
 const groups = [
-  { title: "Découvrir", links: ["Stations", "Destinations", "Domaines skiables", "Bons plans"] },
-  { title: "Météo & neige", links: ["Météo des stations", "Prévisions neige", "Webcams", "Bulletins"] },
-  { title: "Pratique", links: ["Forfaits", "Activités", "Contact", "Aide"] },
-  { title: "Snow Explorer", links: ["À propos", "Mentions légales", "Confidentialité", "Cookies"] },
+  // TODO: ajouter les URL absentes lorsque les pages correspondantes existeront.
+  { title: "Découvrir", links: [{ label: "Stations", href: "/stations" }, { label: "Destinations" }, { label: "Domaines skiables" }, { label: "Bons plans" }] },
+  { title: "Météo & neige", links: [{ label: "Météo des stations", href: "/meteo" }, { label: "Prévisions neige" }, { label: "Webcams" }, { label: "Bulletins" }] },
+  { title: "Pratique", links: [{ label: "Forfaits" }, { label: "Activités" }, { label: "Contact" }, { label: "Aide" }] },
+  { title: "Snow Explorer", links: [{ label: "À propos" }, { label: "Mentions légales" }, { label: "Confidentialité" }, { label: "Cookies" }] },
 ];
 
 export default function Footer() {
@@ -12,14 +14,14 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div className="site-footer__brand">
-          <div className="brand brand--footer"><Image src="/logo.png" alt="" width={46} height={46} /><span><strong>Snow Explorer</strong><small>Préparer la montagne avec des informations claires, fiables et lisibles.</small></span></div>
+          <div className="brand brand--footer"><Image src="/logo.png" alt="Snow Explorer" width={46} height={46} /><span><strong>Snow Explorer</strong><small>Préparer la montagne avec des informations claires, fiables et lisibles.</small></span></div>
           <p>Stations, météo, neige et informations pratiques réunies dans une expérience pensée pour décider vite et partir sereinement.</p>
         </div>
         <nav className="footer-links" aria-label="Liens de pied de page">
           {groups.map((group) => (
             <details key={group.title} open>
               <summary>{group.title}</summary>
-              <ul>{group.links.map((link) => <li key={link}><a href="#">{link}</a></li>)}</ul>
+              <ul>{group.links.map((link) => <li key={link.label}>{link.href ? <Link href={link.href}>{link.label}</Link> : <span>{link.label}</span>}</li>)}</ul>
             </details>
           ))}
         </nav>
