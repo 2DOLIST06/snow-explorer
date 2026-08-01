@@ -1,6 +1,10 @@
 ﻿// src/pages/api/ski/resorts/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getResortsApiUrl, getServerApiBase } from "@/lib/api/resorts";
+import {
+  getResortsApiUrl,
+  getServerApiBase,
+  parseResortsPayload,
+} from "@/lib/api/resorts";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -9,7 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const url = getResortsApiUrl({ query: q, server: true });
       const r = await fetch(url);
       const data = await r.json().catch(() => []);
-      return res.status(r.ok ? 200 : r.status).json(data);
+      if (!r.ok) {
+        return res.status(r.status).json(data);
+      }
+
+      // The public backend can return either a bare array or a paginated
+      // object. Browser consumers all expect this proxy to expose an array.
+      return res.status(200).json(parseResortsPayload(data));
     }
 
     if (req.method === "POST") {
