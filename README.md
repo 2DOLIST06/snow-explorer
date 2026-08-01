@@ -15,6 +15,11 @@ backend resource at `/api/resorts/`. A localhost default is available only in
 development; a production build fails explicitly when none of the variables
 above is configured.
 
+During static generation, transient upstream responses such as HTTP 503 are
+retried four times with exponential backoff. If the backend remains unavailable,
+the build still fails and reports the final status and a shortened response body;
+it never replaces the stations with an unexplained empty array.
+
 First, run the development server:
 
 ```bash

@@ -52,6 +52,19 @@ export function getResortsApiUrl(options?: {
   return query ? `${base}?q=${encodeURIComponent(query)}` : base;
 }
 
+/** Remove credentials and query values before an API URL is written to build logs. */
+export function getSafeApiUrlForLogs(value: string): string {
+  try {
+    const url = new URL(value);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    return url.toString();
+  } catch {
+    return "[invalid API URL]";
+  }
+}
+
 export function parseResortsPayload(payload: unknown): Resort[] {
   let candidates: unknown = payload;
 

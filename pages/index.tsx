@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
   getResortsApiUrl,
+  getSafeApiUrlForLogs,
   getValidActiveResorts,
   parseResortsPayload,
   type Resort,
@@ -944,24 +945,87 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
 
 export default Home;
 
+const BUILD_FETCH_ATTEMPTS = 4;
+const RETRYABLE_BUILD_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function wait(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+function sanitizeBuildError(error: unknown, url: string, safeUrl: string): Error {
+  const source = error instanceof Error ? error : new Error(String(error));
+  const sanitized = new Error(source.message.split(url).join(safeUrl));
+  sanitized.name = source.name;
+  sanitized.stack = source.stack?.split(url).join(safeUrl);
+  return sanitized;
+}
+
+async function fetchResortsDuringBuild(url: string): Promise<Response> {
+  const safeUrl = getSafeApiUrlForLogs(url);
+
+  for (let attempt = 1; attempt <= BUILD_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      console.info(
+        `[homepage:getStaticProps] GET ${safeUrl} attempt=${attempt}/${BUILD_FETCH_ATTEMPTS}`,
+      );
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(15_000),
+      });
+      const contentType = response.headers.get("content-type") || "unknown";
+      console.info(
+        `[homepage:getStaticProps] attempt=${attempt} status=${response.status} content-type=${contentType}`,
+      );
+
+      if (response.ok || !RETRYABLE_BUILD_STATUSES.has(response.status)) {
+        return response;
+      }
+
+      if (attempt === BUILD_FETCH_ATTEMPTS) {
+        return response;
+      }
+
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1_000, 10_000)
+        : 1_000 * 2 ** (attempt - 1);
+      console.warn(
+        `[homepage:getStaticProps] transient HTTP ${response.status}; retrying in ${delayMs}ms`,
+      );
+      await wait(delayMs);
+    } catch (error) {
+      const sanitizedError = sanitizeBuildError(error, url, safeUrl);
+      console.error(
+        `[homepage:getStaticProps] attempt=${attempt} request error:`,
+        sanitizedError,
+      );
+      if (attempt === BUILD_FETCH_ATTEMPTS) {
+        throw sanitizedError;
+      }
+      await wait(1_000 * 2 ** (attempt - 1));
+    }
+  }
+
+  throw new Error("Unreachable build-time resort fetch state");
+}
+
 export const getStaticProps: GetStaticProps<HomeProps> = async () => {
   const url = getResortsApiUrl({ server: true });
-  console.info(`[homepage:getStaticProps] GET ${url}`);
+  const safeUrl = getSafeApiUrlForLogs(url);
 
   try {
-    const response = await fetch(url, {
-      headers: { accept: "application/json" },
-    });
+    const response = await fetchResortsDuringBuild(url);
     const contentType = response.headers.get("content-type") || "unknown";
-    console.info(
-      `[homepage:getStaticProps] status=${response.status} content-type=${contentType}`,
-    );
 
     if (!response.ok) {
-      throw new Error(`GET ${url} failed with HTTP ${response.status}`);
+      const responseBody = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
+      throw new Error(
+        `GET ${safeUrl} failed with HTTP ${response.status}` +
+          (responseBody ? `; response=${responseBody}` : ""),
+      );
     }
     if (!contentType.toLowerCase().includes("application/json")) {
-      throw new Error(`GET ${url} returned an unexpected content-type: ${contentType}`);
+      throw new Error(`GET ${safeUrl} returned an unexpected content-type: ${contentType}`);
     }
 
     const resorts = parseResortsPayload(await response.json());
@@ -973,7 +1037,7 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
 
     return { props: { initialResorts }, revalidate: 3600 };
   } catch (error) {
-    console.error(`[homepage:getStaticProps] GET ${url} failed:`, error);
+    console.error(`[homepage:getStaticProps] GET ${safeUrl} failed:`, error);
     throw error;
   }
 };
