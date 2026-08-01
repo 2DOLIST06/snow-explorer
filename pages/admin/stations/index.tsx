@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import BulkImportModal from "@/components/admin/imports/BulkImportModal";
+import { downloadBlobResponse, getAllStationsExportResponse, getTemplateResponse } from "@/lib/api/stationImports";
 
 const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
 
@@ -26,6 +29,15 @@ export default function AdminStationsList() {
   const [loading, setLoading] = useState<boolean>(true);
   const [bulkUpdating, setBulkUpdating] = useState<boolean>(false);
   const [err, setErr] = useState<string>("");
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [download, setDownload] = useState<"all" | "template" | null>(null);
+
+  const runDownload = async (kind: "all" | "template") => {
+    setDownload(kind); setErr(""); setMsg(kind === "all" ? "Export en cours…" : "Téléchargement du modèle…");
+    try { const response = kind === "all" ? await getAllStationsExportResponse() : await getTemplateResponse(); downloadBlobResponse(response, kind === "all" ? "stations.json" : "modele-stations.json"); setMsg("Téléchargement démarré."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Téléchargement impossible."); setMsg(""); }
+    finally { setDownload(null); }
+  };
 
   async function load() {
     setLoading(true);
@@ -163,7 +175,11 @@ export default function AdminStationsList() {
   return (
     <main style={{ maxWidth: 960, margin: "24px auto", padding: "0 16px" }}>
       <h1>Admin — Stations</h1>
-      {msg ? <div style={{ margin: "6px 0", fontSize: 13, color: "#2563eb" }}>{msg}</div> : null}
+      <section className="admin-import-actions" aria-labelledby="json-actions-title">
+        <div><h2 id="json-actions-title">Import et export JSON</h2><p>Le modèle présente la structure reconnue par l’import. Un champ absent conserve sa valeur actuelle. Une valeur null supprime la valeur lorsque le champ l’autorise.</p></div>
+        <div className="admin-import-actions__buttons"><button type="button" className="btn btn--secondary" disabled={download !== null} onClick={() => void runDownload("all")}>{download === "all" ? "Export en cours…" : "Exporter toutes les stations"}</button><button type="button" className="btn btn--primary" onClick={() => setBulkImportOpen(true)}>Importer plusieurs stations</button><button type="button" className="btn btn--secondary" disabled={download !== null} onClick={() => void runDownload("template")}>{download === "template" ? "Téléchargement…" : "Télécharger le modèle JSON"}</button><Link className="btn btn--secondary" href="/admin/imports">Voir l’historique des imports</Link></div>
+      </section>
+      {msg ? <div aria-live="polite" style={{ margin: "6px 0", fontSize: 13, color: "#2563eb" }}>{msg}</div> : null}
       {err ? <div style={{ margin: "6px 0", fontSize: 13, color: "#dc2626" }}>Erreur : {err}</div> : null}
 
       {/* Formulaire de création */}
@@ -292,6 +308,7 @@ export default function AdminStationsList() {
 
         {!loading && !err && filtered.length === 0 && <div style={{ color: "#6b7280" }}>Aucune station trouvée.</div>}
       </div>
+      <BulkImportModal open={bulkImportOpen} onClose={() => setBulkImportOpen(false)} onImported={load} />
     </main>
   );
 }

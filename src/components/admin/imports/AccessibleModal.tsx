@@ -1,0 +1,8 @@
+import { useEffect, useId, useRef } from "react";
+
+export default function AccessibleModal({ open, title, busy = false, onClose, children }: { open: boolean; title: string; busy?: boolean; onClose: () => void; children: React.ReactNode }) {
+  const titleId = useId(); const dialog = useRef<HTMLDivElement>(null); const trigger = useRef<HTMLElement | null>(null);
+  useEffect(() => { if (!open) return; trigger.current = document.activeElement as HTMLElement; const node = dialog.current; node?.focus(); const key = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); if (e.key === "Tab" && node) { const focusable = Array.from(node.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href]')); if (!focusable.length) return; const first = focusable[0], last = focusable[focusable.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } }; document.addEventListener("keydown", key); return () => { document.removeEventListener("keydown", key); trigger.current?.focus(); }; }, [open, busy, onClose]);
+  if (!open) return null;
+  return <div className="import-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose(); }}><div ref={dialog} className="import-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}><header className="import-modal__header"><h2 id={titleId}>{title}</h2><button type="button" className="import-modal__close" onClick={onClose} disabled={busy} aria-label="Fermer">×</button></header>{children}</div></div>;
+}
