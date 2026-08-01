@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
+import StationImportModal from "@/components/admin/imports/StationImportModal";
+import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 
 const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
 
@@ -754,6 +757,8 @@ export default function AdminStationEdit() {
   const [widgets, setWidgets] = useState<any>({});
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -957,6 +962,8 @@ setWidgets(w);
     await patchWidgets();
     await patchResort();
   };
+
+  const exportJson = async () => { setExporting(true); setErr(""); try { downloadBlobResponse(await getStationExportResponse(String(resort?.id || slug)), `${slug}.json`); setMsg("Téléchargement démarré."); } catch (e) { setErr(e instanceof Error ? e.message : "Export impossible."); } finally { setExporting(false); } };
 
   const setW = (path: string, val: any) => {
     const parts = path.split(".");
@@ -1338,6 +1345,9 @@ const removeForfaitRow = (rowIdx: number) => {
           </div>
 
           <div style={styles.actionRow}>
+            <button type="button" onClick={() => void exportJson()} disabled={exporting} style={styles.secondaryBtn}>{exporting ? "Export en cours…" : "Exporter le JSON"}</button>
+            <button type="button" onClick={() => setImportOpen(true)} style={styles.secondaryBtn}>Importer un JSON</button>
+            <Link href={`/admin/imports?station=${encodeURIComponent(String(resort.id || slug))}`} style={styles.secondaryBtn}>Voir l’historique</Link>
             <button onClick={() => load(slug)} style={styles.secondaryBtn}>
               Rafraîchir
             </button>
@@ -2232,6 +2242,7 @@ const removeForfaitRow = (rowIdx: number) => {
           </div>
         </div>
       </div>
+      <StationImportModal open={importOpen} stationId={String(resort.id || slug)} stationName={resort.name || slug} onClose={() => setImportOpen(false)} onImported={() => load(slug)} />
     </main>
   );
 }
