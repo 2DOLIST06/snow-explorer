@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
 import {
   getResortsApiUrl,
   getSafeApiUrlForLogs,
+  getServerResortsApiUrls,
   getValidActiveResorts,
   parseResortsPayload,
   type Resort,
@@ -977,6 +978,19 @@ async function fetchResortsDuringBuild(url: string): Promise<Response> {
         `[homepage:getStaticProps] attempt=${attempt} status=${response.status} content-type=${contentType}`,
       );
 
+      // A suspended hosting service is a permanent configuration failure, not a
+      // transient 503. Return immediately so getStaticProps can try the next
+      // configured API origin instead of retrying the same suspended service.
+      if (response.status === 503 && contentType.toLowerCase().includes("text/html")) {
+        const body = await response.clone().text();
+        if (/service\s+suspended/i.test(body)) {
+          console.error(
+            `[homepage:getStaticProps] ${safeUrl} reports a suspended service; trying the next configured API origin`,
+          );
+          return response;
+        }
+      }
+
       if (response.ok || !RETRYABLE_BUILD_STATUSES.has(response.status)) {
         return response;
       }
@@ -1010,34 +1024,44 @@ async function fetchResortsDuringBuild(url: string): Promise<Response> {
 }
 
 export const getStaticProps: GetStaticProps<HomeProps> = async () => {
-  const url = getResortsApiUrl({ server: true });
-  const safeUrl = getSafeApiUrlForLogs(url);
+  const urls = getServerResortsApiUrls();
+  const failures: string[] = [];
 
   try {
-    const response = await fetchResortsDuringBuild(url);
-    const contentType = response.headers.get("content-type") || "unknown";
+    for (const url of urls) {
+      const safeUrl = getSafeApiUrlForLogs(url);
+      const response = await fetchResortsDuringBuild(url);
+      const contentType = response.headers.get("content-type") || "unknown";
 
-    if (!response.ok) {
-      const responseBody = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
-      throw new Error(
-        `GET ${safeUrl} failed with HTTP ${response.status}` +
-          (responseBody ? `; response=${responseBody}` : ""),
+      if (!response.ok) {
+        const responseBody = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
+        const failure =
+          `GET ${safeUrl} failed with HTTP ${response.status}` +
+          (responseBody ? `; response=${responseBody}` : "");
+        failures.push(failure);
+        console.error(`[homepage:getStaticProps] ${failure}`);
+        continue;
+      }
+      if (!contentType.toLowerCase().includes("application/json")) {
+        const failure = `GET ${safeUrl} returned an unexpected content-type: ${contentType}`;
+        failures.push(failure);
+        console.error(`[homepage:getStaticProps] ${failure}`);
+        continue;
+      }
+
+      const resorts = parseResortsPayload(await response.json());
+      const activeResorts = getValidActiveResorts(resorts);
+      const initialResorts = activeResorts.slice(0, 6);
+      console.info(
+        `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
       );
-    }
-    if (!contentType.toLowerCase().includes("application/json")) {
-      throw new Error(`GET ${safeUrl} returned an unexpected content-type: ${contentType}`);
+
+      return { props: { initialResorts }, revalidate: 3600 };
     }
 
-    const resorts = parseResortsPayload(await response.json());
-    const activeResorts = getValidActiveResorts(resorts);
-    const initialResorts = activeResorts.slice(0, 6);
-    console.info(
-      `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
-    );
-
-    return { props: { initialResorts }, revalidate: 3600 };
+    throw new Error(`All configured resort API origins failed:\n${failures.join("\n")}`);
   } catch (error) {
-    console.error(`[homepage:getStaticProps] GET ${safeUrl} failed:`, error);
+    console.error("[homepage:getStaticProps] Resort preload failed:", error);
     throw error;
   }
 };

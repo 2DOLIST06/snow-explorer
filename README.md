@@ -20,6 +20,11 @@ retried four times with exponential backoff. If the backend remains unavailable,
 the build still fails and reports the final status and a shortened response body;
 it never replaces the stations with an unexplained empty array.
 
+When more than one of the supported variables is configured, static generation
+tries their distinct origins in priority order. A `503 Service Suspended` HTML
+response is treated as a permanent failure for that origin, so the build moves
+immediately to the next configured origin (for example `NEXT_PUBLIC_API_URL`).
+
 First, run the development server:
 
 ```bash

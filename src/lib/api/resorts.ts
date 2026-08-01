@@ -17,26 +17,35 @@ function withoutTrailingSlash(value: string): string {
 }
 
 /** Resolve the backend origin for code running on the server (including builds). */
-export function getServerApiBase(): string {
-  const configuredBase =
-    process.env.API_URL ||
-    process.env.SKI_API_URL ||
-    process.env.BACKEND_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.NEXT_PUBLIC_SKI_API_BASE;
+export function getServerApiBases(): string[] {
+  const configuredBases = [
+    process.env.API_URL,
+    process.env.SKI_API_URL,
+    process.env.BACKEND_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+    process.env.NEXT_PUBLIC_SKI_API_BASE,
+  ].filter((value): value is string => Boolean(value));
 
-  if (configuredBase) {
-    return withoutTrailingSlash(configuredBase);
+  if (configuredBases.length > 0) {
+    return [...new Set(configuredBases.map(withoutTrailingSlash))];
   }
 
   if (process.env.NODE_ENV !== "production") {
-    return "http://127.0.0.1:5001";
+    return ["http://127.0.0.1:5001"];
   }
 
   throw new Error(
     "API_URL is required to fetch resorts during a production build " +
       "(NEXT_PUBLIC_API_URL is accepted as a fallback).",
   );
+}
+
+export function getServerApiBase(): string {
+  return getServerApiBases()[0];
+}
+
+export function getServerResortsApiUrls(): string[] {
+  return getServerApiBases().map((base) => `${base}${RESORTS_PATH}`);
 }
 
 /** Use the same backend resource through the same-origin proxy in browsers. */
