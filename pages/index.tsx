@@ -5,17 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-
-type Resort = {
-  id: string;
-  name: string;
-  slug: string;
-  is_active?: boolean;
-  region?: {
-    name?: string;
-  };
-  imageUrl?: string;
-};
+import {
+  getResortsApiUrl,
+  getSafeApiUrlForLogs,
+  getServerResortsApiUrls,
+  getValidActiveResorts,
+  parseResortsPayload,
+  type Resort,
+} from "@/lib/api/resorts";
 
 type HomeProps = {
   initialResorts: Resort[];
@@ -59,21 +56,9 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     [],
   );
 
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5001";
-
   const fetchUrl = useMemo(() => {
-    const base =
-      typeof window !== "undefined"
-        ? "/api/ski/resorts/"
-        : `${apiBase}/api/resorts/`;
-
-    const trimmedQuery = query.trim();
-
-    return trimmedQuery
-      ? `${base}?q=${encodeURIComponent(trimmedQuery)}`
-      : base;
-  }, [apiBase, query]);
+    return getResortsApiUrl({ query });
+  }, [query]);
 
   useEffect(() => {
     let cancel = false;
@@ -88,19 +73,15 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
           throw new Error("Impossible de récupérer les stations");
         }
 
-        const data: Resort[] = await response.json();
-
-        const activeOnly = Array.isArray(data)
-          ? data.filter(
-              (resort) =>
-                resort?.is_active !== false && resort?.is_active !== null,
-            )
-          : [];
+        const activeOnly = getValidActiveResorts(
+          parseResortsPayload(await response.json()),
+        );
 
         if (!cancel) {
           setItems(activeOnly);
         }
-      } catch {
+      } catch (error) {
+        console.error("Échec de la recherche de stations:", error);
         if (!cancel) {
           setItems([]);
         }
@@ -122,33 +103,21 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
 
     async function loadAllResorts() {
       try {
-        const base =
-          typeof window !== "undefined"
-            ? "/api/ski/resorts/"
-            : `${apiBase}/api/resorts/`;
-
-        const response = await fetch(base);
+        const response = await fetch(getResortsApiUrl());
 
         if (!response.ok) {
           throw new Error("Impossible de récupérer les stations");
         }
 
-        const data: Resort[] = await response.json();
-
-        const activeOnly = Array.isArray(data)
-          ? data.filter(
-              (resort) =>
-                resort?.is_active !== false && resort?.is_active !== null,
-            )
-          : [];
+        const activeOnly = getValidActiveResorts(
+          parseResortsPayload(await response.json()),
+        );
 
         if (!cancel) {
           setAllResorts(activeOnly);
         }
-      } catch {
-        if (!cancel) {
-          setAllResorts([]);
-        }
+      } catch (error) {
+        console.error("Échec du rafraîchissement des stations:", error);
       }
     }
 
@@ -157,7 +126,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     return () => {
       cancel = true;
     };
-  }, [apiBase]);
+  }, []);
 
   const featuredResorts = useMemo(() => {
     const source = allResorts.length > 0 ? allResorts : items;
@@ -977,31 +946,122 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
 
 export default Home;
 
+const BUILD_FETCH_ATTEMPTS = 4;
+const RETRYABLE_BUILD_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function wait(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+function sanitizeBuildError(error: unknown, url: string, safeUrl: string): Error {
+  const source = error instanceof Error ? error : new Error(String(error));
+  const sanitized = new Error(source.message.split(url).join(safeUrl));
+  sanitized.name = source.name;
+  sanitized.stack = source.stack?.split(url).join(safeUrl);
+  return sanitized;
+}
+
+async function fetchResortsDuringBuild(url: string): Promise<Response> {
+  const safeUrl = getSafeApiUrlForLogs(url);
+
+  for (let attempt = 1; attempt <= BUILD_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      console.info(
+        `[homepage:getStaticProps] GET ${safeUrl} attempt=${attempt}/${BUILD_FETCH_ATTEMPTS}`,
+      );
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(15_000),
+      });
+      const contentType = response.headers.get("content-type") || "unknown";
+      console.info(
+        `[homepage:getStaticProps] attempt=${attempt} status=${response.status} content-type=${contentType}`,
+      );
+
+      // A suspended hosting service is a permanent configuration failure, not a
+      // transient 503. Return immediately so getStaticProps can try the next
+      // configured API origin instead of retrying the same suspended service.
+      if (response.status === 503 && contentType.toLowerCase().includes("text/html")) {
+        const body = await response.clone().text();
+        if (/service\s+suspended/i.test(body)) {
+          console.error(
+            `[homepage:getStaticProps] ${safeUrl} reports a suspended service; trying the next configured API origin`,
+          );
+          return response;
+        }
+      }
+
+      if (response.ok || !RETRYABLE_BUILD_STATUSES.has(response.status)) {
+        return response;
+      }
+
+      if (attempt === BUILD_FETCH_ATTEMPTS) {
+        return response;
+      }
+
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1_000, 10_000)
+        : 1_000 * 2 ** (attempt - 1);
+      console.warn(
+        `[homepage:getStaticProps] transient HTTP ${response.status}; retrying in ${delayMs}ms`,
+      );
+      await wait(delayMs);
+    } catch (error) {
+      const sanitizedError = sanitizeBuildError(error, url, safeUrl);
+      console.error(
+        `[homepage:getStaticProps] attempt=${attempt} request error:`,
+        sanitizedError,
+      );
+      if (attempt === BUILD_FETCH_ATTEMPTS) {
+        throw sanitizedError;
+      }
+      await wait(1_000 * 2 ** (attempt - 1));
+    }
+  }
+
+  throw new Error("Unreachable build-time resort fetch state");
+}
+
 export const getStaticProps: GetStaticProps<HomeProps> = async () => {
-  const apiBase =
-    process.env.SKI_API_URL ||
-    process.env.API_URL ||
-    process.env.BACKEND_URL ||
-    process.env.NEXT_PUBLIC_SKI_API_BASE ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:5001";
+  const urls = getServerResortsApiUrls();
+  const failures: string[] = [];
 
   try {
-    const response = await fetch(`${apiBase}/api/resorts/`);
-    if (!response.ok) {
-      throw new Error(`Impossible de récupérer les stations (${response.status})`);
+    for (const url of urls) {
+      const safeUrl = getSafeApiUrlForLogs(url);
+      const response = await fetchResortsDuringBuild(url);
+      const contentType = response.headers.get("content-type") || "unknown";
+
+      if (!response.ok) {
+        const responseBody = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
+        const failure =
+          `GET ${safeUrl} failed with HTTP ${response.status}` +
+          (responseBody ? `; response=${responseBody}` : "");
+        failures.push(failure);
+        console.error(`[homepage:getStaticProps] ${failure}`);
+        continue;
+      }
+      if (!contentType.toLowerCase().includes("application/json")) {
+        const failure = `GET ${safeUrl} returned an unexpected content-type: ${contentType}`;
+        failures.push(failure);
+        console.error(`[homepage:getStaticProps] ${failure}`);
+        continue;
+      }
+
+      const resorts = parseResortsPayload(await response.json());
+      const activeResorts = getValidActiveResorts(resorts);
+      const initialResorts = activeResorts.slice(0, 6);
+      console.info(
+        `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
+      );
+
+      return { props: { initialResorts }, revalidate: 3600 };
     }
 
-    const data: Resort[] = await response.json();
-    const initialResorts = Array.isArray(data)
-      ? data.filter(
-          (resort) => resort?.is_active !== false && resort?.is_active !== null,
-        )
-      : [];
-
-    return { props: { initialResorts }, revalidate: 3600 };
+    throw new Error(`All configured resort API origins failed:\n${failures.join("\n")}`);
   } catch (error) {
-    console.error("Échec du préchargement des stations de la page d’accueil:", error);
-    return { props: { initialResorts: [] }, revalidate: 3600 };
+    console.error("[homepage:getStaticProps] Resort preload failed:", error);
+    throw error;
   }
 };

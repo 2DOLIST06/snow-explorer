@@ -2,6 +2,29 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Backend configuration
+
+Server-side rendering and production builds require the backend origin in
+`API_URL` (for example, `https://api.example.com`, without an API path).
+`NEXT_PUBLIC_API_URL` is supported as a fallback when the deployment platform
+only exposes that existing variable. The legacy `SKI_API_URL`, `BACKEND_URL`,
+and `NEXT_PUBLIC_SKI_API_BASE` names remain supported for current deployments.
+
+The homepage and the `/api/ski/resorts/` browser proxy both request the real
+backend resource at `/api/resorts/`. A localhost default is available only in
+development; a production build fails explicitly when none of the variables
+above is configured.
+
+During static generation, transient upstream responses such as HTTP 503 are
+retried four times with exponential backoff. If the backend remains unavailable,
+the build still fails and reports the final status and a shortened response body;
+it never replaces the stations with an unexplained empty array.
+
+When more than one of the supported variables is configured, static generation
+tries their distinct origins in priority order. A `503 Service Suspended` HTML
+response is treated as a permanent failure for that origin, so the build moves
+immediately to the next configured origin (for example `NEXT_PUBLIC_API_URL`).
+
 First, run the development server:
 
 ```bash
