@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
+import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
@@ -20,8 +21,8 @@ type Resort = {
   name: string;
   slug: string;
   is_active?: boolean;
-  is_public?: boolean;
-  is_published?: boolean;
+  resort_is_active?: boolean;
+  active?: boolean;
   region?: { id?: string; name?: string; country_code?: string };
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
@@ -1524,32 +1525,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
 
-  // 1) Resort depuis l'API Render (ou local en dev)
-  let resort: Resort | null = null;
-  try {
-    const api =
-      process.env.NEXT_PUBLIC_SKI_API_BASE ||
-      process.env.SKI_API_URL ||
-      process.env.API_URL ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      "http://127.0.0.1:5001";
-
-    const r = await fetch(`${api}/api/stations/${encodeURIComponent(slug)}`, { cache: "no-store" });
-    console.info(`[stations/[slug]] GET /api/stations/${slug} -> ${r.status}`);
-    if (r.status === 404) {
-      return { notFound: true };
-    }
-    if (r.ok) {
-      const data = await r.json();
-      resort = (data?.resort ?? data ?? null) as Resort | null;
-    }
-  } catch (error) {
-    console.error(`[stations/[slug]] resort request failed for ${slug}`, error instanceof Error ? error.message : "unknown_error");
+  // 1) Station via la route publique Flask. Les erreurs amont doivent rester
+  // des erreurs serveur : seule une absence explicite devient une page 404.
+  const resort = (await loadPublicResort(slug)) as Resort | null;
+  if (!resort) {
     return { notFound: true };
   }
-
-  if (!resort) {
+  if (isResortInactive(resort)) {
     return { notFound: true };
   }
 
@@ -1564,16 +1546,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       console.error(`[stations/[slug]] widgets request failed for ${slug}`, e instanceof Error ? e.message : "unknown_error");
     }
     cfg = null;
-  }
-
-  if (
-    !resort ||
-    resort.is_active === false ||
-    resort.is_active === null ||
-    resort.is_public === false ||
-    resort.is_published === false
-  ) {
-    return { notFound: true };
   }
 
   const cleanCfg: StationWidgetsConfig | null = cfg ? {
