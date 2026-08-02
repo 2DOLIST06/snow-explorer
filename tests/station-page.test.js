@@ -25,6 +25,8 @@ test("public station payload supports direct, resort and data contracts", () => 
   assert.equal(stationFromPayload(auron), auron);
   assert.equal(stationFromPayload({ resort: auron }), auron);
   assert.equal(stationFromPayload({ data: auron }), auron);
+  assert.equal(stationFromPayload([auron], "auron"), auron);
+  assert.equal(stationFromPayload([auron], "isola-2000"), undefined);
   assert.equal(stationFromPayload({ found: false }), undefined);
   assert.equal(stationFromPayload({ message: "failure" }), null);
 });
@@ -37,8 +39,8 @@ test("Auron and Isola 2000 valid responses remain public", async () => {
     const actual = await loadPublicResort(station.slug, {
       env: { API_URL: "https://backend.example.com", NODE_ENV: "production" },
       fetchImpl: async (url) => {
-        assert.equal(url, `https://backend.example.com/api/stations/${station.slug}`);
-        return response(200, { resort: station });
+        assert.equal(url, `https://backend.example.com/api/resorts/?q=${station.slug}`);
+        return response(200, [station]);
       },
       logger: silentLogger,
     });

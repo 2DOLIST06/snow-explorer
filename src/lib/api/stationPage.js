@@ -1,4 +1,4 @@
-const PUBLIC_STATION_PATH = "/api/stations/";
+const PUBLIC_STATION_PATH = "/api/resorts/";
 const ERROR_BODY_LIMIT = 500;
 
 function withoutTrailingSlash(value) {
@@ -33,8 +33,11 @@ function getSafeStationApiUrl(value) {
   }
 }
 
-function stationFromPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+function stationFromPayload(payload, slug) {
+  if (Array.isArray(payload)) {
+    return payload.find((resort) => resort?.slug === slug) ?? undefined;
+  }
+  if (!payload || typeof payload !== "object") return null;
   if (payload.exists === false || payload.found === false || payload.error === "not_found") {
     return undefined;
   }
@@ -54,7 +57,7 @@ async function loadPublicResort(slug, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const apiBase = getStationApiBase(options.env || process.env);
-  const url = `${apiBase}${PUBLIC_STATION_PATH}${encodeURIComponent(slug)}`;
+  const url = `${apiBase}${PUBLIC_STATION_PATH}?q=${encodeURIComponent(slug)}`;
   const safeUrl = getSafeStationApiUrl(url);
 
   logger.info("[station-page] API request", { slug, url: safeUrl });
@@ -111,7 +114,7 @@ async function loadPublicResort(slug, options = {}) {
     throw error;
   }
 
-  const resort = stationFromPayload(payload);
+  const resort = stationFromPayload(payload, slug);
   if (resort === undefined) return null;
   if (!resort) {
     logger.error("[station-page] Invalid API payload", {
