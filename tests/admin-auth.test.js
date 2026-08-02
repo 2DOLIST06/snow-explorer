@@ -37,6 +37,8 @@ test("station imports send the selected file as browser-managed multipart data",
   assert.doesNotMatch(client, /"Content-Type": "application\/json"/);
   assert.match(imports, /new FormData\(\)/);
   assert.match(imports, /body\.append\("file", file, file\.name\)/);
+  assert.match(imports, /all_or_nothing: String\(o\.transaction === "atomic"\)/);
+  assert.doesNotMatch(imports, /\{ create_missing: String\(o\.create_missing\), transaction: o\.transaction \}/);
   assert.match(imports, /previewBulkStationImport[\s\S]*form\(file, optionFields\(options\)\)/);
 });
 
