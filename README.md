@@ -60,4 +60,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
+## Authentification administrateur
+
+Le projet utilise le **Pages Router** et une architecture navigateur → Flask cohérente pour toute l'administration. `AdminAuthProvider` vérifie la session Flask avant d'afficher une page `/admin/*`; `/admin/login` est la seule exception. Les requêtes utilisent le cookie HttpOnly avec `credentials: "include"`. Le jeton CSRF renvoyé par `login` ou `session` reste uniquement en mémoire et le client central `adminFetch` (ainsi que son adaptateur Axios pour les imports) l'ajoute aux écritures.
+
+### Variables Vercel
+
+Configurer `NEXT_PUBLIC_API_URL` avec l'origine HTTPS de Flask, sans `/api` final (par exemple `https://api.example.com`). Cette variable ne contient qu'une URL. `API_URL` reste nécessaire aux chargements exécutés côté serveur/build. Ne créer aucune variable `NEXT_PUBLIC_ADMIN_*` et ne publier aucun secret administrateur.
+
+### Configuration Flask/CORS attendue
+
+Flask doit autoriser exactement l'origine du site Next.js (jamais `*`) avec les credentials, accepter `Content-Type` et `X-CSRF-Token`, et les méthodes `GET`, `HEAD`, `OPTIONS`, `POST`, `PUT`, `PATCH`, `DELETE`. Le cookie de session doit être `HttpOnly`, `Secure` en production et utiliser un réglage `SameSite` compatible avec les domaines choisis (`None` si les sites sont réellement cross-site). Les quatre routes `/api/admin/auth/login`, `/session`, `/logout` et `/logout-all` doivent respecter le contrat documenté dans le front et renvoyer un nouveau CSRF lors de la lecture de session.
+
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.

@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import BulkImportModal from "@/components/admin/imports/BulkImportModal";
 import { downloadBlobResponse, getAllStationsExportResponse, getTemplateResponse } from "@/lib/api/stationImports";
-
-const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
+import { adminFetch } from "@/lib/adminApi";
 
 
 function toRows(payload: any) {
@@ -43,21 +42,18 @@ export default function AdminStationsList() {
     setLoading(true);
     setErr("");
 
-    const stationsUrl = `${API}/api/admin/stations/`;
-
     try {
-      const resp = await fetch(stationsUrl, { cache: "no-store" });
-      console.info(`[AdminStationsList] GET ${stationsUrl} -> ${resp.status}`);
+      const resp = await adminFetch("/api/admin/stations/", { cache: "no-store" });
 
       if (!resp.ok) {
-        throw new Error(`GET ${stationsUrl} failed with ${resp.status}`);
+        throw new Error(`Chargement impossible (${resp.status})`);
       }
 
       const json = await resp.json();
       const rows = toRows(json);
       setItems(rows);
     } catch (e: any) {
-      setErr(`Impossible de charger les stations: ${e?.message || "inconnue"} — API=${API}`);
+      setErr(`Impossible de charger les stations : ${e?.message || "erreur inconnue"}`);
       setItems([]);
     } finally {
       setLoading(false);
@@ -79,9 +75,8 @@ export default function AdminStationsList() {
 
   const patchStationActive = async (stationSlug: string, nextActive: boolean) => {
     const payload = { is_active: Boolean(nextActive) };
-    const endpoint = `${API}/api/admin/stations/${encodeURIComponent(stationSlug)}`;
-
-    const r = await fetch(endpoint, {
+    const endpoint = `/api/admin/stations/${encodeURIComponent(stationSlug)}`;
+    const r = await adminFetch(endpoint, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify(payload),
@@ -148,7 +143,7 @@ export default function AdminStationsList() {
       if (slug.trim()) body.slug = slugify(slug);
       if (lat) body.latitude = Number(lat);
       if (lon) body.longitude = Number(lon);
-      const r = await fetch(`${API}/api/admin/stations/`, {
+      const r = await adminFetch("/api/admin/stations/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

@@ -1,6 +1,7 @@
 // src/pages/admin/stations/new.tsx
 import React, { useState } from "react";
 import Link from "next/link";
+import { adminFetch } from "@/lib/adminApi";
 
 export default function NewResort() {
   const [msg, setMsg] = useState<React.ReactNode>(null);
@@ -18,8 +19,7 @@ export default function NewResort() {
       .map(s => s.trim())
       .filter(Boolean);
 
-    // utilise le proxy Next.js (évite CORS)
-    const r = await fetch("/api/ski/resorts/", {
+    const r = await adminFetch("/api/admin/stations/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

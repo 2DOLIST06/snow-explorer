@@ -1535,8 +1535,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://127.0.0.1:5001";
 
-    const r = await fetch(`${api}/api/admin/stations/${encodeURIComponent(slug)}`, { cache: "no-store" });
-    console.info(`[stations/[slug]] GET /api/admin/stations/${slug} -> ${r.status}`);
+    const r = await fetch(`${api}/api/stations/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    console.info(`[stations/[slug]] GET /api/stations/${slug} -> ${r.status}`);
     if (r.status === 404) {
       return { notFound: true };
     }

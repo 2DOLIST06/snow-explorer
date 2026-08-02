@@ -2,7 +2,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
   getResortsApiUrl,
-  getServerApiBase,
   parseResortsPayload,
 } from "@/lib/api/resorts";
 
@@ -22,18 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json(parseResortsPayload(data));
     }
 
-    if (req.method === "POST") {
-      const apiBase = getServerApiBase();
-      const r = await fetch(`${apiBase}/api/admin/resorts/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req.body || {}),
-      });
-      const data = await r.json().catch(() => ({}));
-      return res.status(r.status).json(data);
-    }
-
-    res.setHeader("Allow", "GET, POST");
+    res.setHeader("Allow", "GET");
     return res.status(405).end("Method Not Allowed");
   } catch (e: any) {
     return res.status(500).json({ error: "proxy_error", detail: e?.message });

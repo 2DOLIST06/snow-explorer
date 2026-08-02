@@ -674,7 +674,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
         process.env.API_URL ||
         process.env.BACKEND_URL ||
         "http://127.0.0.1:5001";
-      r = await fetch(`${api}/api/admin/stations/${encodeURIComponent(slug)}`);
+      r = await fetch(`${api}/api/stations/${encodeURIComponent(slug)}`);
       if (r.ok) {
         const data = await r.json();
         resort = (data?.resort ?? data ?? null) as Resort;

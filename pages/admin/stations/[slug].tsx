@@ -3,8 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
+import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 
-const API = process.env.NEXT_PUBLIC_SKI_API_BASE || "http://127.0.0.1:5001";
 
 type RegionRow = { id: string; name: string; country_code?: string };
 type DepartmentRow = { code: string; name: string; region_id: string };
@@ -794,12 +794,12 @@ export default function AdminStationEdit() {
     setErr("");
 
     try {
-      let url = `${API}/api/admin/stations/${mySlug}`;
-      let r = await fetch(url, { cache: "no-store" });
+      let url = `/api/admin/stations/${encodeURIComponent(mySlug)}`;
+      let r = await adminFetch(url, { cache: "no-store" });
 
       if (!r.ok) {
-        url = `${API}/api/admin/resorts/${mySlug}`;
-        r = await fetch(url, { cache: "no-store" });
+        url = `/api/admin/resorts/${encodeURIComponent(mySlug)}`;
+        r = await adminFetch(url, { cache: "no-store" });
       }
 
       if (!r.ok) throw new Error(`HTTP ${r.status} (${url})`);
@@ -907,7 +907,7 @@ setWidgets(w);
 
       console.log("PATCH resort payload =", payload);
 
-      const r = await fetch(`${API}/api/admin/stations/${slug}`, {
+      const r = await adminFetch(`/api/admin/stations/${encodeURIComponent(slug)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -938,7 +938,7 @@ setWidgets(w);
 
     console.log("PATCH widgets payload =", payload);
 
-    const r = await fetch(`${API}/api/admin/stations/${slug}/widgets`, {
+    const r = await adminFetch(`/api/admin/stations/${encodeURIComponent(slug)}/widgets`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1165,7 +1165,7 @@ const removeForfaitRow = (rowIdx: number) => {
 
 
   async function uploadWithPresign(file: File): Promise<string> {
-    const r = await fetch(`${API}/api/s3/presign`, {
+    const r = await adminFetch("/api/s3/presign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: file.name }),
@@ -1247,7 +1247,7 @@ const removeForfaitRow = (rowIdx: number) => {
     const smallBlob = await resizeImageToWidth(file, smallWidth, smallMime, smallQuality);
 
     const smallName = buildSmallFilename(file.name, smallMime === "image/jpeg");
-    const presignSmall = await fetch(`${API}/api/s3/presign`, {
+    const presignSmall = await adminFetch("/api/s3/presign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: smallName }),
