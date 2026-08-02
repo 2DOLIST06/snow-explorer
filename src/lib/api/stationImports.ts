@@ -1,6 +1,6 @@
 import api from "@/config/axios";
 import type { AxiosError, AxiosResponse } from "axios";
-import type { BulkImportOptions, BulkImportPreview, BulkImportResult, ImportHistoryDetail, ImportHistoryFilters, ImportHistoryResponse, ImportResult, StationImportPreview } from "@/types/stationImport";
+import type { BulkImportOptions, BulkImportResult, ImportHistoryDetail, ImportHistoryFilters, ImportHistoryResponse, ImportResult, StationImportPreview, StationImportPreviewResponse } from "@/types/stationImport";
 
 export class AdminApiError extends Error { constructor(message: string, public status?: number, public code?: string) { super(message); this.name = "AdminApiError"; } }
 
@@ -35,7 +35,7 @@ export async function getAllStationsExportResponse() { try { return await api.ge
 export async function getTemplateResponse() { try { return await api.get<Blob>("/api/admin/stations/import/template", { responseType: "blob" }); } catch (e) { throw asApiError(e); } }
 export const previewStationImport = (id: string, file: File) => request(api.post<StationImportPreview>(`/api/admin/stations/${encodeURIComponent(id)}/import/preview`, form(file)));
 export const confirmStationImport = (id: string, file: File, previewToken: string) => request(api.post<ImportResult>(`/api/admin/stations/${encodeURIComponent(id)}/import/confirm`, form(file, { preview_token: previewToken })));
-export const previewBulkStationImport = async (file: File, options: BulkImportOptions) => request(api.post<BulkImportPreview>("/api/admin/stations/import/preview", await bulkDocument(file, options)));
+export const previewBulkStationImport = async (file: File, options: BulkImportOptions) => request(api.post<StationImportPreviewResponse>("/api/admin/stations/import/preview", await bulkDocument(file, options)));
 export const confirmBulkStationImport = async (file: File, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", await bulkDocument(file, options, previewToken)));
 export const getImportHistory = (filters: ImportHistoryFilters = {}) => request(api.get<ImportHistoryResponse>("/api/admin/stations/import/history", { params: filters }));
 export const getImportHistoryDetail = (id: string) => request(api.get<ImportHistoryDetail>(`/api/admin/stations/import/history/${encodeURIComponent(id)}`));
