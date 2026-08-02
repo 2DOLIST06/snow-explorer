@@ -1353,7 +1353,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   // clics snowpark (ligne + plan)
   const snowparksCountForCard = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
   const goSnowpark = () => router.push(`/stations/${resort.slug}/snowpark`);
-  const hasConditionsAside = Boolean(cfg?.webcams?.enabled || cfg?.meteo?.enabled || snowparkUrl);
+  const hasValidCoordinates =
+    Number.isFinite(Number(geoLat)) &&
+    Number.isFinite(Number(geoLon));
+  const hasConditionsAside = Boolean(
+    hasValidCoordinates ||
+    snowparkUrl
+  );
 
   const pisteColors = cfg?.pistes?.colors;
   const computedPistesCount = resort.pistes_count ?? sumAvailable(
@@ -1458,8 +1464,12 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           </div> : null}
 
           {hasConditionsAside ? <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {cfg?.webcams?.enabled ? <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} /> : null}
-            {cfg?.meteo?.enabled ? <MeteoblueSkiWidget lat={geoLat} lon={geoLon} /> : null}
+            {hasValidCoordinates ? (
+              <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} />
+            ) : null}
+            {hasValidCoordinates ? (
+              <MeteoblueSkiWidget lat={geoLat} lon={geoLon} />
+            ) : null}
             <SnowparkCard
               name={resort.name}
               url={snowparkUrl}
