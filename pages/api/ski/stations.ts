@@ -16,8 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const q = (req.query.q ?? "").toString().trim();
     const url = q.length
-      ? `${API}/api/admin/stations/?q=${encodeURIComponent(q)}`
-      : `${API}/api/admin/stations/`;
+      ? `${API}/api/stations/?q=${encodeURIComponent(q)}`
+      : `${API}/api/stations/`;
 
     const r = await fetch(url);
     const data = await r.json().catch(() => []);

@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { slug } = req.query as { slug: string };
 
     if (req.method === "GET") {
-      const r = await fetch(`${API}/api/admin/stations/${encodeURIComponent(slug)}`);
+      const r = await fetch(`${API}/api/stations/${encodeURIComponent(slug)}`);
       if (!r.ok) return res.status(r.status).json({ error: "not_found" });
       const data = await r.json();
       return res.status(200).json(data);
