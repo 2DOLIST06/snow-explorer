@@ -25,7 +25,10 @@ export async function getAllStationsExportResponse() { try { return await api.ge
 export async function getTemplateResponse() { try { return await api.get<Blob>("/api/admin/stations/import/template", { responseType: "blob" }); } catch (e) { throw asApiError(e); } }
 export const previewStationImport = (id: string, file: File) => request(api.post<StationImportPreview>(`/api/admin/stations/${encodeURIComponent(id)}/import/preview`, form(file)));
 export const confirmStationImport = (id: string, file: File, previewToken: string) => request(api.post<ImportResult>(`/api/admin/stations/${encodeURIComponent(id)}/import/confirm`, form(file, { preview_token: previewToken })));
-const optionFields = (o: BulkImportOptions) => ({ create_missing: String(o.create_missing), transaction: o.transaction });
+const optionFields = (o: BulkImportOptions) => ({
+  create_missing: String(o.create_missing),
+  all_or_nothing: String(o.transaction === "atomic"),
+});
 export const previewBulkStationImport = (file: File, options: BulkImportOptions) => request(api.post<BulkImportPreview>("/api/admin/stations/import/preview", form(file, optionFields(options))));
 export const confirmBulkStationImport = (file: File, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", form(file, { ...optionFields(options), preview_token: previewToken })));
 export const getImportHistory = (filters: ImportHistoryFilters = {}) => request(api.get<ImportHistoryResponse>("/api/admin/stations/import/history", { params: filters }));

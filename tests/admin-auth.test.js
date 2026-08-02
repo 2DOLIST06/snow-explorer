@@ -30,6 +30,18 @@ test("central client sends cookies, applies CSRF only to writes and retries a 40
   assert.match(api, /response\.status === 401/); assert.match(api, /response\.status === 403/);
 });
 
+test("station imports send the selected file as browser-managed multipart data", () => {
+  const client = read("src/config/axios.ts");
+  const imports = read("src/lib/api/stationImports.ts");
+
+  assert.doesNotMatch(client, /"Content-Type": "application\/json"/);
+  assert.match(imports, /new FormData\(\)/);
+  assert.match(imports, /body\.append\("file", file, file\.name\)/);
+  assert.match(imports, /all_or_nothing: String\(o\.transaction === "atomic"\)/);
+  assert.doesNotMatch(imports, /\{ create_missing: String\(o\.create_missing\), transaction: o\.transaction \}/);
+  assert.match(imports, /previewBulkStationImport[\s\S]*form\(file, optionFields\(options\)\)/);
+});
+
 test("logout and logout-all are implemented with the central client", () => {
   const auth = read("src/contexts/AdminAuthContext.tsx");
   assert.match(auth, /logout-all/); assert.match(auth, /adminFetch/); assert.match(auth, /csrfToken: null/);
