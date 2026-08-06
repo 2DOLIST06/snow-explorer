@@ -72,4 +72,6 @@ Configurer `NEXT_PUBLIC_API_URL` avec l'origine HTTPS de Flask, sans `/api` fina
 
 Flask doit autoriser exactement l'origine du site Next.js (jamais `*`) avec les credentials, accepter `Content-Type` et `X-CSRF-Token`, et les méthodes `GET`, `HEAD`, `OPTIONS`, `POST`, `PUT`, `PATCH`, `DELETE`. Le cookie de session doit être `HttpOnly`, `Secure` en production et utiliser un réglage `SameSite` compatible avec les domaines choisis (`None` si les sites sont réellement cross-site). Les quatre routes `/api/admin/auth/login`, `/session`, `/logout` et `/logout-all` doivent respecter le contrat documenté dans le front et renvoyer un nouveau CSRF lors de la lecture de session.
 
+Chaque réponse CORS, y compris le préflight `OPTIONS`, doit aussi contenir `Access-Control-Allow-Credentials: true`. Sans cet en-tête, le navigateur reçoit éventuellement un `OPTIONS 200` mais interdit le `POST` authentifié avant son émission. Le frontend ne doit pas retirer `credentials: "include"` pour contourner ce contrôle : le cookie de session et le token CSRF sont tous deux requis.
+
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
