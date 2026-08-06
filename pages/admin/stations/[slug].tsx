@@ -4,6 +4,7 @@ import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
+import { uploadStationImage } from "@/lib/stationImageUpload";
 
 
 type RegionRow = { id: string; name: string; country_code?: string };
@@ -1165,26 +1166,22 @@ const removeForfaitRow = (rowIdx: number) => {
 
 
   async function uploadWithPresign(file: File): Promise<string> {
-    const r = await adminFetch("/api/s3/presign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name }),
+    return uploadStationImage(file);
+  }
+
+  async function saveUploadedStationImage(field: "cover_image_url" | "logo_url", publicUrl: string, file: File) {
+    const url = `/api/admin/stations/${encodeURIComponent(slug)}`;
+    const response = await adminFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ [field]: publicUrl }),
+    }).catch((error) => {
+      throw new Error(`Mise à jour de la station — HTTP réseau; URL ${API}${url}; fichier ${file.name} (${file.type || "type MIME inconnu"}); réponse: ${error instanceof Error ? error.message : String(error)}`);
     });
-
-    if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Presign error ${r.status}: ${t}`);
+    if (!response.ok) {
+      const body = await response.text().catch(() => "<corps illisible>");
+      throw new Error(`Mise à jour de la station — HTTP ${response.status}; URL ${API}${url}; fichier ${file.name} (${file.type || "type MIME inconnu"}); réponse: ${body || "<corps vide>"}`);
     }
-
-    const { uploadUrl, publicUrl } = await r.json();
-    const put = await fetch(uploadUrl, { method: "PUT", body: file });
-
-    if (!put.ok) {
-      const t = await put.text();
-      throw new Error(`S3 PUT failed ${put.status}: ${t}`);
-    }
-
-    return publicUrl;
   }
 
   async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1193,8 +1190,9 @@ const removeForfaitRow = (rowIdx: number) => {
 
     try {
       const publicUrl = await uploadWithPresign(file);
+      await saveUploadedStationImage("cover_image_url", publicUrl, file);
       setResort((prev) => ({ ...(prev || {}), cover_image_url: publicUrl }));
-      setMsg("Image uploadée.");
+      setMsg("Image uploadée et enregistrée.");
     } catch (e: any) {
       setErr(e?.message || "Erreur upload");
     } finally {
@@ -1208,8 +1206,9 @@ const removeForfaitRow = (rowIdx: number) => {
 
     try {
       const publicUrl = await uploadWithPresign(file);
+      await saveUploadedStationImage("logo_url", publicUrl, file);
       setResort((prev) => ({ ...(prev || {}), logo_url: publicUrl }));
-      setMsg("Logo uploadé.");
+      setMsg("Logo uploadé et enregistré.");
     } catch (e: any) {
       setErr(e?.message || "Erreur upload logo");
     } finally {
@@ -1247,25 +1246,8 @@ const removeForfaitRow = (rowIdx: number) => {
     const smallBlob = await resizeImageToWidth(file, smallWidth, smallMime, smallQuality);
 
     const smallName = buildSmallFilename(file.name, smallMime === "image/jpeg");
-    const presignSmall = await adminFetch("/api/s3/presign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: smallName }),
-    });
-
-    if (!presignSmall.ok) {
-      const t = await presignSmall.text();
-      throw new Error(`Presign small error ${presignSmall.status}: ${t}`);
-    }
-
-    const { uploadUrl: smallUploadUrl, publicUrl: smallPublicUrl } = await presignSmall.json();
-
-    const putSmall = await fetch(smallUploadUrl, { method: "PUT", body: smallBlob });
-
-    if (!putSmall.ok) {
-      const t = await putSmall.text();
-      throw new Error(`S3 PUT small failed ${putSmall.status}: ${t}`);
-    }
+    const smallFile = new File([smallBlob], smallName, { type: smallBlob.type || smallMime });
+    const smallPublicUrl = await uploadWithPresign(smallFile);
 
     return { largeUrl, smallUrl: smallPublicUrl };
   }

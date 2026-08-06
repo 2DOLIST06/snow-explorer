@@ -23,15 +23,24 @@ export class AdminApiError extends Error {
 
 const isReadMethod = (method: string) => ["GET", "HEAD", "OPTIONS"].includes(method);
 
+function debugAdminRequest(method: string, url: string, csrfAttached: boolean) {
+  if (process.env.NODE_ENV !== "development") return;
+  console.debug("[adminApi] request", { method, url, credentials: "include", csrfAttached });
+}
+
 export async function adminFetch(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
   if (!path.startsWith("/api/") || path.startsWith("//")) throw new Error("adminFetch only accepts internal API paths");
   const method = (init.method || "GET").toUpperCase();
   const headers = new Headers(init.headers);
   if (!isReadMethod(method)) {
-    const csrf = handlers?.getCsrfToken();
-    if (csrf) headers.set("X-CSRF-Token", csrf);
+    let csrf = handlers?.getCsrfToken();
+    if (!csrf && handlers) csrf = await handlers.refreshSession();
+    if (!csrf) throw new AdminApiError(0, `Jeton CSRF indisponible avant ${method} ${ADMIN_API_BASE}${path}`);
+    headers.set("X-CSRF-Token", csrf);
   }
-  const response = await fetch(`${ADMIN_API_BASE}${path}`, { ...init, method, headers, credentials: "include" });
+  const url = `${ADMIN_API_BASE}${path}`;
+  debugAdminRequest(method, url, headers.has("X-CSRF-Token"));
+  const response = await fetch(url, { ...init, method, headers, credentials: "include" });
   if (response.status === 401) handlers?.onExpired();
   const csrfFailure = response.status === 403 && !isReadMethod(method) && await response.clone().json().then(body => String(body?.code || body?.error || "").toLowerCase().includes("csrf")).catch(() => response.headers.get("X-CSRF-Error") === "1");
   if (csrfFailure && !retried && handlers) {
