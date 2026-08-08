@@ -550,7 +550,7 @@ const SnowparkPage: NextPage<Props> = ({ slug, resort, cfg }) => {
                 borderRadius: 16,
                 overflow: "hidden",
                 border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
+                background: "#fff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

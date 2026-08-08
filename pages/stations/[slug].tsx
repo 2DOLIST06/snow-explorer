@@ -86,7 +86,13 @@ const fmtDate = (v?: string | null) => {
   if (!v) return "—";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+const dateYear = (v?: string | null) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.getFullYear();
 };
 
 const formatBig = (v: string | number | null | undefined) => {
@@ -126,14 +132,6 @@ const IconPistes = () => (
   </svg>
 );
 
-const IconLifts = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
-    <path d="M3 6h18" strokeLinecap="round" />
-    <path d="M6 6v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V6" />
-    <path d="M15 6v6a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V6" />
-  </svg>
-);
-
 const IconCalendar = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
     <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -144,12 +142,6 @@ const IconCalendar = () => (
 const IconMap = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
     <path d="M9 6l6-2 6 2v12l-6 2-6-2-6 2V8l6-2v12" strokeLinejoin="round" />
-  </svg>
-);
-
-const IconSnowpark = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
-    <path d="M12 2v20M4 6l16 12M20 6 4 18" strokeLinecap="round" />
   </svg>
 );
 
@@ -220,194 +212,35 @@ const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[]
   );
 };
 
-/* ---- utilitaires pour légendes compactes ---- */
-const ColorDot: React.FC<{ c: string; label: string }> = ({ c, label }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <span
-      style={{
-        display: "inline-block",
-        width: 10,
-        height: 10,
-        borderRadius: 9999,
-        background: c,
-        border: "1px solid rgba(0,0,0,0.12)",
-      }}
-    />
-    <span style={{ fontSize: 13, color: "#374151" }}>{label}</span>
-  </div>
-);
-
-const LegendRow: React.FC<{ left: React.ReactNode; right: React.ReactNode }> = ({ left, right }) => (
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{left}</div>
-    <div style={{ fontWeight: 700, color: "#0f172a" }}>{right}</div>
-  </div>
-);
-
-/* Mini-icônes pour types de remontées (cohérentes visuellement) */
-const MiniDrag = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
-    <path d="M4 6h16" strokeLinecap="round" />
-    <path d="M8 6v7a3 3 0 0 0 6 0V6" />
-  </svg>
-);
-const MiniChair = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
-    <path d="M4 6h16" strokeLinecap="round" />
-    <path d="M7 12h10M8 12v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4" />
-  </svg>
-);
-const MiniCable = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
-    <path d="M3 6h18" strokeLinecap="round" />
-    <rect x="8" y="9" width="8" height="6" rx="1.5" />
-    <path d="M12 9v-3" />
-  </svg>
-);
-
-/** Tuile compacte "Pistes + couleurs" */
+/** Tuile synthétique « Pistes & remontées » */
 const PistesTile: React.FC<{
   total: string;
   km: string;
-  green: string;
-  blue: string;
-  red: string;
-  black: string;
   snowparks: string;
+  lifts: string;
   snowparksClickable?: boolean;
   onSnowparkClick?: () => void;
-}> = ({ total, km, green, blue, red, black, snowparks, snowparksClickable, onSnowparkClick }) => (
-  <div
-    style={{
-      background: "#eef2f7",
-      border: "1px solid #d1d9e6",
-      borderRadius: 16,
-      padding: 16,
-    }}
-  >
-    <TileHeader icon={<IconPistes />} title="Pistes" />
+}> = ({ total, km, snowparks, lifts, snowparksClickable, onSnowparkClick }) => {
+  const metricStyle: React.CSSProperties = { fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 };
+  const labelStyle: React.CSSProperties = { marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" };
+  const snowparkMetric = <><div style={metricStyle}>{snowparks}</div><div style={labelStyle}>Snowparks</div></>;
 
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
-          Pistes
-        </div>
-      </div>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{km}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
-          Domaine
-        </div>
+  return (
+    <div style={{ background: "#eef2f7", border: "1px solid #d1d9e6", borderRadius: 16, padding: 16 }}>
+      <TileHeader icon={<IconPistes />} title="Pistes & remontées" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div><div style={metricStyle}>{total}</div><div style={labelStyle}>Pistes</div></div>
+        <div><div style={metricStyle}>{km}</div><div style={labelStyle}>Kilomètres de pistes</div></div>
+        {snowparksClickable ? (
+          <button type="button" onClick={onSnowparkClick} style={{ all: "unset", cursor: "pointer", borderRadius: 8 }} aria-label="Voir le(s) snowpark(s)">
+            {snowparkMetric}
+          </button>
+        ) : <div>{snowparkMetric}</div>}
+        <div><div style={metricStyle}>{lifts}</div><div style={labelStyle}>Remontées</div></div>
       </div>
     </div>
-
-    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
-
-    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-      <LegendRow left={<ColorDot c="#16a34a" label="Vertes" />} right={<span>{green}</span>} />
-      <LegendRow left={<ColorDot c="#2563eb" label="Bleues" />} right={<span>{blue}</span>} />
-      <LegendRow left={<ColorDot c="#dc2626" label="Rouges" />} right={<span>{red}</span>} />
-      <LegendRow left={<ColorDot c="#111827" label="Noires" />} right={<span>{black}</span>} />
-      {snowparksClickable ? (
-        <button
-          onClick={onSnowparkClick}
-          style={{ all: "unset", cursor: "pointer", borderRadius: 8, padding: 4 }}
-          aria-label="Voir le(s) snowpark(s)"
-        >
-          <LegendRow
-            left={
-              <>
-                <IconSnowpark />
-                <span style={{ fontSize: 13, color: "#374151", textDecoration: "underline" }}>Snowparks</span>
-              </>
-            }
-            right={<span>{snowparks}</span>}
-          />
-        </button>
-      ) : (
-        <LegendRow
-          left={
-            <>
-              <IconSnowpark />
-              <span style={{ fontSize: 13, color: "#374151" }}>Snowparks</span>
-            </>
-          }
-          right={<span>{snowparks}</span>}
-        />
-      )}
-    </div>
-  </div>
-);
-
-/** Tuile compacte "Remontées + types" */
-const LiftsTile: React.FC<{
-  total: string;
-  typesLabel: string;
-  drag: string;
-  chair: string;
-  cable: string;
-}> = ({ total, typesLabel, drag, chair, cable }) => (
-  <div
-    style={{
-      background: "#eef2f7",
-border: "1px solid #d1d9e6",
-      borderRadius: 16,
-      padding: 16,
-    }}
-  >
-    <TileHeader icon={<IconLifts />} title="Remontées mécaniques" />
-
-    {/* chiffres principaux */}
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
-          Remontées
-        </div>
-      </div>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{typesLabel}</div>
-        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
-          Types
-        </div>
-      </div>
-    </div>
-
-    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
-
-    {/* légendes types */}
-    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-      <LegendRow
-        left={
-          <>
-            <MiniDrag />
-            <span style={{ fontSize: 13, color: "#374151" }}>Tire-fesses</span>
-          </>
-        }
-        right={<span>{drag}</span>}
-      />
-      <LegendRow
-        left={
-          <>
-            <MiniChair />
-            <span style={{ fontSize: 13, color: "#374151" }}>Télésièges</span>
-          </>
-        }
-        right={<span>{chair}</span>}
-      />
-      <LegendRow
-        left={
-          <>
-            <MiniCable />
-            <span style={{ fontSize: 13, color: "#374151" }}>Téléphériques</span>
-          </>
-        }
-        right={<span>{cable}</span>}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 /* =========================
  * Plan des pistes
@@ -1115,44 +948,27 @@ const StationExtraPanels: React.FC<{
     cfg?.snow?.season?.closingDate ??
     cfg?.snow?.closingDate ??
     null;
-  const seasonStr =
-    openRaw && closeRaw
-      ? `${fmtDate(openRaw)} → ${fmtDate(closeRaw)}`
-      : openRaw
-      ? `Dès ${fmtDate(openRaw)}`
-      : closeRaw
-      ? `Jusqu’au ${fmtDate(closeRaw)}`
-      : "—";
-
-    // Domaine / pistes
+  // Domaine / pistes
   const km = Number.isFinite(resort.ski_area_km as any) ? `${formatBig(resort.ski_area_km)} km` : "—";
   const pistesTotal = formatBig(computedPistesCount);
 
-  const pc = cfg?.pistes?.colors || {};
-  const pistesGreen = Number.isFinite(pc.green) ? formatBig(pc.green) : "—";
-  const pistesBlue = Number.isFinite(pc.blue) ? formatBig(pc.blue) : "—";
-  const pistesRed = Number.isFinite(pc.red) ? formatBig(pc.red) : "—";
-  const pistesBlack = Number.isFinite(pc.black) ? formatBig(pc.black) : "—";
-
   // Snowparks
-  const snowparksCountRaw =
-    typeof cfg?.snowparks?.count === "number"
-      ? cfg.snowparks.count
-      : 0;
+  const snowparksCountRaw = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
   const snowparksLabel = formatBig(snowparksCountRaw);
-  const snowparksClickable = (snowparksCountRaw ?? 0) > 0;
+  const snowparksClickable = snowparksCountRaw > 0;
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
 
-  // Remontées mécaniques
-  const rm = cfg?.remontees || {};
-  const liftsDrag = Number.isFinite(rm.tireFesses) ? Number(rm.tireFesses) : 0;
-  const liftsChairs = Number.isFinite(rm.telesieges) ? Number(rm.telesieges) : 0;
-  const liftsCable = Number.isFinite(rm.telepheriques) ? Number(rm.telepheriques) : 0;
-
+  // Seul le total des remontées est affiché.
   const liftsTotal = formatBig(computedLiftsCount);
-
-  const liftTypesCount = [liftsDrag, liftsChairs, liftsCable].filter((v) => v > 0).length;
-  const liftTypesLabel = liftTypesCount ? `${liftTypesCount}` : "—";
+  const openingYear = dateYear(openRaw);
+  const closingYear = dateYear(closeRaw);
+  const seasonTitle = openingYear && closingYear
+    ? `Saison ${openingYear}-${closingYear}`
+    : `Saison${openingYear || closingYear ? ` ${openingYear || closingYear}` : ""}`;
+  const seasonValues: TileValue[] = [
+    { value: fmtDate(openRaw), sub: "Date d’ouverture" },
+    { value: fmtDate(closeRaw), sub: "Date de fermeture" },
+  ];
 
   return (
     <section style={{ marginTop: 18 }}>
@@ -1241,30 +1057,18 @@ const StationExtraPanels: React.FC<{
           </div>
         </div>
 
-        {/* Pistes + couleurs */}
+        {/* Pistes + remontées */}
         <PistesTile
           total={`${pistesTotal}`}
           km={`${km}`}
-          green={`${pistesGreen}`}
-          blue={`${pistesBlue}`}
-          red={`${pistesRed}`}
-          black={`${pistesBlack}`}
           snowparks={`${snowparksLabel}`}
+          lifts={`${liftsTotal}`}
           snowparksClickable={snowparksClickable}
           onSnowparkClick={snowparksClickable ? onSnowparkClick : undefined}
         />
 
-        {/* Remontées + types */}
-        <LiftsTile
-          total={`${liftsTotal}`}
-          typesLabel={`${liftTypesLabel}`}
-          drag={`${formatBig(liftsDrag)}`}
-          chair={`${formatBig(liftsChairs)}`}
-          cable={`${formatBig(liftsCable)}`}
-        />
-
         {/* Saison */}
-        <Tile icon={<IconCalendar />} title="Saison" values={[{ value: seasonStr, sub: " " }]} />
+        <Tile icon={<IconCalendar />} title={seasonTitle} values={seasonValues} />
       </div>
     </section>
   );
