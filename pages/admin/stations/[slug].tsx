@@ -893,39 +893,58 @@ setWidgets(w);
   }, [resort?.region_id, resort]);
 
   const patchResort = async () => {
-    if (!resort) return;
-    setMsg("Enregistrement…");
-    setErr("");
+  if (!resort) return;
 
-    try {
-      const payload: ResortType = {
-        ...resort,
-        pistes_large_map_url: resort.pistes_large_map_url ?? (widgets?.pistes?.largeMapUrl || null),
-        pistes_small_map_url: resort.pistes_small_map_url ?? (widgets?.pistes?.smallMapUrl || null),
-        region_id: resort.region_id ?? resort.region?.id ?? null,
-        region: undefined,
-      };
+  setMsg("Enregistrement…");
+  setErr("");
 
-      console.log("PATCH resort payload =", payload);
+  try {
+    const {
+      id,
+      slug: resortSlug,
+      region,
+      ...editableResort
+    } = resort;
 
-      const r = await adminFetch(`/api/admin/stations/${encodeURIComponent(slug)}`, {
+    const payload: ResortType = {
+      ...editableResort,
+      pistes_large_map_url:
+        resort.pistes_large_map_url ??
+        (widgets?.pistes?.largeMapUrl || null),
+      pistes_small_map_url:
+        resort.pistes_small_map_url ??
+        (widgets?.pistes?.smallMapUrl || null),
+      region_id:
+        resort.region_id ??
+        resort.region?.id ??
+        null,
+    };
+
+    console.log("PATCH resort payload =", payload);
+
+    const r = await adminFetch(
+      `/api/admin/stations/${encodeURIComponent(slug)}`,
+      {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
-      });
-
-      if (!r.ok) {
-        const txt = await r.text();
-        throw new Error(`PATCH failed ${r.status}: ${txt}`);
       }
+    );
 
-      await load(slug);
-      setMsg("Infos enregistrées.");
-    } catch (e: any) {
-      setErr(e?.message || "Erreur API");
-      setMsg("");
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error(`PATCH failed ${r.status}: ${txt}`);
     }
-  };
+
+    await load(slug);
+    setMsg("Infos enregistrées.");
+  } catch (e: any) {
+    setErr(e?.message || "Erreur API");
+    setMsg("");
+  }
+};
 
   const patchWidgets = async () => {
   setMsg("Enregistrement widgets…");
