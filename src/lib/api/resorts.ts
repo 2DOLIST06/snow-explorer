@@ -7,6 +7,12 @@ export type Resort = {
     name?: string;
   };
   imageUrl?: string;
+  ski_area_km: number | null;
+  snowparks_count: number | null;
+  family_parks_count: number | null;
+  season_open_date: string | null;
+  season_close_date: string | null;
+  season_label: string | null;
 };
 
 const RESORTS_PATH = "/api/resorts/";
