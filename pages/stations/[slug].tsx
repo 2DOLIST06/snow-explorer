@@ -196,22 +196,32 @@ const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[]
     >
       <TileHeader icon={icon} title={title} />
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 12 }}>
-        {values.map((v, i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{v.value}</div>
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                letterSpacing: 0.6,
-                color: "#4b5563",
-                textTransform: "uppercase",
-              }}
-            >
-              {v.sub || " "}
-            </div>
-          </div>
-        ))}
+       {values.map((v, i) => (
+  <div key={i} style={{ display: "flex", flexDirection: "column" }}>
+    <div
+      style={{
+        marginBottom: 4,
+        fontSize: 11,
+        letterSpacing: 0.6,
+        color: "#4b5563",
+        textTransform: "uppercase",
+      }}
+    >
+      {v.sub || " "}
+    </div>
+
+    <div
+      style={{
+        fontSize: 26,
+        fontWeight: 800,
+        color: "#0f172a",
+        lineHeight: 1.1,
+      }}
+    >
+      {v.value}
+    </div>
+  </div>
+))}
       </div>
     </div>
   );
