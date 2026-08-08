@@ -34,6 +34,7 @@ export type StationWidgetsConfig = {
     enabled: boolean;
     smallMapUrl?: string | null;
     largeMapUrl?: string | null;
+    officialMapUrl?: string | null;
     caption?: string | null;
     colors?: {
       green?: number;

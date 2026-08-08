@@ -1062,9 +1062,9 @@ const sectionChecks = {
 
   plan:
     !!widgets?.pistes?.enabled &&
-    isFilled(widgets?.pistes?.largeMapUrl) &&
-    isFilled(widgets?.pistes?.smallMapUrl) &&
-    isFilled(widgets?.pistes?.caption),
+    ((isFilled(widgets?.pistes?.largeMapUrl) &&
+      isFilled(widgets?.pistes?.smallMapUrl)) ||
+      isFilled(widgets?.pistes?.officialMapUrl)),
 
   description:
     !!widgets?.description?.enabled &&
@@ -1839,7 +1839,7 @@ const removeForfaitRow = (rowIdx: number) => {
             <SectionCard
               id="plan"
               title="Plan des pistes"
-              description="Gestion du plan grand format, génération automatique du small et légende."
+              description="Gestion des images du plan et du lien de secours vers le site officiel."
               actions={<SaveButton onClick={patchPistesBoth} />}
             >
               <div style={styles.stack}>
@@ -1888,6 +1888,20 @@ const removeForfaitRow = (rowIdx: number) => {
                     onChange={(e) => setW("pistes.caption", e.target.value)}
                     style={styles.input}
                   />
+                </label>
+
+                <label style={styles.label}>
+                  URL du plan sur le site officiel (si aucune image)
+                  <input
+                    type="url"
+                    value={widgets?.pistes?.officialMapUrl || ""}
+                    onChange={(e) => setW("pistes.officialMapUrl", e.target.value)}
+                    placeholder="https://station.example/plan-des-pistes"
+                    style={styles.input}
+                  />
+                  <span style={{ color: "#6b7280", fontSize: 12 }}>
+                    Ce lien n’est affiché sur la fiche station que lorsque les deux URLs d’image sont vides.
+                  </span>
                 </label>
 
                 {(widgets?.pistes?.largeMapUrl || widgets?.pistes?.smallMapUrl) ? (
