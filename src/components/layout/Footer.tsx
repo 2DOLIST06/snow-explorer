@@ -6,7 +6,7 @@ const groups = [
   { title: "Découvrir", links: [{ label: "Stations", href: "/stations" }, { label: "Destinations" }, { label: "Domaines skiables" }, { label: "Bons plans" }] },
   { title: "Météo & neige", links: [{ label: "Météo des stations", href: "/meteo" }, { label: "Prévisions neige" }, { label: "Webcams" }, { label: "Bulletins" }] },
   { title: "Pratique", links: [{ label: "Forfaits" }, { label: "Activités" }, { label: "Contact" }, { label: "Aide" }] },
-  { title: "Snow Explorer", links: [{ label: "À propos" }, { label: "Mentions légales" }, { label: "Confidentialité" }, { label: "Cookies" }] },
+  { title: "Snow Explorer", links: [{ label: "CGU", href: "/conditions-utilisation" }, { label: "Mentions légales", href: "/mentions-legales" }, { label: "Confidentialité", href: "/confidentialite" }, { label: "Cookies", href: "/cookies" }] },
 ];
 
 export default function Footer() {
