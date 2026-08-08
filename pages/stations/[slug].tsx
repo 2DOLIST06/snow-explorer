@@ -86,7 +86,7 @@ const fmtDate = (v?: string | null) => {
   if (!v) return "—";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 };
 
 const dateYear = (v?: string | null) => {
@@ -178,8 +178,13 @@ const TileHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, 
 );
 
 /** Tuile générique (grands chiffres) */
-const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[] }> = ({ icon, title, values }) => {
-  const cols = Math.min(Math.max(values.length, 1), 3);
+const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[]; stacked?: boolean }> = ({
+  icon,
+  title,
+  values,
+  stacked = false,
+}) => {
+  const cols = stacked ? 1 : Math.min(Math.max(values.length, 1), 3);
   return (
     <div
       style={{
@@ -1068,7 +1073,7 @@ const StationExtraPanels: React.FC<{
         />
 
         {/* Saison */}
-        <Tile icon={<IconCalendar />} title={seasonTitle} values={seasonValues} />
+        <Tile icon={<IconCalendar />} title={seasonTitle} values={seasonValues} stacked />
       </div>
     </section>
   );
@@ -1251,11 +1256,6 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
               <p className="station-description station-description--empty">Description détaillée à venir.</p>
             )}
           </div>
-          <dl className="station-overview-card__facts">
-            <div><dt>Altitude</dt><dd>{dash(resort.altitude_base_m)} m – {dash(resort.altitude_top_m)} m</dd></div>
-            <div><dt>Domaine</dt><dd>{dash(resort.ski_area_km)} km</dd></div>
-            <div><dt>Pistes</dt><dd>{dash(computedPistesCount)}</dd></div>
-          </dl>
         </section>
 
         {/* Tuiles info */}
