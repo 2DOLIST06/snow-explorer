@@ -2,7 +2,7 @@ import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
 
 export default function MentionsLegalesPage() {
-  return <LegalPageLayout title="Mentions légales" pageTitle="Mentions légales | Snow Explorer" description="Informations légales relatives à l'édition et à l'hébergement de Snow Explorer.">
+  return <LegalPageLayout title="Mentions légales" pageTitle="Mentions légales | Snow Explorer" description="Informations légales relatives à l'édition et à l'hébergement de Snow Explorer." canonicalPath="/mentions-legales">
     <section><h2>Éditeur du site</h2><p>Le site Snow Explorer est édité par :</p><address className="legal-page__address">{`2DOLIST SAS
 Société par actions simplifiée au capital de 5 000 €
 Siège social : 1735 route des Condamines, 06670 Saint-Martin-du-Var, France
