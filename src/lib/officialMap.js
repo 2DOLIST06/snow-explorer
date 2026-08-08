@@ -1,11 +1,15 @@
 const CALAMEO_HOSTS = new Set(["calameo.com", "www.calameo.com"]);
 const CALAMEO_PUBLICATION_ID = /^[a-z0-9]+$/i;
 
-function getSafeHttpUrl(value) {
+function normalizeOfficialMapUrl(value) {
   if (typeof value !== "string" || !value.trim()) return null;
 
+  const trimmed = value.trim();
+  const markdownMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+  const candidate = markdownMatch ? markdownMatch[2] : trimmed;
+
   try {
-    const url = new URL(value.trim());
+    const url = new URL(candidate);
     if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) {
       return null;
     }
@@ -14,6 +18,8 @@ function getSafeHttpUrl(value) {
     return null;
   }
 }
+
+const getSafeHttpUrl = normalizeOfficialMapUrl;
 
 function getCalameoEmbedUrl(value) {
   const safeUrl = getSafeHttpUrl(value);
@@ -54,5 +60,6 @@ module.exports = {
   getCalameoEmbedUrl,
   getOfficialMapPresentation,
   getSafeHttpUrl,
+  normalizeOfficialMapUrl,
   selectMapMode,
 };
