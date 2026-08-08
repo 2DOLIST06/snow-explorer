@@ -260,16 +260,55 @@ const PistesTile: React.FC<{
 /* =========================
  * Plan des pistes
  * =======================*/
-const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; caption?: string | null }> = ({
+const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; officialUrl?: string | null; caption?: string | null }> = ({
   name,
   small,
   large,
+  officialUrl,
   caption,
 }) => {
   const [open, setOpen] = useState(false);
   const src = textOrEmpty(small) || textOrEmpty(large);
-  if (!src) return null;
+  const officialMapUrl = textOrEmpty(officialUrl);
+  if (!src && !officialMapUrl) return null;
   const big = textOrEmpty(large) || (small as string);
+
+  if (!src) {
+    return (
+      <figure
+        style={{
+          margin: 0,
+          border: "1px solid #cbd5e1",
+          borderRadius: 12,
+          overflow: "hidden",
+          background: "#fff",
+          height: PANEL_HEIGHT,
+        }}
+      >
+        <a
+          href={officialMapUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Voir le plan des pistes de ${name} sur le site officiel`}
+          style={{ position: "relative", display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden", color: "#0f172a", textDecoration: "none" }}
+        >
+          {/* Image volontairement générique et masquée : elle ne représente pas la station. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/plan-pistes-auron.png"
+            alt=""
+            aria-hidden="true"
+            style={{ position: "absolute", inset: -16, width: "calc(100% + 32px)", height: "calc(100% + 32px)", objectFit: "cover", filter: "blur(12px)", opacity: 0.28 }}
+          />
+          <span style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.68)" }} />
+          <span style={{ position: "relative", maxWidth: 310, margin: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(255,255,255,0.94)", border: "1px solid #cbd5e1", boxShadow: "0 8px 24px rgba(15,23,42,0.12)", fontSize: 16, fontWeight: 700, lineHeight: 1.45, textAlign: "center" }}>
+            Voir le plan des pistes sur le site officiel
+            <span aria-hidden="true" style={{ marginLeft: 6 }}>↗</span>
+          </span>
+        </a>
+      </figure>
+    );
+  }
 
   return (
     <>
@@ -1123,6 +1162,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   ) as string;
 
   const mapCaption: string | null = pistesCfg?.caption ?? (resort as any)?.pistes_caption ?? null;
+  const officialMapUrl: string = pistesCfg?.officialMapUrl?.trim() || "";
 
   const description = resort.description_md || cfg?.description?.html || "";
   const descriptionParagraphs = description
@@ -1272,9 +1312,9 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} />
 
         {/* Ligne A : plan + widgets droite */}
-        {(mapSmall || mapLarge || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
-          {(mapSmall || mapLarge) ? <div>
-            <PlanPistesFigure name={resort.name} small={mapSmall} large={mapLarge} caption={mapCaption} />
+        {(mapSmall || mapLarge || officialMapUrl || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
+          {(mapSmall || mapLarge || officialMapUrl) ? <div>
+            <PlanPistesFigure name={resort.name} small={mapSmall} large={mapLarge} officialUrl={officialMapUrl} caption={mapCaption} />
           </div> : null}
 
           {hasConditionsAside ? <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1378,6 +1418,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       enabled: Boolean(cfg.pistes?.enabled),
       smallMapUrl: cfg.pistes?.smallMapUrl || null,
       largeMapUrl: cfg.pistes?.largeMapUrl || null,
+      officialMapUrl: cfg.pistes?.officialMapUrl || null,
       caption: cfg.pistes?.caption || null,
       ...(cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
     },
