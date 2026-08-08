@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
-import { getOfficialMapPresentation } from "@/lib/officialMap";
+import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
 import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 
@@ -270,7 +270,7 @@ const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: 
 }) => {
   const [open, setOpen] = useState(false);
   const src = textOrEmpty(small) || textOrEmpty(large);
-  const officialMapUrl = textOrEmpty(officialUrl);
+  const officialMapUrl = normalizeOfficialMapUrl(officialUrl);
   if (!src && !officialMapUrl) return null;
   const big = textOrEmpty(large) || (small as string);
 
@@ -1190,7 +1190,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   ) as string;
 
   const mapCaption: string | null = pistesCfg?.caption ?? (resort as any)?.pistes_caption ?? null;
-  const officialMapUrl: string = pistesCfg?.officialMapUrl?.trim() || "";
+  const officialMapUrl = normalizeOfficialMapUrl(pistesCfg?.officialMapUrl);
 
   const description = resort.description_md || cfg?.description?.html || "";
   const descriptionParagraphs = description

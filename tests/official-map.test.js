@@ -5,6 +5,7 @@ const {
   getCalameoEmbedUrl,
   getOfficialMapPresentation,
   getSafeHttpUrl,
+  normalizeOfficialMapUrl,
   selectMapMode,
 } = require("../src/lib/officialMap");
 
@@ -29,6 +30,19 @@ test("safe non-Calameo URLs are embedded directly", () => {
   assert.equal(selectMapMode({ officialMapUrl: url }), "embed");
 });
 
+test("legacy Markdown links are normalized to their raw HTTP(S) target", () => {
+  const markdownUrl = `[${calameoUrl}](${calameoUrl})`;
+  assert.equal(normalizeOfficialMapUrl(markdownUrl), calameoUrl);
+  assert.equal(getCalameoEmbedUrl(markdownUrl), "https://v.calameo.com/?bkcode=0057989615a273aaacd64&page=1");
+});
+
+test("official URLs from any HTTP(S) host remain raw", () => {
+  for (const url of ["https://station.example.com/plan", "https://maps.station.example.com/winter"]) {
+    assert.equal(normalizeOfficialMapUrl(url), url);
+    assert.equal(getOfficialMapPresentation(url).sourceUrl, url);
+  }
+});
+
 test("the presentation keeps an external fallback for every embeddable URL", () => {
   const url = "https://station.example/map-that-may-refuse-framing";
   assert.equal(getOfficialMapPresentation(url).sourceUrl, url);
@@ -37,6 +51,7 @@ test("the presentation keeps an external fallback for every embeddable URL", () 
 test("missing and dangerous map URLs keep the existing no-map state", () => {
   assert.equal(selectMapMode({ smallMapUrl: null, largeMapUrl: null, officialMapUrl: null }), "none");
   for (const url of ["javascript:alert(1)", "data:text/html,test", "file:///tmp/map.pdf", "https://user:password@example.com/map"] ) {
+    assert.equal(normalizeOfficialMapUrl(url), null);
     assert.equal(getSafeHttpUrl(url), null);
     assert.equal(getOfficialMapPresentation(url), null);
     assert.equal(selectMapMode({ officialMapUrl: url }), "none");
