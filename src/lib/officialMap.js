@@ -52,7 +52,9 @@ function getOfficialMapPresentation(value) {
 
 function selectMapMode({ smallMapUrl, largeMapUrl, officialMapUrl }) {
   if (smallMapUrl || largeMapUrl) return "image";
-  if (getOfficialMapPresentation(officialMapUrl)) return "embed";
+  const presentation = getOfficialMapPresentation(officialMapUrl);
+  if (presentation?.provider === "calameo") return "embed";
+  if (presentation?.provider === "generic") return "official-link";
   return "none";
 }
 

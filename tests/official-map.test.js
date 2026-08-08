@@ -24,10 +24,14 @@ test("Calameo read URLs use its official viewer and retain the page", () => {
   });
 });
 
-test("safe non-Calameo URLs are embedded directly", () => {
+test("safe non-Calameo URLs use the on-demand official map branch", () => {
   const url = "https://example.com/official-interactive-map";
   assert.deepEqual(getOfficialMapPresentation(url), { sourceUrl: url, embedUrl: url, provider: "generic" });
-  assert.equal(selectMapMode({ officialMapUrl: url }), "embed");
+  assert.equal(selectMapMode({ officialMapUrl: url }), "official-link");
+});
+
+test("Calameo keeps the existing embedded map branch", () => {
+  assert.equal(selectMapMode({ officialMapUrl: calameoUrl }), "embed");
 });
 
 test("legacy Markdown links are normalized to their raw HTTP(S) target", () => {
