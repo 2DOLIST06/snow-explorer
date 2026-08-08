@@ -57,7 +57,7 @@ async function loadPublicResort(slug, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const apiBase = getStationApiBase(options.env || process.env);
-  const url = `${apiBase}${PUBLIC_STATION_PATH}?q=${encodeURIComponent(slug)}`;
+  const url = `${apiBase}${PUBLIC_STATION_PATH}${encodeURIComponent(slug)}`;
   const safeUrl = getSafeStationApiUrl(url);
 
   logger.info("[station-page] API request", { slug, url: safeUrl });
