@@ -5,16 +5,20 @@ type LegalPageLayoutProps = {
   title: string;
   pageTitle: string;
   description: string;
+  canonicalPath: `/${string}`;
   children: ReactNode;
 };
 
-export default function LegalPageLayout({ title, pageTitle, description, children }: LegalPageLayoutProps) {
+const SITE_URL = "https://www.snow-explorer.com";
+
+export default function LegalPageLayout({ title, pageTitle, description, canonicalPath, children }: LegalPageLayoutProps) {
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={description} />
         <meta name="robots" content="noindex, follow" />
+        <link rel="canonical" href={`${SITE_URL}${canonicalPath}`} />
       </Head>
       <main className="legal-page">
         <article className="legal-page__content">

@@ -2,7 +2,7 @@ import LegalPageLayout from "@/components/legal/LegalPageLayout";
 import Link from "next/link";
 
 export default function ConfidentialitePage() {
-  return <LegalPageLayout title="Politique de confidentialité" pageTitle="Politique de confidentialité | Snow Explorer" description="Informations sur le traitement des données personnelles sur Snow Explorer.">
+  return <LegalPageLayout title="Politique de confidentialité" pageTitle="Politique de confidentialité | Snow Explorer" description="Informations sur le traitement des données personnelles sur Snow Explorer." canonicalPath="/confidentialite">
     <section><h2>Responsable du traitement</h2><p>Le responsable des traitements de données personnelles effectués dans le cadre de Snow Explorer est :</p><address className="legal-page__address">{`2DOLIST SAS
 1735 route des Condamines
 06670 Saint-Martin-du-Var
