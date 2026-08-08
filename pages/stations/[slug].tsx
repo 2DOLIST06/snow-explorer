@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
+import { getOfficialMapPresentation } from "@/lib/officialMap";
 import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 
@@ -274,39 +275,66 @@ const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: 
   const big = textOrEmpty(large) || (small as string);
 
   if (!src) {
+    const officialMap = getOfficialMapPresentation(officialMapUrl);
+    if (!officialMap) return null;
+
+    const iframeTitle = `Plan des pistes officiel de ${name}`;
+    const iframeProps = {
+      src: officialMap.embedUrl,
+      title: iframeTitle,
+      referrerPolicy: "strict-origin-when-cross-origin" as const,
+      allow: officialMap.provider === "calameo" ? "fullscreen" : undefined,
+      allowFullScreen: officialMap.provider === "calameo",
+    };
+
     return (
-      <figure
-        style={{
-          margin: 0,
-          border: "1px solid #cbd5e1",
-          borderRadius: 12,
-          overflow: "hidden",
-          background: "#fff",
-          height: PANEL_HEIGHT,
-        }}
-      >
-        <a
-          href={officialMapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Voir le plan des pistes de ${name} sur le site officiel`}
-          style={{ position: "relative", display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden", color: "#0f172a", textDecoration: "none" }}
+      <>
+        <figure
+          style={{
+            position: "relative",
+            margin: 0,
+            border: "1px solid #cbd5e1",
+            borderRadius: 12,
+            overflow: "hidden",
+            background: "#f8fafc",
+            height: PANEL_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
-          {/* Image volontairement générique et masquée : elle ne représente pas la station. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/plan-pistes-auron.png"
-            alt=""
-            aria-hidden="true"
-            style={{ position: "absolute", inset: -16, width: "calc(100% + 32px)", height: "calc(100% + 32px)", objectFit: "cover", filter: "blur(12px)", opacity: 0.28 }}
+          <iframe
+            {...iframeProps}
+            loading="lazy"
+            style={{ width: "100%", flex: 1, border: 0, background: "#fff" }}
           />
-          <span style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.68)" }} />
-          <span style={{ position: "relative", maxWidth: 310, margin: 24, padding: "16px 20px", borderRadius: 10, background: "rgba(255,255,255,0.94)", border: "1px solid #cbd5e1", boxShadow: "0 8px 24px rgba(15,23,42,0.12)", fontSize: 16, fontWeight: 700, lineHeight: 1.45, textAlign: "center" }}>
-            Voir le plan des pistes sur le site officiel
-            <span aria-hidden="true" style={{ marginLeft: 6 }}>↗</span>
-          </span>
-        </a>
-      </figure>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label={`Agrandir le plan des pistes de ${name}`}
+            style={{ position: "absolute", top: 10, right: 10, border: "1px solid #cbd5e1", borderRadius: 999, padding: "8px 12px", background: "rgba(255,255,255,0.96)", boxShadow: "0 4px 14px rgba(15,23,42,0.15)", cursor: "zoom-in", fontWeight: 700 }}
+          >
+            Agrandir le plan
+          </button>
+          <figcaption style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}>
+            <span>{caption || "Plan officiel"}</span>
+            <a href={officialMap.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1", fontWeight: 700, whiteSpace: "nowrap" }}>
+              Ouvrir la source <span aria-hidden="true">↗</span>
+            </a>
+          </figcaption>
+        </figure>
+
+        {open && (
+          <div onClick={() => setOpen(false)} role="presentation" style={{ position: "fixed", inset: 0, padding: 12, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div role="dialog" aria-modal="true" aria-label={iframeTitle} onClick={(event) => event.stopPropagation()} style={{ position: "relative", width: "min(1200px, 96vw)", height: "min(820px, 90vh)", background: "#fff", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" style={{ position: "absolute", zIndex: 1, top: 8, right: 8, width: 36, height: 36, borderRadius: "50%", border: "1px solid #cbd5e1", background: "#fff", fontSize: 20, cursor: "pointer" }}>×</button>
+              <iframe {...iframeProps} style={{ width: "100%", flex: 1, border: 0, background: "#fff" }} />
+              <div style={{ padding: "9px 14px", borderTop: "1px solid #d1d5db", fontSize: 13 }}>
+                Si le lecteur ne s’affiche pas, <a href={officialMap.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1", fontWeight: 700 }}>ouvrir le plan officiel <span aria-hidden="true">↗</span></a>.
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
