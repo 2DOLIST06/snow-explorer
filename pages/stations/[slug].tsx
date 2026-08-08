@@ -9,7 +9,6 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
-import { keyFigures, seasonDisplay } from "@/lib/stationPublicDisplay";
 import { StationWidgetsConfig } from "@/types/station";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
@@ -27,9 +26,9 @@ type Resort = {
   region?: { id?: string; name?: string; country_code?: string };
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
-  ski_area_km: number | null;
-  snowparks_count: number | null;
-  family_parks_count: number | null;
+  ski_area_km?: number | null;
+  lifts_count?: number | null;
+  pistes_count?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   website_url?: string | null;
@@ -43,9 +42,8 @@ type Resort = {
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
   altitude_max_m?: number | null;
-  season_open_date: string | null;
-  season_close_date: string | null;
-  season_label: string | null;
+  season_open_date?: string | null;
+  season_close_date?: string | null;
 };
 
 interface Props {
@@ -84,15 +82,331 @@ const textOrEmpty = (v?: string | null) => (v && v.trim() ? v.trim() : "");
 const dash = (s?: string | number | null) =>
   s === 0 ? "0" : s === "" || s === null || s === undefined ? "—" : String(s);
 
+const fmtDate = (v?: string | null) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+};
+
+const formatBig = (v: string | number | null | undefined) => {
+  if (v === null || v === undefined || v === "" || Number.isNaN(v as any)) return "—";
+  const n = Number(v);
+  if (Number.isFinite(n)) return n.toLocaleString("fr-FR");
+  return String(v);
+};
+
+const sumAvailable = (...values: Array<number | null | undefined>) => {
+  const available = values.filter((value): value is number => Number.isFinite(value));
+  return available.length ? available.reduce((total, value) => total + value, 0) : null;
+};
+
 /* =========================
  * Icônes (SVG inline, pas de lib)
  * =======================*/
+const IconArrowCircle = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="#1e3a8a" role="img" aria-label="→">
+    <circle cx="12" cy="12" r="11" fill="#1d4ed8" />
+    <path d="M8 12h6m0 0-2-2m2 2-2 2" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconAltitude = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M3 18l6-8 4 5 3-4 5 7H3Z" strokeLinejoin="round" />
+    <path d="M5 18h14" />
+  </svg>
+);
+
 const IconPistes = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
     <path d="M4 16l14-8" strokeLinecap="round" />
     <path d="M7 20l12-7" strokeLinecap="round" />
     <circle cx="18" cy="6" r="1.8" fill="#111827" />
   </svg>
+);
+
+const IconLifts = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M3 6h18" strokeLinecap="round" />
+    <path d="M6 6v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V6" />
+    <path d="M15 6v6a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V6" />
+  </svg>
+);
+
+const IconCalendar = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <rect x="3" y="4" width="18" height="17" rx="2" />
+    <path d="M8 2v4M16 2v4M3 10h18" />
+  </svg>
+);
+
+const IconMap = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M9 6l6-2 6 2v12l-6 2-6-2-6 2V8l6-2v12" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconSnowpark = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M12 2v20M4 6l16 12M20 6 4 18" strokeLinecap="round" />
+  </svg>
+);
+
+const IconPin = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
+/* =========================
+ * Tuiles "style capture" : base + variantes compactes
+ * =======================*/
+type TileValue = { value: string; sub?: string };
+
+const TileHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, title }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div>{icon}</div>
+      <div
+        style={{
+          fontSize: 12,
+          letterSpacing: 1.2,
+          color: "#374151",
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
+      >
+        {title}
+      </div>
+    </div>
+    <IconArrowCircle />
+  </div>
+);
+
+/** Tuile générique (grands chiffres) */
+const Tile: React.FC<{ icon: React.ReactNode; title: string; values: TileValue[] }> = ({ icon, title, values }) => {
+  const cols = Math.min(Math.max(values.length, 1), 3);
+  return (
+    <div
+      style={{
+        background: "#eef2f7",
+        border: "1px solid #d1d9e6",
+        borderRadius: 16,
+        padding: 16,
+      }}
+    >
+      <TileHeader icon={icon} title={title} />
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 12 }}>
+        {values.map((v, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{v.value}</div>
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 11,
+                letterSpacing: 0.6,
+                color: "#4b5563",
+                textTransform: "uppercase",
+              }}
+            >
+              {v.sub || " "}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ---- utilitaires pour légendes compactes ---- */
+const ColorDot: React.FC<{ c: string; label: string }> = ({ c, label }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <span
+      style={{
+        display: "inline-block",
+        width: 10,
+        height: 10,
+        borderRadius: 9999,
+        background: c,
+        border: "1px solid rgba(0,0,0,0.12)",
+      }}
+    />
+    <span style={{ fontSize: 13, color: "#374151" }}>{label}</span>
+  </div>
+);
+
+const LegendRow: React.FC<{ left: React.ReactNode; right: React.ReactNode }> = ({ left, right }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{left}</div>
+    <div style={{ fontWeight: 700, color: "#0f172a" }}>{right}</div>
+  </div>
+);
+
+/* Mini-icônes pour types de remontées (cohérentes visuellement) */
+const MiniDrag = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M4 6h16" strokeLinecap="round" />
+    <path d="M8 6v7a3 3 0 0 0 6 0V6" />
+  </svg>
+);
+const MiniChair = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M4 6h16" strokeLinecap="round" />
+    <path d="M7 12h10M8 12v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4" />
+  </svg>
+);
+const MiniCable = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="1.8">
+    <path d="M3 6h18" strokeLinecap="round" />
+    <rect x="8" y="9" width="8" height="6" rx="1.5" />
+    <path d="M12 9v-3" />
+  </svg>
+);
+
+/** Tuile compacte "Pistes + couleurs" */
+const PistesTile: React.FC<{
+  total: string;
+  km: string;
+  green: string;
+  blue: string;
+  red: string;
+  black: string;
+  snowparks: string;
+  snowparksClickable?: boolean;
+  onSnowparkClick?: () => void;
+}> = ({ total, km, green, blue, red, black, snowparks, snowparksClickable, onSnowparkClick }) => (
+  <div
+    style={{
+      background: "#eef2f7",
+      border: "1px solid #d1d9e6",
+      borderRadius: 16,
+      padding: 16,
+    }}
+  >
+    <TileHeader icon={<IconPistes />} title="Pistes" />
+
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
+          Pistes
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{km}</div>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
+          Domaine
+        </div>
+      </div>
+    </div>
+
+    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
+
+    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+      <LegendRow left={<ColorDot c="#16a34a" label="Vertes" />} right={<span>{green}</span>} />
+      <LegendRow left={<ColorDot c="#2563eb" label="Bleues" />} right={<span>{blue}</span>} />
+      <LegendRow left={<ColorDot c="#dc2626" label="Rouges" />} right={<span>{red}</span>} />
+      <LegendRow left={<ColorDot c="#111827" label="Noires" />} right={<span>{black}</span>} />
+      {snowparksClickable ? (
+        <button
+          onClick={onSnowparkClick}
+          style={{ all: "unset", cursor: "pointer", borderRadius: 8, padding: 4 }}
+          aria-label="Voir le(s) snowpark(s)"
+        >
+          <LegendRow
+            left={
+              <>
+                <IconSnowpark />
+                <span style={{ fontSize: 13, color: "#374151", textDecoration: "underline" }}>Snowparks</span>
+              </>
+            }
+            right={<span>{snowparks}</span>}
+          />
+        </button>
+      ) : (
+        <LegendRow
+          left={
+            <>
+              <IconSnowpark />
+              <span style={{ fontSize: 13, color: "#374151" }}>Snowparks</span>
+            </>
+          }
+          right={<span>{snowparks}</span>}
+        />
+      )}
+    </div>
+  </div>
+);
+
+/** Tuile compacte "Remontées + types" */
+const LiftsTile: React.FC<{
+  total: string;
+  typesLabel: string;
+  drag: string;
+  chair: string;
+  cable: string;
+}> = ({ total, typesLabel, drag, chair, cable }) => (
+  <div
+    style={{
+      background: "#eef2f7",
+border: "1px solid #d1d9e6",
+      borderRadius: 16,
+      padding: 16,
+    }}
+  >
+    <TileHeader icon={<IconLifts />} title="Remontées mécaniques" />
+
+    {/* chiffres principaux */}
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{total}</div>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
+          Remontées
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{typesLabel}</div>
+        <div style={{ marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" }}>
+          Types
+        </div>
+      </div>
+    </div>
+
+    <div style={{ height: 1, background: "#cfd8e3", margin: "8px 0 10px" }} />
+
+    {/* légendes types */}
+    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+      <LegendRow
+        left={
+          <>
+            <MiniDrag />
+            <span style={{ fontSize: 13, color: "#374151" }}>Tire-fesses</span>
+          </>
+        }
+        right={<span>{drag}</span>}
+      />
+      <LegendRow
+        left={
+          <>
+            <MiniChair />
+            <span style={{ fontSize: 13, color: "#374151" }}>Télésièges</span>
+          </>
+        }
+        right={<span>{chair}</span>}
+      />
+      <LegendRow
+        left={
+          <>
+            <MiniCable />
+            <span style={{ fontSize: 13, color: "#374151" }}>Téléphériques</span>
+          </>
+        }
+        right={<span>{cable}</span>}
+      />
+    </div>
+  </div>
 );
 
 /* =========================
@@ -769,30 +1083,189 @@ const SnowparkCard: React.FC<{ name: string; url?: string | null; caption?: stri
 /* =========================
  * Panneaux d'infos étendus (tuiles compactes)
  * =======================*/
-const StationExtraPanels: React.FC<{ resort: Resort }> = ({ resort }) => {
-  const figures = keyFigures(resort);
-  const season = seasonDisplay(resort);
-  if (!figures.length && !season.opening && !season.closing) return null;
+const StationExtraPanels: React.FC<{
+  resort: Resort;
+  cfg: StationWidgetsConfig | null;
+  computedPistesCount: number | null;
+  computedLiftsCount: number | null;
+}> = ({
+  resort,
+  cfg,
+  computedPistesCount,
+  computedLiftsCount,
+}) => {
+  const router = useRouter();
+
+  // Altitudes
+  const altMin = (resort as any)?.altitude_min_m ?? resort.altitude_base_m ?? null;
+  const altMax = (resort as any)?.altitude_max_m ?? resort.altitude_top_m ?? null;
+  const drop =
+    Number.isFinite(altMin as any) && Number.isFinite(altMax as any)
+      ? Math.max(0, Number(altMax) - Number(altMin))
+      : null;
+
+  // Saison
+  const openRaw =
+    (resort as any)?.season_open_date ??
+    cfg?.snow?.season?.openingDate ??
+    cfg?.snow?.openingDate ??
+    null;
+  const closeRaw =
+    (resort as any)?.season_close_date ??
+    cfg?.snow?.season?.closingDate ??
+    cfg?.snow?.closingDate ??
+    null;
+  const seasonStr =
+    openRaw && closeRaw
+      ? `${fmtDate(openRaw)} → ${fmtDate(closeRaw)}`
+      : openRaw
+      ? `Dès ${fmtDate(openRaw)}`
+      : closeRaw
+      ? `Jusqu’au ${fmtDate(closeRaw)}`
+      : "—";
+
+    // Domaine / pistes
+  const km = Number.isFinite(resort.ski_area_km as any) ? `${formatBig(resort.ski_area_km)} km` : "—";
+  const pistesTotal = formatBig(computedPistesCount);
+
+  const pc = cfg?.pistes?.colors || {};
+  const pistesGreen = Number.isFinite(pc.green) ? formatBig(pc.green) : "—";
+  const pistesBlue = Number.isFinite(pc.blue) ? formatBig(pc.blue) : "—";
+  const pistesRed = Number.isFinite(pc.red) ? formatBig(pc.red) : "—";
+  const pistesBlack = Number.isFinite(pc.black) ? formatBig(pc.black) : "—";
+
+  // Snowparks
+  const snowparksCountRaw =
+    typeof cfg?.snowparks?.count === "number"
+      ? cfg.snowparks.count
+      : 0;
+  const snowparksLabel = formatBig(snowparksCountRaw);
+  const snowparksClickable = (snowparksCountRaw ?? 0) > 0;
+  const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
+
+  // Remontées mécaniques
+  const rm = cfg?.remontees || {};
+  const liftsDrag = Number.isFinite(rm.tireFesses) ? Number(rm.tireFesses) : 0;
+  const liftsChairs = Number.isFinite(rm.telesieges) ? Number(rm.telesieges) : 0;
+  const liftsCable = Number.isFinite(rm.telepheriques) ? Number(rm.telepheriques) : 0;
+
+  const liftsTotal = formatBig(computedLiftsCount);
+
+  const liftTypesCount = [liftsDrag, liftsChairs, liftsCable].filter((v) => v > 0).length;
+  const liftTypesLabel = liftTypesCount ? `${liftTypesCount}` : "—";
 
   return (
-    <section style={{ marginTop: 18 }} aria-label="Informations de la station">
-      {figures.length ? (
-        <div className="stations-key-figures" aria-label="Chiffres-clés">
-          {figures.map((figure: { key: string; label: string }) => (
-            <div className="station-key-figure" key={figure.key}>
-              <IconPistes />
-              <strong>{figure.label}</strong>
+    <section style={{ marginTop: 18 }}>
+      <div className="stations-panels-grid">
+        {/* Altitude */}
+        <div
+          style={{
+            background: "#eef2f7",
+            border: "1px solid #d1d9e6",
+            borderRadius: 16,
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <IconAltitude />
+              <div
+                style={{
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: "#374151",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                }}
+              >
+                Altitude
+              </div>
             </div>
-          ))}
+            <IconArrowCircle />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+                {formatBig(altMax)}m
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                }}
+              >
+                EN HAUT
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+                {formatBig(altMin)}m
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                }}
+              >
+                EN BAS
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+                {formatBig(drop)}m
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  color: "#4b5563",
+                  textTransform: "uppercase",
+                }}
+              >
+                DÉNIVELÉ
+              </div>
+            </div>
+          </div>
         </div>
-      ) : null}
-      {season.opening || season.closing ? (
-        <div className="station-season" aria-label="Ouverture de la station">
-          {season.label ? <h2>Saison {season.label}</h2> : null}
-          {season.opening ? <p><strong>Ouverture :</strong> {season.opening}</p> : null}
-          {season.closing ? <p><strong>Fermeture :</strong> {season.closing}</p> : null}
-        </div>
-      ) : null}
+
+        {/* Pistes + couleurs */}
+        <PistesTile
+          total={`${pistesTotal}`}
+          km={`${km}`}
+          green={`${pistesGreen}`}
+          blue={`${pistesBlue}`}
+          red={`${pistesRed}`}
+          black={`${pistesBlack}`}
+          snowparks={`${snowparksLabel}`}
+          snowparksClickable={snowparksClickable}
+          onSnowparkClick={snowparksClickable ? onSnowparkClick : undefined}
+        />
+
+        {/* Remontées + types */}
+        <LiftsTile
+          total={`${liftsTotal}`}
+          typesLabel={`${liftTypesLabel}`}
+          drag={`${formatBig(liftsDrag)}`}
+          chair={`${formatBig(liftsChairs)}`}
+          cable={`${formatBig(liftsCable)}`}
+        />
+
+        {/* Saison */}
+        <Tile icon={<IconCalendar />} title="Saison" values={[{ value: seasonStr, sub: " " }]} />
+      </div>
     </section>
   );
 };
@@ -878,7 +1351,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   const snowparkCaption: string | null = (cfg as any)?.snowpark?.caption || null;
 
   // clics snowpark (ligne + plan)
-  const snowparksCountForCard = typeof resort.snowparks_count === "number" ? resort.snowparks_count : 0;
+  const snowparksCountForCard = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
   const goSnowpark = () => router.push(`/stations/${resort.slug}/snowpark`);
   const hasValidCoordinates =
     Number.isFinite(Number(geoLat)) &&
@@ -888,6 +1361,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
     snowparkUrl
   );
 
+  const pisteColors = cfg?.pistes?.colors;
+  const computedPistesCount = resort.pistes_count ?? sumAvailable(
+    pisteColors?.green, pisteColors?.blue, pisteColors?.red, pisteColors?.black
+  );
+  const computedLiftsCount = resort.lifts_count ?? sumAvailable(
+    cfg?.remontees?.tireFesses, cfg?.remontees?.telesieges, cfg?.remontees?.telepheriques
+  );
   const webPageStructuredData = {
     "@context": "https://schema.org", "@type": "WebPage", name: seoTitle, url: canonicalUrl,
     inLanguage: "fr-FR", ...(seoDescription ? { description: seoDescription } : {}),
@@ -969,11 +1449,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           </div>
           <dl className="station-overview-card__facts">
             <div><dt>Altitude</dt><dd>{dash(resort.altitude_base_m)} m – {dash(resort.altitude_top_m)} m</dd></div>
+            <div><dt>Domaine</dt><dd>{dash(resort.ski_area_km)} km</dd></div>
+            <div><dt>Pistes</dt><dd>{dash(computedPistesCount)}</dd></div>
           </dl>
         </section>
 
         {/* Tuiles info */}
-        <StationExtraPanels resort={resort} />
+        <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} />
 
         {/* Ligne A : plan + widgets droite */}
         {(mapSmall || mapLarge || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
@@ -1015,21 +1497,11 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           margin-top: 16px;
         }
 
-        .stations-key-figures {
+        .stations-panels-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 14px;
         }
-        .station-key-figure, .station-season {
-          background: #eef2f7;
-          border: 1px solid #d1d9e6;
-          border-radius: 16px;
-          padding: 16px;
-        }
-        .station-key-figure { display: flex; align-items: center; gap: 10px; font-size: 18px; }
-        .station-season { margin-top: 14px; }
-        .station-season h2 { margin: 0 0 10px; font-size: 20px; }
-        .station-season p { margin: 6px 0; }
 
         /* Tablette / petit desktop : 2 colonnes de tuiles, layout simplifié */
         @media (max-width: 1024px) and (min-width: 769px) {
@@ -1037,7 +1509,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
             grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr);
           }
 
-          .stations-key-figures {
+          .stations-panels-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
@@ -1048,7 +1520,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
             grid-template-columns: minmax(0, 1fr);
           }
 
-          .stations-key-figures {
+          .stations-panels-grid {
             grid-template-columns: minmax(0, 1fr);
           }
         }
@@ -1093,6 +1565,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       smallMapUrl: cfg.pistes?.smallMapUrl || null,
       largeMapUrl: cfg.pistes?.largeMapUrl || null,
       caption: cfg.pistes?.caption || null,
+      ...(cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
     },
     meteo: { enabled: Boolean(cfg.meteo?.enabled), iframeUrl: cfg.meteo?.iframeUrl || null },
     description: {
@@ -1123,6 +1596,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       imageUrl: cfg.snowpark?.imageUrl || null,
       caption: cfg.snowpark?.caption || null,
     },
+    ...(cfg.remontees ? { remontees: cfg.remontees } : {}),
+    ...(cfg.snowparks ? { snowparks: cfg.snowparks } : {}),
   } : null;
 
   const serializedResort = JSON.parse(JSON.stringify(resort)) as Resort;
