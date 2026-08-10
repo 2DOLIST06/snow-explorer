@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { StationWidgetsConfig } from "@/types/station";
+import { disabledSnowparkRedirect } from "@/lib/snowparkAvailability";
 
 /* =========================
  * Types
@@ -695,6 +696,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   if (!resort || resort.is_active === false || resort.is_active === null) {
     return { notFound: true };
   }
+
+  const redirect = disabledSnowparkRedirect(slug, cfg);
+  if (redirect) return redirect;
 
   return { props: { slug, resort, cfg } };
 };
