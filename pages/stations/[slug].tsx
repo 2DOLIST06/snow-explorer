@@ -13,6 +13,7 @@ import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
+import { isSnowparkEnabled } from "@/lib/snowparkAvailability";
 
 /* =========================
  * Types
@@ -1122,7 +1123,7 @@ const StationExtraPanels: React.FC<{
   // Snowparks
   const snowparksCountRaw = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
   const snowparksLabel = formatBig(snowparksCountRaw);
-  const snowparksClickable = snowparksCountRaw > 0;
+  const snowparksClickable = isSnowparkEnabled(cfg) && snowparksCountRaw > 0;
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
 
   // Seul le total des remontées est affiché.
@@ -1318,8 +1319,10 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
 
   // Snowpark (config)
-  const snowparkUrl: string | null =
-    ((cfg as any)?.snowpark?.mapUrl as string) || ((cfg as any)?.snowpark?.imageUrl as string) || null;
+  const snowparkEnabled = isSnowparkEnabled(cfg);
+  const snowparkUrl: string | null = snowparkEnabled
+    ? ((cfg as any)?.snowpark?.mapUrl as string) || ((cfg as any)?.snowpark?.imageUrl as string) || null
+    : null;
   const snowparkCaption: string | null = (cfg as any)?.snowpark?.caption || null;
 
   // clics snowpark (ligne + plan)
@@ -1437,13 +1440,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
             {hasValidCoordinates ? (
               <MeteoblueSkiWidget lat={geoLat} lon={geoLon} />
             ) : null}
-            <SnowparkCard
+            {snowparkEnabled ? <SnowparkCard
               name={resort.name}
               url={snowparkUrl}
               caption={snowparkCaption || undefined}
               clickable={snowparksCountForCard > 0}
               onClick={snowparksCountForCard > 0 ? goSnowpark : undefined}
-            />
+            /> : null}
           </aside> : null}
         </section> : null}
 

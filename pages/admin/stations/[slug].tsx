@@ -5,6 +5,7 @@ import StationImportModal from "@/components/admin/imports/StationImportModal";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
+import { normalizeAdminStation, normalizeAdminWidgets } from "@/lib/adminStation";
 
 
 type RegionRow = { id: string; name: string; country_code?: string };
@@ -808,26 +809,7 @@ export default function AdminStationEdit() {
       const j = await r.json();
 
       const rcv: ResortType = j.resort || j;
-      const normalized: ResortType = {
-  ...rcv,
-  region_id: rcv.region_id ?? rcv.region?.id ?? null,
-  department: rcv.department ?? null,
-  altitude_min_m: rcv.altitude_min_m ?? null,
-  altitude_max_m: rcv.altitude_max_m ?? null,
-  season_open_date: rcv.season_open_date ?? null,
-  season_close_date: rcv.season_close_date ?? null,
-
-  pistes_count: rcv.pistes_count ?? null,
-  ski_area_km: rcv.ski_area_km ?? null,
-  lifts_count: rcv.lifts_count ?? null,
-
-  pistes_small_map_url: rcv.pistes_small_map_url ?? null,
-  pistes_large_map_url: rcv.pistes_large_map_url ?? null,
-};
-
-      setResort(normalized);
-
-      const w = j.widgets || {};
+      const w: any = normalizeAdminWidgets(j.widgets || {}, rcv);
       if (!w.pistes) w.pistes = {};
       if (!w.pistes.colors) w.pistes.colors = { green: 0, blue: 0, red: 0, black: 0 };
       if (!w.snowparks) w.snowparks = { count: 0 };
@@ -835,6 +817,9 @@ export default function AdminStationEdit() {
       if (!w.forfaits) w.forfaits = { enabled: false, columns: [], items: [] };
 w.forfaits = normalizeForfaitConfig(w.forfaits);
 setWidgets(w);
+
+      const normalized: ResortType = normalizeAdminStation(rcv, w);
+      setResort(normalized);
 
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
       let regs: RegionRow[] = rr.ok ? await rr.json() : [];
