@@ -11,6 +11,7 @@ import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
 import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
+import { regionHref } from "@/lib/regions";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { isSnowparkEnabled } from "@/lib/snowparkAvailability";
@@ -1258,6 +1259,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
   const cover = resort.cover_image_url || "https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg";
   const canonicalUrl = `https://www.snow-explorer.com/stations/${resort.slug}`;
+  const resortRegionHref = regionHref(resort.region);
 
   // URLs plan (ordre de priorité : cfg.pistes → resort.* à plat)
   const pistesCfg = cfg?.pistes || null;
@@ -1387,7 +1389,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <div className="station-profile-hero__content">
           <p className="eyebrow">Fiche station</p>
           <h1>{resort.name}</h1>
-          <p>{resort.region?.name || "Destination montagne"}</p>
+          <p>{resortRegionHref ? <Link className="station-profile-hero__region" href={resortRegionHref}>{resort.region?.name}</Link> : "Destination montagne"}</p>
           <div className="station-profile-hero__actions">
             <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
           </div>
@@ -1399,6 +1401,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <nav aria-label="Fil d’Ariane" style={{ margin: "16px 0", color: "#4b5563", fontSize: 14 }}>
           <Link href="/">Accueil</Link><span aria-hidden="true"> &gt; </span>
           <Link href="/stations">Stations</Link><span aria-hidden="true"> &gt; </span>
+          {resortRegionHref ? <><Link href={resortRegionHref}>{resort.region?.name}</Link><span aria-hidden="true"> &gt; </span></> : null}
           <span aria-current="page">{resort.name}</span>
         </nav>
         <section className="station-overview-card">
