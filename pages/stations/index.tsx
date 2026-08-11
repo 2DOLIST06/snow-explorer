@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { regionHref } from "@/lib/regions";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string } };
 
@@ -62,7 +63,7 @@ export default function StationsList() {
             <div className="station-result-card__icon"><MapPin size={20} /></div>
             <div>
               <h2>{r.name}</h2>
-              <p>{r.region?.name || "Station de ski"}</p>
+              <p>{regionHref(r.region) ? <Link href={regionHref(r.region)!}>{r.region?.name}</Link> : "Station de ski"}</p>
             </div>
             <Link href={`/stations/${r.slug}`} className="station-result-card__link">Voir la fiche <ArrowRight size={16} /></Link>
           </article>

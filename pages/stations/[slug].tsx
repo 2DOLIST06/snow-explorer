@@ -9,8 +9,9 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
-import { isResortInactive, loadPublicResort } from "@/lib/api/stationPage";
+import { getStationApiBase, isResortInactive, loadPublicResort, resolveResortRegion } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
+import { regionHref } from "@/lib/regions";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { isSnowparkEnabled } from "@/lib/snowparkAvailability";
@@ -26,6 +27,9 @@ type Resort = {
   resort_is_active?: boolean;
   active?: boolean;
   region?: { id?: string; name?: string; country_code?: string };
+  region_id?: string | null;
+  region_name?: string | null;
+  region_label?: string | null;
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
   ski_area_km?: number | null;
@@ -1258,6 +1262,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
   const cover = resort.cover_image_url || "https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg";
   const canonicalUrl = `https://www.snow-explorer.com/stations/${resort.slug}`;
+  const resortRegionHref = regionHref(resort.region);
 
   // URLs plan (ordre de priorité : cfg.pistes → resort.* à plat)
   const pistesCfg = cfg?.pistes || null;
@@ -1387,7 +1392,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <div className="station-profile-hero__content">
           <p className="eyebrow">Fiche station</p>
           <h1>{resort.name}</h1>
-          <p>{resort.region?.name || "Destination montagne"}</p>
+          <p>{resortRegionHref ? <Link className="station-profile-hero__region" href={resortRegionHref}>{resort.region?.name}</Link> : "Destination montagne"}</p>
           <div className="station-profile-hero__actions">
             <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
           </div>
@@ -1399,6 +1404,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <nav aria-label="Fil d’Ariane" style={{ margin: "16px 0", color: "#4b5563", fontSize: 14 }}>
           <Link href="/">Accueil</Link><span aria-hidden="true"> &gt; </span>
           <Link href="/stations">Stations</Link><span aria-hidden="true"> &gt; </span>
+          {resortRegionHref ? <><Link href={resortRegionHref}>{resort.region?.name}</Link><span aria-hidden="true"> &gt; </span></> : null}
           <span aria-current="page">{resort.name}</span>
         </nav>
         <section className="station-overview-card">
@@ -1520,12 +1526,32 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   // 1) Station via la route publique Flask. Les erreurs amont doivent rester
   // des erreurs serveur : seule une absence explicite devient une page 404.
-  const resort = (await loadPublicResort(slug)) as Resort | null;
-  if (!resort) {
+  const loadedResort = (await loadPublicResort(slug)) as Resort | null;
+  if (!loadedResort) {
     return { notFound: true };
   }
-  if (isResortInactive(resort)) {
+  if (isResortInactive(loadedResort)) {
     return { notFound: true };
+  }
+
+  // Selon la version du backend, la région est imbriquée, renvoyée dans
+  // `region_name`, ou seulement référencée par `region_id`. On normalise ces
+  // trois contrats avant le rendu afin de toujours afficher le vrai nom.
+  let resort = resolveResortRegion(loadedResort) as Resort;
+  if (!resort.region?.name && resort.region_id) {
+    try {
+      const response = await fetch(`${getStationApiBase()}/api/regions`, {
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        const regions = Array.isArray(payload) ? payload : payload?.items || payload?.data || [];
+        resort = resolveResortRegion(resort, regions) as Resort;
+      }
+    } catch (error) {
+      console.error("[stations/[slug]] region lookup failed", error instanceof Error ? error.message : "unknown_error");
+    }
   }
 
   // 2) Widgets config
