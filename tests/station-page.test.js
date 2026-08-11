@@ -5,6 +5,7 @@ const {
   getStationApiBase,
   isResortInactive,
   loadPublicResort,
+  resolveResortRegion,
   stationFromPayload,
 } = require("../src/lib/api/stationPage");
 
@@ -18,6 +19,21 @@ const response = (status, body, contentType = "application/json") =>
 test("station SSR uses the configured absolute backend and strips trailing slashes", () => {
   assert.equal(getStationApiBase({ API_URL: "https://backend.example.com///", NODE_ENV: "production" }), "https://backend.example.com");
   assert.throws(() => getStationApiBase({ NODE_ENV: "production" }), /Missing backend origin/);
+});
+
+test("station regions support nested, flat and region_id API contracts", () => {
+  const nested = { name: "Auron", region: { id: "paca", name: "Provence-Alpes-Côte d’Azur" } };
+  assert.equal(resolveResortRegion(nested), nested);
+
+  assert.deepEqual(
+    resolveResortRegion({ name: "Auron", region_id: "paca", region_name: "Provence-Alpes-Côte d’Azur" }),
+    { name: "Auron", region_id: "paca", region_name: "Provence-Alpes-Côte d’Azur", region: { id: "paca", name: "Provence-Alpes-Côte d’Azur" } },
+  );
+
+  assert.deepEqual(
+    resolveResortRegion({ name: "Auron", region_id: "paca" }, [{ id: "paca", name: "Provence-Alpes-Côte d’Azur", country_code: "FR" }]),
+    { name: "Auron", region_id: "paca", region: { id: "paca", name: "Provence-Alpes-Côte d’Azur", country_code: "FR" } },
+  );
 });
 
 test("public station payload supports direct, resort and data contracts", () => {

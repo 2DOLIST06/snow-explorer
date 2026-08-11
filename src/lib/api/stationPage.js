@@ -53,6 +53,33 @@ function isResortInactive(resort) {
   return active === false;
 }
 
+function resolveResortRegion(resort, regions = []) {
+  if (!resort || typeof resort !== "object") return resort;
+  if (resort.region?.name) return resort;
+
+  const regionId = resort.region_id ?? resort.region?.id;
+  const flatName = resort.region_name ?? resort.region_label;
+  const matchingRegion = Array.isArray(regions)
+    ? regions.find((region) =>
+        region && (
+          (regionId && String(region.id).toLowerCase() === String(regionId).toLowerCase()) ||
+          (flatName && String(region.name).toLowerCase() === String(flatName).toLowerCase())
+        ),
+      )
+    : null;
+
+  if (!flatName && !matchingRegion?.name) return resort;
+  return {
+    ...resort,
+    region: {
+      ...(matchingRegion || {}),
+      ...(resort.region || {}),
+      ...(regionId ? { id: String(regionId) } : {}),
+      name: matchingRegion?.name || String(flatName),
+    },
+  };
+}
+
 async function loadPublicResort(slug, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
@@ -135,5 +162,6 @@ module.exports = {
   getStationApiBase,
   isResortInactive,
   loadPublicResort,
+  resolveResortRegion,
   stationFromPayload,
 };
