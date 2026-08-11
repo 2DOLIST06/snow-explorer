@@ -1389,7 +1389,6 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           <h1>{resort.name}</h1>
           <p>{resort.region?.name || "Destination montagne"}</p>
           <div className="station-profile-hero__actions">
-            {resort.website_url ? <a className="btn btn--primary" href={resort.website_url} target="_blank" rel="noreferrer">Site officiel</a> : null}
             <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
           </div>
         </div>
@@ -1426,6 +1425,14 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
         {/* Tuiles info */}
         <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} />
+
+        {resort.website_url ? (
+          <div className="station-official-site">
+            <a className="btn btn--primary" href={resort.website_url} target="_blank" rel="noreferrer">
+              Voir le site de {resort.name}
+            </a>
+          </div>
+        ) : null}
 
         {/* Ligne A : plan + widgets droite */}
         {(mapSmall || mapLarge || officialMapUrl || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
@@ -1465,6 +1472,12 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           gap: 16px;
           align-items: flex-start;
           margin-top: 16px;
+        }
+
+        .station-official-site {
+          display: flex;
+          justify-content: center;
+          margin-top: 24px;
         }
 
         .stations-panels-grid {
