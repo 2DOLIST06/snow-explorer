@@ -43,7 +43,7 @@ export default function ContactPage() {
             <p className="eyebrow">Nous écrire</p>
             <h2>Parlez-nous de vos envies</h2>
             <p>Indiquez-nous vos dates, le nombre de voyageurs et ce que vous recherchez. Nous vous répondrons par e-mail.</p>
-            <a className="contact-card__email" href="mailto:support@todolist.fr">
+            <a className="contact-card__email" href="mailto:support@2dolist.fr">
               support@todolist.fr
               <ExternalLink size={18} aria-hidden="true" />
             </a>
