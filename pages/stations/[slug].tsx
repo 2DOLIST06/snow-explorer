@@ -14,7 +14,7 @@ import { StationWidgetsConfig } from "@/types/station";
 import { regionHref } from "@/lib/regions";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
-import { isSnowparkEnabled } from "@/lib/snowparkAvailability";
+import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
 
 /* =========================
  * Types
@@ -1139,7 +1139,9 @@ const StationExtraPanels: React.FC<{
   const pistesTotal = formatBig(computedPistesCount);
 
   // Snowparks
-  const snowparksCountRaw = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
+  // Le compteur saisi dans « Snowparks (nombre) » est une donnée de la station :
+  // il reste affiché même lorsque le bloc visuel snowpark est désactivé.
+  const snowparksCountRaw = getSnowparksCount(cfg);
   const snowparksLabel = formatBig(snowparksCountRaw);
   const snowparksClickable = isSnowparkEnabled(cfg) && snowparksCountRaw > 0;
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
@@ -1346,7 +1348,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   const snowparkCaption: string | null = (cfg as any)?.snowpark?.caption || null;
 
   // clics snowpark (ligne + plan)
-  const snowparksCountForCard = typeof cfg?.snowparks?.count === "number" ? cfg.snowparks.count : 0;
+  const snowparksCountForCard = getSnowparksCount(cfg);
   const goSnowpark = () => router.push(`/stations/${resort.slug}/snowpark`);
   const hasValidCoordinates =
     Number.isFinite(Number(geoLat)) &&
