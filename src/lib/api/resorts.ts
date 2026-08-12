@@ -4,7 +4,10 @@ export type Resort = {
   slug: string;
   is_active: boolean;
   region?: {
+    id?: string;
     name?: string;
+    slug?: string;
+    country_code?: string;
   };
   logo_url?: string | null;
   logoUrl?: string | null;
@@ -107,17 +110,26 @@ export function getValidActiveResorts(resorts: Resort[]): Resort[] {
 
 /** Fetch the public station directory for a server-rendered page. */
 export async function fetchActiveResortsServer(): Promise<Resort[]> {
+  const failures: string[] = [];
+
   for (const url of getServerResortsApiUrls()) {
     try {
       const response = await fetch(url, { headers: { accept: "application/json" } });
-      if (!response.ok) continue;
+      if (!response.ok) {
+        failures.push(`${getSafeApiUrlForLogs(url)} returned ${response.status}`);
+        continue;
+      }
 
       return getValidActiveResorts(parseResortsPayload(await response.json()))
         .sort((a, b) => a.name.localeCompare(b.name, "fr"));
-    } catch {
+    } catch (error) {
+      failures.push(
+        `${getSafeApiUrlForLogs(url)} failed: ${error instanceof Error ? error.message : "unknown_error"}`,
+      );
       // A deployment can define multiple backend origins; try the next one.
     }
   }
 
+  console.error("[resorts] Unable to fetch the public resort directory", failures.join("; "));
   return [];
 }
