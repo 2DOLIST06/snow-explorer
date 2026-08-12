@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const {
   getStationApiBase,
@@ -92,4 +94,19 @@ test("all supported public active-field variants identify inactive stations", ()
   assert.equal(isResortInactive({ resort_is_active: false }), true);
   assert.equal(isResortInactive({ active: false }), true);
   assert.equal(isResortInactive({ is_active: true, active: false }), false);
+});
+
+test("piste color details use one display switch for rendering and SSR serialization", () => {
+  const stationPage = fs.readFileSync(
+    path.join(__dirname, "../pages/stations/[slug].tsx"),
+    "utf8",
+  );
+
+  assert.match(stationPage, /const SHOW_PISTE_COLOR_DETAILS = false;/);
+  assert.match(stationPage, /SHOW_PISTE_COLOR_DETAILS && colors \?/);
+  assert.match(
+    stationPage,
+    /SHOW_PISTE_COLOR_DETAILS && cfg\.pistes\?\.colors \? \{ colors: cfg\.pistes\.colors \} : \{\}/,
+  );
+  assert.doesNotMatch(stationPage, /JSON\.parse\(JSON\.stringify\(resort\)\)/);
 });

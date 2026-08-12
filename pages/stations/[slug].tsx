@@ -20,7 +20,6 @@ import { isSnowparkEnabled } from "@/lib/snowparkAvailability";
  * Types
  * =======================*/
 type Resort = {
-  id: string;
   name: string;
   slug: string;
   is_active?: boolean;
@@ -40,10 +39,12 @@ type Resort = {
   website_url?: string | null;
   cover_image_url?: string | null;
   logo_url?: string | null;
-  amenities?: string | null;
   description_md?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
+  pistes_small_map_url?: string | null;
+  pistes_large_map_url?: string | null;
+  pistes_caption?: string | null;
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -61,6 +62,10 @@ interface Props {
  * Constantes UI
  * =======================*/
 const PANEL_HEIGHT = 420;
+
+// Source de vérité unique pour le bloc de répartition des pistes. Elle pilote
+// à la fois son rendu et la présence de ses données dans les props SSR.
+const SHOW_PISTE_COLOR_DETAILS = false;
 
 /* =========================
  * Helpers UI
@@ -241,7 +246,8 @@ const PistesTile: React.FC<{
   lifts: string;
   snowparksClickable?: boolean;
   onSnowparkClick?: () => void;
-}> = ({ total, km, snowparks, lifts, snowparksClickable, onSnowparkClick }) => {
+  colors?: StationWidgetsConfig["pistes"]["colors"];
+}> = ({ total, km, snowparks, lifts, snowparksClickable, onSnowparkClick, colors }) => {
   const metricStyle: React.CSSProperties = { fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 };
   const labelStyle: React.CSSProperties = { marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" };
   const snowparkMetric = <><div style={metricStyle}>{snowparks}</div><div style={labelStyle}>Snowparks</div></>;
@@ -259,6 +265,14 @@ const PistesTile: React.FC<{
         ) : <div>{snowparkMetric}</div>}
         <div><div style={metricStyle}>{lifts}</div><div style={labelStyle}>Remontées</div></div>
       </div>
+      {SHOW_PISTE_COLOR_DETAILS && colors ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 16 }}>
+          <div>Vertes : <strong>{formatBig(colors.green)}</strong></div>
+          <div>Bleues : <strong>{formatBig(colors.blue)}</strong></div>
+          <div>Rouges : <strong>{formatBig(colors.red)}</strong></div>
+          <div>Noires : <strong>{formatBig(colors.black)}</strong></div>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -1237,6 +1251,7 @@ const StationExtraPanels: React.FC<{
           lifts={`${liftsTotal}`}
           snowparksClickable={snowparksClickable}
           onSnowparkClick={snowparksClickable ? onSnowparkClick : undefined}
+          colors={SHOW_PISTE_COLOR_DETAILS ? cfg?.pistes?.colors : undefined}
         />
 
         {/* Saison */}
@@ -1341,10 +1356,10 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
     snowparkUrl
   );
 
-  const pisteColors = cfg?.pistes?.colors;
-  const computedPistesCount = resort.pistes_count ?? sumAvailable(
+  const pisteColors = SHOW_PISTE_COLOR_DETAILS ? cfg?.pistes?.colors : undefined;
+  const computedPistesCount = resort.pistes_count ?? (SHOW_PISTE_COLOR_DETAILS ? sumAvailable(
     pisteColors?.green, pisteColors?.blue, pisteColors?.red, pisteColors?.black
-  );
+  ) : null);
   const computedLiftsCount = resort.lifts_count ?? sumAvailable(
     cfg?.remontees?.tireFesses, cfg?.remontees?.telesieges, cfg?.remontees?.telepheriques
   );
@@ -1575,7 +1590,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       largeMapUrl: cfg.pistes?.largeMapUrl || null,
       officialMapUrl: cfg.pistes?.officialMapUrl || null,
       caption: cfg.pistes?.caption || null,
-      ...(cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
+      ...(SHOW_PISTE_COLOR_DETAILS && cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
     },
     meteo: { enabled: Boolean(cfg.meteo?.enabled), iframeUrl: cfg.meteo?.iframeUrl || null },
     description: {
@@ -1610,8 +1625,35 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     ...(cfg.snowparks ? { snowparks: cfg.snowparks } : {}),
   } : null;
 
-  const serializedResort = JSON.parse(JSON.stringify(resort)) as Resort;
-  return { props: { resort: serializedResort, cfg: cleanCfg } };
+  // Ne pas transmettre aveuglément la réponse métier : seules les propriétés
+  // effectivement consommées par la fiche publique sont sérialisées.
+  const stationForPage: Resort = {
+    name: resort.name,
+    slug: resort.slug,
+    ...(resort.region ? { region: resort.region } : {}),
+    altitude_base_m: resort.altitude_base_m ?? null,
+    altitude_top_m: resort.altitude_top_m ?? null,
+    altitude_min_m: resort.altitude_min_m ?? null,
+    altitude_max_m: resort.altitude_max_m ?? null,
+    ski_area_km: resort.ski_area_km ?? null,
+    lifts_count: resort.lifts_count ?? null,
+    pistes_count: resort.pistes_count ?? null,
+    latitude: resort.latitude ?? null,
+    longitude: resort.longitude ?? null,
+    website_url: resort.website_url ?? null,
+    cover_image_url: resort.cover_image_url ?? null,
+    logo_url: resort.logo_url ?? null,
+    description_md: resort.description_md ?? null,
+    meta_title: resort.meta_title ?? null,
+    meta_description: resort.meta_description ?? null,
+    season_open_date: resort.season_open_date ?? null,
+    season_close_date: resort.season_close_date ?? null,
+    pistes_small_map_url: resort.pistes_small_map_url ?? null,
+    pistes_large_map_url: resort.pistes_large_map_url ?? null,
+    pistes_caption: resort.pistes_caption ?? null,
+  };
+
+  return { props: { resort: stationForPage, cfg: cleanCfg } };
 };
 
 export default ResortPage;
