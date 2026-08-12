@@ -1,13 +1,17 @@
+import type { GetServerSideProps, NextPage } from "next";
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { regionHref } from "@/lib/regions";
+import { fetchActiveResortsServer, getValidActiveResorts, parseResortsPayload } from "@/lib/api/resorts";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string } };
 
-export default function StationsList() {
+type Props = { initialStations: Resort[] };
+
+const StationsList: NextPage<Props> = ({ initialStations }) => {
   const [q, setQ] = useState("");
-  const [data, setData] = useState<Resort[]>([]);
+  const [data, setData] = useState<Resort[]>(initialStations);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -20,10 +24,10 @@ export default function StationsList() {
         const r = await fetch(url);
         if (!r.ok) throw new Error("fetch_failed");
         const j: Resort[] = await r.json();
-        const onlyActive = Array.isArray(j) ? j.filter((x) => x?.is_active !== false && x?.is_active !== null) : [];
+        const onlyActive = getValidActiveResorts(parseResortsPayload(j)) as Resort[];
         if (!cancel) setData(onlyActive);
       } catch {
-        if (!cancel) setData([]);
+        if (!cancel && q.trim()) setData([]);
       } finally {
         if (!cancel) setLoading(false);
       }
@@ -73,4 +77,10 @@ export default function StationsList() {
       {!loading && data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
     </main>
   );
-}
+};
+
+export const getServerSideProps: GetServerSideProps<Props> = async () => ({
+  props: { initialStations: await fetchActiveResortsServer() },
+});
+
+export default StationsList;

@@ -1,9 +1,11 @@
 import Head from "next/head";
+import type { GetServerSideProps, NextPage } from "next";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ArrowRight, Search, ShieldCheck, Ticket } from "lucide-react";
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import type { ForfaitColumn, ForfaitItem } from "@/types/station";
+import { fetchActiveResortsServer } from "@/lib/api/resorts";
 
 type Resort = {
   id?: string;
@@ -17,6 +19,7 @@ type Resort = {
 type AvailableResort = Resort & {
   forfaits: { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[] };
 };
+type Props = { initialStations: Resort[] };
 
 const hasValue = (value: unknown) => typeof value === "string" && value.trim().length > 0;
 
@@ -30,48 +33,27 @@ export function hasActiveForfaits(payload: any): boolean {
   );
 }
 
-export default function ForfaitsPage() {
+const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
-  const [stations, setStations] = useState<AvailableResort[]>([]);
+  const [stations] = useState<Resort[]>(initialStations);
   const [selected, setSelected] = useState<AvailableResort | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadForfaits() {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/ski/resorts/");
-        if (!response.ok) throw new Error("stations_fetch_failed");
-        const payload = await response.json();
-        const resorts: Resort[] = (Array.isArray(payload) ? payload : payload?.items || [])
-          .filter((station: Resort) => station?.slug && station.is_active !== false && station.is_active !== null);
-
-        const available: AvailableResort[] = [];
-        for (let index = 0; index < resorts.length; index += 8) {
-          const batch = await Promise.all(resorts.slice(index, index + 8).map(async (station) => {
-            try {
-              const widgetResponse = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
-              if (!widgetResponse.ok) return null;
-              const widgets = await widgetResponse.json();
-              if (!hasActiveForfaits(widgets)) return null;
-              const forfaits = widgets.forfaits || widgets.widgets.forfaits;
-              return { ...station, forfaits } as AvailableResort;
-            } catch { return null; }
-          }));
-          available.push(...batch.filter((station): station is AvailableResort => station !== null));
-        }
-        available.sort((a, b) => a.name.localeCompare(b.name, "fr"));
-        if (!cancelled) setStations(available);
-      } catch {
-        if (!cancelled) setStations([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  async function selectStation(station: Resort) {
+    setLoading(true);
+    setSelected(null);
+    try {
+      const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
+      if (!response.ok) throw new Error("widgets_fetch_failed");
+      const widgets = await response.json();
+      const forfaits = widgets?.forfaits || widgets?.widgets?.forfaits;
+      setSelected({ ...station, forfaits: hasActiveForfaits(widgets) ? forfaits : { enabled: false, columns: [], items: [] } });
+    } catch {
+      setSelected({ ...station, forfaits: { enabled: false, columns: [], items: [] } });
+    } finally {
+      setLoading(false);
     }
-    loadForfaits();
-    return () => { cancelled = true; };
-  }, []);
+  }
 
   const filteredStations = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("fr");
@@ -97,19 +79,18 @@ export default function ForfaitsPage() {
 
         <section className="passes-layout">
           <aside className="station-picker passes-picker" aria-label="Choisir une station">
-            <div className="section-heading"><div><p className="eyebrow">Stations disponibles</p><h2>Choisir une station</h2></div><span>{filteredStations.length} résultat(s)</span></div>
+            <div className="section-heading"><div><p className="eyebrow">Stations disponibles</p><h2>Choisir une station</h2></div>{query && <span>{filteredStations.length} résultat(s)</span>}</div>
             <label className="passes-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Rechercher une station</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nom, région, département…" /></label>
-            {loading && <div className="skeleton-panel passes-skeleton"><div /><div /><div /></div>}
-            <div className="station-list" role="listbox" aria-label="Stations avec forfaits">
-              {filteredStations.map((station) => <button key={station.id || station.slug} type="button" role="option" aria-selected={selected?.slug === station.slug} className={selected?.slug === station.slug ? "is-selected" : ""} onClick={() => setSelected(station)}><strong>{station.name}</strong><span>{station.region?.name || station.department?.name || "Station de ski"}</span></button>)}
-              {!loading && filteredStations.length === 0 && <div className="empty-state"><strong>Aucun tarif disponible</strong><span>Seules les stations ayant des forfaits actifs et des prix renseignés apparaissent ici.</span></div>}
+            <div className="station-list" role="listbox" aria-label="Stations actives">
+              {filteredStations.map((station) => <div className={selected?.slug === station.slug ? "station-choice is-selected" : "station-choice"} key={station.id || station.slug}><button type="button" role="option" aria-selected={selected?.slug === station.slug} onClick={() => void selectStation(station)}><strong>{station.name}</strong><span>{station.region?.name || station.department?.name || "Station de ski"}</span></button><Link href={`/stations/${station.slug}`}>Voir la fiche</Link></div>)}
+              {query && filteredStations.length === 0 && <div className="empty-state"><strong>Aucune station trouvée</strong><span>Essayez un nom plus court ou une région proche.</span></div>}
             </div>
           </aside>
 
           <section className="passes-content" aria-live="polite">
-            {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Sélectionnez votre station</h2><p>Les forfaits et leurs montants s’afficheront ici, sans recharger la page.</p></div>}
+            {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header><StationForfaitsBlock enabled columns={selected.forfaits.columns || []} items={selected.forfaits.items || []} /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></div>}
+            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled ? <><StationForfaitsBlock enabled columns={selected.forfaits.columns || []} items={selected.forfaits.items || []} /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
           </section>
         </section>
 
@@ -121,4 +102,8 @@ export default function ForfaitsPage() {
       </main>
     </>
   );
-}
+};
+
+export const getServerSideProps: GetServerSideProps<Props> = async () => ({ props: { initialStations: await fetchActiveResortsServer() } });
+
+export default ForfaitsPage;

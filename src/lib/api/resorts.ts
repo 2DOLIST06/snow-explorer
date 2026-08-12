@@ -104,3 +104,20 @@ export function getValidActiveResorts(resorts: Resort[]): Resort[] {
       resort.slug.trim().length > 0,
   );
 }
+
+/** Fetch the public station directory for a server-rendered page. */
+export async function fetchActiveResortsServer(): Promise<Resort[]> {
+  for (const url of getServerResortsApiUrls()) {
+    try {
+      const response = await fetch(url, { headers: { accept: "application/json" } });
+      if (!response.ok) continue;
+
+      return getValidActiveResorts(parseResortsPayload(await response.json()))
+        .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    } catch {
+      // A deployment can define multiple backend origins; try the next one.
+    }
+  }
+
+  return [];
+}
