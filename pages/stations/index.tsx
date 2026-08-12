@@ -1,4 +1,5 @@
 import type { GetServerSideProps, NextPage } from "next";
+import Head from "next/head";
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, MapPin, Search, SlidersHorizontal } from "lucide-react";
@@ -38,7 +39,13 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
   const regionsCount = useMemo(() => new Set(data.map((r) => r.region?.name).filter(Boolean)).size, [data]);
 
   return (
-    <main className="stations-directory">
+    <>
+      <Head>
+        <title>Stations de ski en France : guide et comparaison | Snow Explorer</title>
+        <meta name="description" content="Découvrez les stations de ski en France, comparez les domaines, altitudes, pistes et informations pratiques avec Snow Explorer." />
+        <link rel="canonical" href="https://www.snow-explorer.com/stations" />
+      </Head>
+      <main className="stations-directory">
       <section className="stations-directory__hero">
         <div>
           <p className="eyebrow">Explorer les domaines</p>
@@ -75,7 +82,8 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
       </section>
 
       {!loading && data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
-    </main>
+      </main>
+    </>
   );
 };
 
