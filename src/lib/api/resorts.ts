@@ -6,7 +6,8 @@ export type Resort = {
   region?: {
     name?: string;
   };
-  imageUrl?: string;
+  logo_url?: string | null;
+  logoUrl?: string | null;
 };
 
 const RESORTS_PATH = "/api/resorts/";
