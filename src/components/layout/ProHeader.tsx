@@ -20,7 +20,7 @@ const navItems = [
   { label: "Forfaits" },
   { label: "Activités" },
   { label: "Bons plans" },
-  { label: "Contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export default function ProHeader() {
