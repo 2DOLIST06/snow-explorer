@@ -16,10 +16,7 @@ type Resort = {
 const navItems = [
   { label: "Stations", href: "/stations", kind: "stations" },
   { label: "Météo", href: "/meteo" },
-  // TODO: rendre ces entrées cliquables lorsque leurs pages dédiées existeront.
-  { label: "Forfaits" },
-  { label: "Activités" },
-  { label: "Bons plans" },
+  { label: "Forfaits", href: "/forfaits" },
   { label: "Contact", href: "/contact" },
 ];
 
