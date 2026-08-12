@@ -134,16 +134,6 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     return source.slice(0, 6);
   }, [allResorts, items]);
 
-  const featuredResortsWithImage = useMemo(
-    () =>
-      featuredResorts.map((resort, index) => ({
-        ...resort,
-        imageUrl:
-          resort.imageUrl || heroSlides[index % heroSlides.length],
-      })),
-    [featuredResorts, heroSlides],
-  );
-
   useEffect(() => {
     function onDocumentClick(event: MouseEvent) {
       if (!boxRef.current) {
@@ -522,79 +512,99 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
                 scrollSnapType: "x mandatory",
               }}
             >
-              {featuredResortsWithImage.map((resort) => (
-                <Link
-                  key={resort.id}
-                  href={`/stations/${resort.slug}`}
-                  style={{
-                    minWidth: 320,
-                    maxWidth: 340,
-                    width: "100%",
-                    border: "none",
-                    borderRadius: 18,
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    padding: 0,
-                    boxShadow: "0 10px 24px rgba(2,6,23,0.16)",
-                    position: "relative",
-                    scrollSnapAlign: "start",
-                  }}
-                >
-                  <div
+              {featuredResorts.map((resort) => {
+                const logoUrl = resort.logo_url || resort.logoUrl;
+
+                return (
+                  <Link
+                    key={resort.id}
+                    href={`/stations/${resort.slug}`}
                     style={{
+                      minWidth: 320,
+                      maxWidth: 340,
+                      width: "100%",
+                      border: "none",
+                      borderRadius: 18,
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      padding: 0,
+                      boxShadow: "0 10px 24px rgba(2,6,23,0.16)",
                       position: "relative",
-                      minHeight: 230,
+                      scrollSnapAlign: "start",
                     }}
                   >
-                    <Image
-                      src={resort.imageUrl || heroSlides[0]}
-                      alt={`Station de ski ${resort.name}`}
-                      fill
-                      sizes="340px"
-                      style={{
-                        objectFit: "cover",
-                      }}
-                    />
-
                     <div
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                          "linear-gradient(to top, rgba(2,6,23,0.75), rgba(2,6,23,0.15))",
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 14,
-                        right: 14,
-                        bottom: 14,
-                        color: "white",
-                        textAlign: "left",
+                        minHeight: 230,
+                        display: "flex",
+                        flexDirection: "column",
+                        background: "white",
                       }}
                     >
                       <div
                         style={{
-                          fontWeight: 900,
-                          fontSize: 24,
+                          minHeight: 168,
+                          padding: 22,
+                          display: "grid",
+                          placeItems: "center",
+                          background: "#ffffff",
                         }}
                       >
-                        {resort.name}
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={`Logo de la station ${resort.name}`}
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              height: 124,
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : (
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              fontSize: 42,
+                              fontWeight: 900,
+                              color: "#0f3760",
+                            }}
+                          >
+                            {resort.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
 
                       <div
                         style={{
-                          opacity: 0.92,
+                          flex: 1,
+                          padding: "14px 16px 16px",
+                          background: "#0f3760",
+                          color: "white",
+                          textAlign: "left",
                         }}
                       >
-                        {resort.region?.name || "Région à définir"}
+                        <div
+                          style={{
+                            fontWeight: 900,
+                            fontSize: 24,
+                          }}
+                        >
+                          {resort.name}
+                        </div>
+
+                        <div
+                          style={{
+                            opacity: 0.92,
+                          }}
+                        >
+                          {resort.region?.name || "Région à définir"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </section>
 
