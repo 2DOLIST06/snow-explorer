@@ -28,6 +28,7 @@ const { normalizeForfaits } = componentModule.exports;
 test("public forfait tables only retain columns configured globally by admin", () => {
   const result = normalizeForfaits(
     [
+      { id: "title", label: "title" },
       { id: "adult", label: "Adulte" },
       { id: "child", label: "Enfant" },
     ],

@@ -54,6 +54,10 @@ const normalizeLabelKey = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "-");
 
+const isTitleColumn = (column: Partial<ForfaitColumn> | undefined) =>
+  normalizeLabelKey(text(column?.id)) === "title" ||
+  normalizeLabelKey(text(column?.label)) === "title";
+
 export const normalizeForfaits = (
   rawColumns: ForfaitColumn[] | undefined,
   rawItems: ForfaitItem[] | undefined
@@ -94,6 +98,9 @@ export const normalizeForfaits = (
 
   if (Array.isArray(rawColumns)) {
     rawColumns.forEach((col) => {
+      // `title` désigne le libellé de la ligne (`item.title`) et non un tarif.
+      // Certains anciens payloads l'ont aussi conservé dans les colonnes globales.
+      if (isTitleColumn(col)) return;
       ensureColumn(col?.label, col?.id);
     });
   }
