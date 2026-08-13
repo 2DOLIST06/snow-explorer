@@ -34,6 +34,7 @@ type Resort = {
   ski_area_km?: number | null;
   lifts_count?: number | null;
   pistes_count?: number | null;
+  snowparks_count?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   website_url?: string | null;
@@ -1139,11 +1140,9 @@ const StationExtraPanels: React.FC<{
   const pistesTotal = formatBig(computedPistesCount);
 
   // Snowparks
-  // Le compteur saisi dans « Snowparks (nombre) » est une donnée de la station :
-  // il reste affiché même lorsque le bloc visuel snowpark est désactivé.
-  const snowparksCountRaw = getSnowparksCount(cfg);
+  const snowparksCountRaw = resort.snowparks_count;
   const snowparksLabel = formatBig(snowparksCountRaw);
-  const snowparksClickable = isSnowparkEnabled(cfg) && snowparksCountRaw > 0;
+  const snowparksClickable = typeof snowparksCountRaw === "number" && snowparksCountRaw > 0;
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
 
   // Seul le total des remontées est affiché.
@@ -1640,6 +1639,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     ski_area_km: resort.ski_area_km ?? null,
     lifts_count: resort.lifts_count ?? null,
     pistes_count: resort.pistes_count ?? null,
+    snowparks_count: resort.snowparks_count ?? null,
     latitude: resort.latitude ?? null,
     longitude: resort.longitude ?? null,
     website_url: resort.website_url ?? null,
