@@ -54,11 +54,12 @@ const normalizeLabelKey = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "-");
 
-const normalizeForfaits = (
+export const normalizeForfaits = (
   rawColumns: ForfaitColumn[] | undefined,
   rawItems: ForfaitItem[] | undefined
 ): { columns: ForfaitColumn[]; items: Array<{ id: string; title: string; prices: Record<string, string> }> } => {
   const columnMap = new Map<string, ForfaitColumn>();
+  const hasExplicitColumns = Array.isArray(rawColumns) && rawColumns.length > 0;
 
   const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
     const label = text(rawLabel);
@@ -126,8 +127,13 @@ const normalizeForfaits = (
               return;
             }
 
-            const newId = ensureColumn(key);
-            prices[newId] = rawValue;
+            // Avec le format actuel, la liste globale est la source de vérité :
+            // une ancienne clé encore présente dans `prices` ne doit pas créer
+            // une colonne supplémentaire sur le site public.
+            if (!hasExplicitColumns) {
+              const newId = ensureColumn(key);
+              prices[newId] = rawValue;
+            }
           });
         }
 
@@ -154,30 +160,40 @@ const normalizeForfaits = (
               return;
             }
 
-            const colId = ensureColumn(label, rawCol?.id);
-            prices[colId] = value;
+            const existingColumn = Array.from(columnMap.values()).find(
+              (col) =>
+                col.id === rawCol?.id ||
+                normalizeLabelKey(col.label) === normalizedLabel
+            );
+
+            if (existingColumn) {
+              prices[existingColumn.id] = value;
+            } else if (!hasExplicitColumns) {
+              const colId = ensureColumn(label, rawCol?.id);
+              prices[colId] = value;
+            }
           });
 
           if (genericTitle) {
             rowTitle = genericTitle;
           }
 
-          if (genericPrice) {
+          if (genericPrice && !hasExplicitColumns) {
             const prixId = ensureColumn("Prix", "prix");
             prices[prixId] = genericPrice;
           }
         }
 
         // ancien format ultra simple : price / url / note
-        if (text(rawItem?.price)) {
+        if (text(rawItem?.price) && !hasExplicitColumns) {
           const prixId = ensureColumn("Prix", "prix");
           prices[prixId] = text(rawItem.price);
         }
-        if (text(rawItem?.url)) {
+        if (text(rawItem?.url) && !hasExplicitColumns) {
           const urlId = ensureColumn("URL", "url");
           prices[urlId] = text(rawItem.url);
         }
-        if (text(rawItem?.note)) {
+        if (text(rawItem?.note) && !hasExplicitColumns) {
           const noteId = ensureColumn("Note", "note");
           prices[noteId] = text(rawItem.note);
         }
