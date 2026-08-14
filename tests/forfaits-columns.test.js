@@ -25,6 +25,20 @@ new Function("exports", "require", "module", "__filename", "__dirname", compiled
 );
 const { normalizeForfaits } = componentModule.exports;
 
+const adminSource = fs.readFileSync(
+  path.join(__dirname, "../pages/admin/stations/[slug].tsx"),
+  "utf8",
+);
+
+test("admin forfait columns offer presets while retaining a custom text field", () => {
+  assert.match(adminSource, /Saisir un nom personnalisé/);
+  assert.match(
+    adminSource,
+    /FORFAIT_COLUMN_SUGGESTIONS = \["Adulte", "Enfant", "Senior", "Enfant \/ Senior"\]/,
+  );
+  assert.match(adminSource, /<select[\s\S]*Proposition pour la colonne/);
+});
+
 test("public forfait tables only retain columns configured globally by admin", () => {
   const result = normalizeForfaits(
     [

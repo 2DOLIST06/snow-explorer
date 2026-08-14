@@ -49,6 +49,8 @@ type ForfaitItem = {
   prices: Record<string, string>;
 };
 
+const FORFAIT_COLUMN_SUGGESTIONS = ["Adulte", "Enfant", "Senior", "Enfant / Senior"] as const;
+
 // helpers
 const toNumberOrNull = (v: string): number | null => {
   if (v === "" || v === null || v === undefined) return null;
@@ -2127,15 +2129,46 @@ const removeForfaitRow = (rowIdx: number) => {
                 alignItems: "end",
               }}
             >
-              <label style={styles.label}>
-                Nom de colonne
-                <input
-                  placeholder="Ex: Adulte"
-                  value={col.label}
-                  onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
-                  style={styles.input}
-                />
-              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                <label style={styles.label}>
+                  Nom de colonne
+                  <input
+                    placeholder="Saisir un nom personnalisé"
+                    value={col.label}
+                    onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Proposition
+                  <select
+                    aria-label={`Proposition pour la colonne ${colIdx + 1}`}
+                    value={
+                      FORFAIT_COLUMN_SUGGESTIONS.includes(
+                        col.label as (typeof FORFAIT_COLUMN_SUGGESTIONS)[number]
+                      )
+                        ? col.label
+                        : ""
+                    }
+                    onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
+                    style={styles.input}
+                  >
+                    <option value="">Choisir…</option>
+                    {FORFAIT_COLUMN_SUGGESTIONS.map((suggestion) => (
+                      <option key={suggestion} value={suggestion}>
+                        {suggestion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
               <button
                 onClick={() => removeForfaitGlobalColumn(colIdx)}
