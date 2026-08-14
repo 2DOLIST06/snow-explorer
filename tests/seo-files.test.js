@@ -21,7 +21,7 @@ test("the dynamic sitemap uses active backend resorts and an XML response", () =
 
   assert.match(page, /fetchActiveResortsServer\(\)/);
   assert.match(page, /application\/xml; charset=utf-8/);
-  assert.match(generator, /"\/", "\/stations", "\/meteo", "\/forfaits", "\/contact"/);
+  assert.match(generator, /"\/", "\/stations", "\/meteo", "\/forfaits", "\/plan-des-pistes", "\/contact"/);
   assert.match(generator, /\/stations\/\$\{encodeURIComponent\(resort\.slug\)\}/);
   assert.match(generator, /regionSlug\(resort\.region\)/);
   assert.doesNotMatch(generator, /<priority>|<changefreq>|<lastmod>/);

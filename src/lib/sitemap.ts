@@ -3,7 +3,7 @@ import { regionSlug } from "@/lib/regions";
 
 const SITE_ORIGIN = "https://www.snow-explorer.com";
 
-const STATIC_PATHS = ["/", "/stations", "/meteo", "/forfaits", "/contact"];
+const STATIC_PATHS = ["/", "/stations", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
 
 function escapeXml(value: string): string {
   return value
