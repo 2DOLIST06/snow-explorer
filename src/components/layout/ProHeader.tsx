@@ -17,6 +17,7 @@ const navItems = [
   { label: "Stations", href: "/stations", kind: "stations" },
   { label: "Météo", href: "/meteo" },
   { label: "Forfaits", href: "/forfaits" },
+  { label: "Plan des pistes", href: "/plan-des-pistes" },
   { label: "Contact", href: "/contact" },
 ];
 
