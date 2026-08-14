@@ -50,6 +50,20 @@ type ForfaitItem = {
 };
 
 const FORFAIT_COLUMN_SUGGESTIONS = ["Adulte", "Enfant", "Senior", "Enfant / Senior"] as const;
+const FORFAIT_ROW_SUGGESTIONS = [
+  "Demi-journée",
+  "1 jour",
+  "2 jours",
+  "3 jours",
+  "4 jours",
+  "5 jours",
+  "6 jours",
+  "7 jours",
+  "8 jours",
+  "9 jours",
+  "10 jours",
+  "Saison",
+] as const;
 
 // helpers
 const toNumberOrNull = (v: string): number | null => {
@@ -2229,15 +2243,46 @@ const removeForfaitRow = (rowIdx: number) => {
               </div>
 
               <div style={styles.stack}>
-                <label style={styles.label}>
-                  Type de forfait
-                  <input
-                    placeholder="Ex: Journée"
-                    value={row.title}
-                    onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <label style={styles.label}>
+                    Type de forfait
+                    <input
+                      placeholder="Saisir un type personnalisé"
+                      value={row.title}
+                      onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Proposition
+                    <select
+                      aria-label={`Proposition pour la ligne ${rowIdx + 1}`}
+                      value={
+                        FORFAIT_ROW_SUGGESTIONS.includes(
+                          row.title as (typeof FORFAIT_ROW_SUGGESTIONS)[number]
+                        )
+                          ? row.title
+                          : ""
+                      }
+                      onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                      style={styles.input}
+                    >
+                      <option value="">Choisir…</option>
+                      {FORFAIT_ROW_SUGGESTIONS.map((suggestion) => (
+                        <option key={suggestion} value={suggestion}>
+                          {suggestion}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
 
                 {forfaitColumns.length > 0 ? (
                   <div

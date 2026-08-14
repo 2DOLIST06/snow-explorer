@@ -39,6 +39,13 @@ test("admin forfait columns offer presets while retaining a custom text field", 
   assert.match(adminSource, /<select[\s\S]*Proposition pour la colonne/);
 });
 
+test("admin forfait rows offer duration presets while retaining a custom text field", () => {
+  assert.match(adminSource, /Saisir un type personnalisé/);
+  assert.match(adminSource, /FORFAIT_ROW_SUGGESTIONS = \[[\s\S]*"Demi-journée"/);
+  assert.match(adminSource, /"1 jour"[\s\S]*"10 jours"[\s\S]*"Saison"/);
+  assert.match(adminSource, /Proposition pour la ligne/);
+});
+
 test("public forfait tables only retain columns configured globally by admin", () => {
   const result = normalizeForfaits(
     [
