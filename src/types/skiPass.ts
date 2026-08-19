@@ -36,11 +36,7 @@ export type SkiPassSeason = {
   passes: SkiPassProduct[];
 };
 
-export type SkiPassAdminResponse = {
-  mode: "legacy" | "normalized";
-  enabled: boolean;
-  seasons: SkiPassSeason[];
-};
+export type SkiPassAdminResponse = { seasons: SkiPassSeason[] };
 
 export type SkiPassImportResult = {
   success: true;
