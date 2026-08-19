@@ -1,5 +1,5 @@
 import type { Resort } from "@/lib/api/resorts";
-import type { RegionSummary } from "@/lib/regions";
+import { regionSlug, type RegionSummary } from "@/lib/regions";
 
 const SITE_ORIGIN = "https://www.snow-explorer.com";
 const STATIC_PATHS = ["/", "/stations", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
@@ -45,8 +45,17 @@ export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[]): 
     });
   }
 
-  for (const region of regions) {
-    const slug = canonicalPart(region?.slug) ?? canonicalPart(region?.id);
+  // Resort responses already contain the region used by the public page. Keep
+  // them as a fallback because some deployments do not expose /api/regions.
+  const regionCandidates = [
+    ...regions,
+    ...resorts
+      .map((resort) => resort.region)
+      .filter((region): region is RegionSummary => Boolean(region)),
+  ];
+
+  for (const region of regionCandidates) {
+    const slug = regionSlug(region);
     if (!slug) continue;
     const lastModified = parseLastModified(region.updated_at);
     entries.push({

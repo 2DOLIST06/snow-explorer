@@ -17,12 +17,20 @@ test("robots.txt allows crawling and advertises the sitemap", () => {
 });
 
 function loadSitemapGenerator() {
+  const regionsSource = fs.readFileSync(path.join(root, "src/lib/regions.ts"), "utf8");
+  const regionsJavascript = ts.transpileModule(regionsSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  const regionsModule = { exports: {} };
+  new Function("module", "exports", "require", regionsJavascript)(regionsModule, regionsModule.exports, require);
+
   const source = fs.readFileSync(path.join(root, "src/lib/sitemap.ts"), "utf8");
   const javascript = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   const module = { exports: {} };
-  new Function("module", "exports", "require", javascript)(module, module.exports, require);
+  const localRequire = (id) => (id === "@/lib/regions" ? regionsModule.exports : require(id));
+  new Function("module", "exports", "require", javascript)(module, module.exports, localRequire);
   return module.exports;
 }
 
@@ -43,7 +51,7 @@ test("sitemap dates, validation, static URLs, and deduplication are safe", () =>
   const { createSitemapXml, getSitemapEntries, parseLastModified } = loadSitemapGenerator();
   const source = fs.readFileSync(path.join(root, "src/lib/sitemap.ts"), "utf8");
   const resorts = [
-    { id: "1", name: "Auron", slug: "auron", is_active: true, updated_at: "2026-08-19T10:30:00+00:00" },
+    { id: "1", name: "Auron", slug: "auron", is_active: true, updated_at: "2026-08-19T10:30:00+00:00", region: { name: "Provence Alpes Côte d'Azur" } },
     { id: "2", name: "Inactive", slug: "inactive", is_active: false, updated_at: "2026-08-19T10:30:00Z" },
     { id: "3", name: "Empty", slug: "  ", is_active: true, updated_at: null },
     { id: "4", name: "Invalid", slug: "invalid-date", is_active: true, updated_at: "not-a-date" },
@@ -64,6 +72,11 @@ test("sitemap dates, validation, static URLs, and deduplication are safe", () =>
   assert.equal(entries.some((entry) => entry.url.includes("inactive") || entry.url.endsWith("/stations/")), false);
   assert.equal(entries.find((entry) => entry.url.endsWith("/stations/invalid-date")).lastModified, undefined);
   assert.equal(entries.find((entry) => entry.url.endsWith("/regions/bad")).lastModified, undefined);
+  assert.equal(
+    entries.some((entry) => entry.url.endsWith("/regions/provence-alpes-cote-d-azur")),
+    true,
+    "regions embedded in resorts remain available when the regions endpoint is incomplete",
+  );
   assert.equal(entries.some((entry) => entry.url === "https://www.snow-explorer.com/contact"), true);
   assert.equal(parseLastModified(null), undefined);
   assert.equal(parseLastModified("nonsense"), undefined);

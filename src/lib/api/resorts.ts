@@ -8,6 +8,7 @@ export type Resort = {
     name?: string;
     slug?: string;
     country_code?: string;
+    updated_at?: string | null;
   };
   logo_url?: string | null;
   logoUrl?: string | null;
