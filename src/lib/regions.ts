@@ -7,6 +7,7 @@ export type RegionSummary = {
   description_html?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
+  updated_at?: string | null;
 };
 
 export function regionSlug(region?: RegionSummary | null): string {
