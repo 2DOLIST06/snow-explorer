@@ -1,348 +1,144 @@
-import React from "react";
-
-type LegacyForfaitColumn = {
-  id?: string;
-  label?: string;
-  value?: string;
-};
-
-type ForfaitColumn = {
-  id: string;
-  label: string;
-};
-
-type ForfaitItem = {
-  id: string;
-  title: string;
-  prices?: Record<string, string>;
-
-  // ancien format
-  columns?: LegacyForfaitColumn[];
-  price?: string;
-  url?: string | null;
-  note?: string | null;
-};
+import React, { useMemo, useState } from "react";
+import type { ForfaitColumn, ForfaitItem, ForfaitPeriod, ForfaitPrice, ForfaitSeason } from "@/types/station";
 
 type Props = {
   enabled?: boolean;
   columns?: ForfaitColumn[];
   items?: ForfaitItem[];
+  periods?: ForfaitPeriod[];
+  season?: string | ForfaitSeason | null;
+  source_url?: string | null;
+  sourceUrl?: string | null;
 };
 
-const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
+const key = (value: unknown) => text(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
+const idOf = (value: unknown, fallback: string) => text(value) || fallback;
 
-const formatForfaitDisplayValue = (raw: unknown) => {
-  const value = text(raw);
-  if (!value) return "—";
-
-  if (value.includes("€")) return value;
-
-  const match = value.match(/^(\d+(?:[.,]\d+)?)(.*)$/);
-  if (!match) return value;
-
-  const amount = match[1];
-  const suffix = match[2] || "";
-
-  return `${amount}€${suffix}`;
+const euro = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number") return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value)} €`;
+  const valueText = text(value);
+  if (!valueText) return "—";
+  if (valueText.includes("€")) return valueText;
+  const numeric = Number(valueText.replace(",", "."));
+  return Number.isFinite(numeric) ? `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(numeric)} €` : valueText;
 };
 
-const normalizeLabelKey = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "-");
+const dateValue = (value: unknown) => {
+  const raw = text(value);
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return null;
+  const parsed = new Date(`${raw.slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(parsed.valueOf()) ? null : parsed;
+};
+const formatDate = (value: unknown) => {
+  const date = dateValue(value);
+  return date ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date) : text(value);
+};
+const periodLabel = (period: ForfaitPeriod) => text(period.label || period.name) || [formatDate(period.start_date || period.startDate), formatDate(period.end_date || period.endDate)].filter(Boolean).join(" – ") || "Période tarifaire";
 
-const isTitleColumn = (column: Partial<ForfaitColumn> | undefined) =>
-  normalizeLabelKey(text(column?.id)) === "title" ||
-  normalizeLabelKey(text(column?.label)) === "title";
-
-export const normalizeForfaits = (
-  rawColumns: ForfaitColumn[] | undefined,
-  rawItems: ForfaitItem[] | undefined
-): { columns: ForfaitColumn[]; items: Array<{ id: string; title: string; prices: Record<string, string> }> } => {
-  const columnMap = new Map<string, ForfaitColumn>();
-  const hasExplicitColumns = Array.isArray(rawColumns) && rawColumns.length > 0;
-
-  const ensureColumn = (rawLabel: unknown, rawId?: unknown): string => {
-    const label = text(rawLabel);
-
-    if (!label) {
-      const fallbackId =
-        typeof rawId === "string" && rawId.trim() !== ""
-          ? rawId.trim()
-          : `fc-${Math.random().toString(36).slice(2, 8)}`;
-
-      if (!columnMap.has(fallbackId)) {
-        columnMap.set(fallbackId, { id: fallbackId, label: "" });
-      }
-
-      return fallbackId;
-    }
-
-    const normalized = normalizeLabelKey(label);
-    const existing = Array.from(columnMap.values()).find(
-      (col) => normalizeLabelKey(col.label) === normalized
-    );
+export const normalizeForfaits = (rawColumns: ForfaitColumn[] = [], rawItems: ForfaitItem[] = []) => {
+  const explicit = rawColumns.length > 0;
+  const columns: ForfaitColumn[] = [];
+  const ensure = (labelValue: unknown, idValue?: unknown) => {
+    const label = text(labelValue);
+    const existing = columns.find((column) => column.id === idValue || key(column.label) === key(label));
     if (existing) return existing.id;
-
-    const id =
-      typeof rawId === "string" && rawId.trim() !== ""
-        ? rawId.trim()
-        : `fc-${normalized || Math.random().toString(36).slice(2, 8)}`;
-
-    columnMap.set(id, { id, label });
+    const id = idOf(idValue, `fc-${key(label) || columns.length + 1}`);
+    if (key(id) !== "title" && key(label) !== "title") columns.push({ id, label });
     return id;
   };
-
-  if (Array.isArray(rawColumns)) {
-    rawColumns.forEach((col) => {
-      // `title` désigne le libellé de la ligne (`item.title`) et non un tarif.
-      // Certains anciens payloads l'ont aussi conservé dans les colonnes globales.
-      if (isTitleColumn(col)) return;
-      ensureColumn(col?.label, col?.id);
+  rawColumns.forEach((column) => ensure(column?.label, column?.id));
+  const items = rawItems.map((item, index) => {
+    let title = text(item?.title);
+    const prices: Record<string, string> = {};
+    Object.entries(item?.prices || {}).forEach(([priceKey, value]) => {
+      const found = columns.find((column) => column.id === priceKey || key(column.label) === key(priceKey));
+      if (found) prices[found.id] = text(value);
+      else if (!explicit) prices[ensure(priceKey)] = text(value);
     });
-  }
-
-  const normalizedItems = Array.isArray(rawItems)
-    ? rawItems.map((rawItem, index) => {
-        const rowId =
-          typeof rawItem?.id === "string" && rawItem.id.trim() !== ""
-            ? rawItem.id
-            : `f-${index + 1}`;
-
-        let rowTitle = text(rawItem?.title);
-        const prices: Record<string, string> = {};
-
-        // nouveau format
-        if (rawItem?.prices && typeof rawItem.prices === "object" && !Array.isArray(rawItem.prices)) {
-          Object.entries(rawItem.prices).forEach(([key, value]) => {
-            const rawValue = text(value);
-
-            const existingById = Array.from(columnMap.values()).find((col) => col.id === key);
-            if (existingById) {
-              prices[existingById.id] = rawValue;
-              return;
-            }
-
-            const existingByLabel = Array.from(columnMap.values()).find(
-              (col) => normalizeLabelKey(col.label) === normalizeLabelKey(key)
-            );
-            if (existingByLabel) {
-              prices[existingByLabel.id] = rawValue;
-              return;
-            }
-
-            // Avec le format actuel, la liste globale est la source de vérité :
-            // une ancienne clé encore présente dans `prices` ne doit pas créer
-            // une colonne supplémentaire sur le site public.
-            if (!hasExplicitColumns) {
-              const newId = ensureColumn(key);
-              prices[newId] = rawValue;
-            }
-          });
-        }
-
-        // ancien format : item.columns
-        if (Array.isArray(rawItem?.columns)) {
-          let genericTitle = "";
-          let genericPrice = "";
-
-          rawItem.columns.forEach((rawCol) => {
-            const label = text(rawCol?.label);
-            const value = text(rawCol?.value);
-
-            if (!label) return;
-
-            const normalizedLabel = normalizeLabelKey(label);
-
-            if (normalizedLabel === "title") {
-              genericTitle = value;
-              return;
-            }
-
-            if (normalizedLabel === "price") {
-              genericPrice = value;
-              return;
-            }
-
-            const existingColumn = Array.from(columnMap.values()).find(
-              (col) =>
-                col.id === rawCol?.id ||
-                normalizeLabelKey(col.label) === normalizedLabel
-            );
-
-            if (existingColumn) {
-              prices[existingColumn.id] = value;
-            } else if (!hasExplicitColumns) {
-              const colId = ensureColumn(label, rawCol?.id);
-              prices[colId] = value;
-            }
-          });
-
-          if (genericTitle) {
-            rowTitle = genericTitle;
-          }
-
-          if (genericPrice && !hasExplicitColumns) {
-            const prixId = ensureColumn("Prix", "prix");
-            prices[prixId] = genericPrice;
-          }
-        }
-
-        // ancien format ultra simple : price / url / note
-        if (text(rawItem?.price) && !hasExplicitColumns) {
-          const prixId = ensureColumn("Prix", "prix");
-          prices[prixId] = text(rawItem.price);
-        }
-        if (text(rawItem?.url) && !hasExplicitColumns) {
-          const urlId = ensureColumn("URL", "url");
-          prices[urlId] = text(rawItem.url);
-        }
-        if (text(rawItem?.note) && !hasExplicitColumns) {
-          const noteId = ensureColumn("Note", "note");
-          prices[noteId] = text(rawItem.note);
-        }
-
-        return {
-          id: rowId,
-          title: rowTitle,
-          prices,
-        };
-      })
-    : [];
-
-  return {
-    columns: Array.from(columnMap.values()),
-    items: normalizedItems,
-  };
+    (item?.columns || []).forEach((column) => {
+      if (key(column.label) === "title") title = text(column.value);
+      else if (key(column.label) === "price" && !explicit) prices[ensure("Prix", "prix")] = text(column.value);
+      else if (text(column.label)) {
+        const found = columns.find((candidate) => candidate.id === column.id || key(candidate.label) === key(column.label));
+        if (found) prices[found.id] = text(column.value);
+        else if (!explicit) prices[ensure(column.label, column.id)] = text(column.value);
+      }
+    });
+    if (text(item?.price) && !explicit) prices[ensure("Prix", "prix")] = text(item.price);
+    return { id: idOf(item?.id, `f-${index + 1}`), title, prices };
+  });
+  return { columns, items };
 };
 
-export default function StationForfaitsBlock({ enabled, columns, items }: Props) {
+type Cell = ForfaitPrice & { category_id: string };
+type Grid = { columns: ForfaitColumn[]; rows: Array<{ id: string; title: string; cells: Record<string, Cell> }> };
+
+function periodGrid(period: ForfaitPeriod): Grid {
+  const categories = Array.isArray(period.categories) ? period.categories : [];
+  const columns: ForfaitColumn[] = categories.map((category, index) => ({ id: idOf(category.id || category.key, `category-${index}`), label: text(category.label || category.name) }));
+  const ensure = (label: unknown, categoryId?: unknown) => {
+    const candidateId = text(categoryId);
+    const found = columns.find((column) => column.id === candidateId || (text(label) && key(column.label) === key(label)));
+    if (found) return found.id;
+    const id = idOf(categoryId, `category-${key(label) || columns.length + 1}`);
+    columns.push({ id, label: text(label) || id });
+    return id;
+  };
+  const products = period.passes || period.products || period.forfaits || period.items || [];
+  const rows = products.map((product, index) => {
+    const cells: Record<string, Cell> = {};
+    const rates = Array.isArray(product.prices) ? product.prices : Array.isArray(product.rates) ? product.rates : Array.isArray(product.tariffs) ? product.tariffs : [];
+    rates.forEach((rate) => {
+      const category = rate.category || {};
+      const categoryId = ensure(rate.category_label || category.label || category.name, rate.category_id || category.id || category.key);
+      cells[categoryId] = { ...rate, category_id: categoryId };
+    });
+    if (product.prices && !Array.isArray(product.prices)) Object.entries(product.prices).forEach(([categoryName, value]) => {
+      const categoryId = ensure(categoryName, categoryName);
+      cells[categoryId] = typeof value === "object" && value ? { ...(value as ForfaitPrice), category_id: categoryId } : { price_type: "fixed", price: value as string, category_id: categoryId };
+    });
+    return { id: idOf(product.id, `pass-${index}`), title: text(product.label || product.name || product.title || product.duration_label), cells };
+  });
+  return { columns: columns.filter((column) => column.label), rows: rows.filter((row) => row.title) };
+}
+
+function Price({ value }: { value?: Cell }) {
+  if (!value) return <>—</>;
+  const dynamic = value.price_type === "dynamic" || value.type === "dynamic";
+  return <>{dynamic ? <><span className="forfait-price">{euro(value.price_min)} – {euro(value.price_max)}</span><small className="forfait-dynamic-label">Tarif dynamique</small></> : <span className="forfait-price">{euro(value.price ?? value.amount)}</span>}</>;
+}
+
+export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
+  const seasonObject = typeof season === "object" && season ? season : null;
+  const availablePeriods = periods.length ? periods : seasonObject?.periods || seasonObject?.pricing_periods || [];
+  const orderedPeriods = useMemo(() => [...availablePeriods].sort((a, b) => (Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0)) || text(a.start_date || a.startDate).localeCompare(text(b.start_date || b.startDate))), [availablePeriods]);
+  const initialPeriod = useMemo(() => {
+    const now = new Date();
+    return orderedPeriods.findIndex((period) => {
+      const start = dateValue(period.start_date || period.startDate);
+      const end = dateValue(period.end_date || period.endDate);
+      return Boolean(start && end && now >= start && now <= new Date(end.valueOf() + 86_399_999));
+    });
+  }, [orderedPeriods]);
+  const [selectedId, setSelectedId] = useState(() => idOf(orderedPeriods[initialPeriod >= 0 ? initialPeriod : 0]?.id, "0"));
   if (!enabled) return null;
-
-  const normalized = normalizeForfaits(columns, items);
-  const finalColumns = normalized.columns.filter((col) => text(col.label));
-  const finalItems = normalized.items.filter((item) => text(item.title));
-
-  if (finalColumns.length === 0 || finalItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <section
-      style={{
-        border: "1px solid #cbd5e1",
-        borderRadius: 16,
-        background: "#fff",
-        padding: 16,
-      }}
-    >
-      <h2
-        style={{
-          margin: "0 0 12px",
-          fontSize: 20,
-          fontWeight: 800,
-          color: "#0f172a",
-        }}
-      >
-        Forfaits
-      </h2>
-
-      <div
-        style={{
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          border: "1px solid #d1d9e6",
-          borderRadius: 12,
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            minWidth: 720,
-            borderCollapse: "separate",
-            borderSpacing: 0,
-            background: "#fff",
-          }}
-        >
-          <thead>
-            <tr>
-              <th
-                style={{
-                  textAlign: "left",
-                  padding: "14px 16px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#0f172a",
-                  background: "#e8eef6",
-                  borderBottom: "1px solid #cbd5e1",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Forfait
-              </th>
-
-              {finalColumns.map((column) => (
-                <th
-                  key={column.id}
-                  style={{
-                    textAlign: "left",
-                    padding: "14px 16px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    background: "#e8eef6",
-                    borderBottom: "1px solid #cbd5e1",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {finalItems.map((row, rowIndex) => (
-              <tr key={row.id}>
-                <th
-                  scope="row"
-                  style={{
-                    textAlign: "left",
-                    padding: "14px 16px",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    background: rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc",
-                    borderBottom: "1px solid #e2e8f0",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {row.title}
-                </th>
-
-                {finalColumns.map((column) => (
-                  <td
-                    key={`${row.id}-${column.id}`}
-                    style={{
-                      padding: "14px 16px",
-                      fontSize: 14,
-                      color: "#334155",
-                      background: rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc",
-                      borderBottom: "1px solid #e2e8f0",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {formatForfaitDisplayValue(row.prices?.[column.id])}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
+  const selectedIndex = Math.max(0, orderedPeriods.findIndex((period, index) => idOf(period.id, String(index)) === selectedId));
+  const selected = orderedPeriods[selectedIndex];
+  const legacy = normalizeForfaits(columns, items);
+  const grid: Grid = selected ? periodGrid(selected) : { columns: legacy.columns, rows: legacy.items.map((row) => ({ id: row.id, title: row.title, cells: Object.fromEntries(Object.entries(row.prices).map(([category_id, price]) => [category_id, { category_id, price_type: "fixed", price }])) })) };
+  if (!grid.columns.length || !grid.rows.length) return null;
+  const hasDynamic = grid.rows.some((row) => Object.values(row.cells).some((cell) => cell.price_type === "dynamic" || cell.type === "dynamic"));
+  const source = source_url || sourceUrl || selected?.source_url || selected?.sourceUrl || seasonObject?.source_url || seasonObject?.sourceUrl;
+  const seasonLabel = typeof season === "string" ? season : text(season?.label || season?.name);
+  return <section className="forfaits-card">
+    <div className="forfaits-heading"><div><h2>Forfaits</h2>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
+    {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
+    {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}
+    <div className="forfaits-table-wrap" tabIndex={0} aria-label="Tableau des tarifs, défilement horizontal possible">
+      <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id}><Price value={row.cells[column.id]} /></td>)}</tr>)}</tbody></table>
+    </div>
+    {hasDynamic && <p className="forfaits-dynamic-note">Tarifs dynamiques : le prix peut varier notamment selon la date choisie et le moment de la réservation. Consultez le site officiel de la station pour connaître le tarif disponible au moment de l&apos;achat.</p>}
+  </section>;
 }

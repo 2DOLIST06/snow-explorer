@@ -63,6 +63,7 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
         ...data.forfaits,
         columns: data.forfaits?.columns || [],
         items: data.forfaits?.items || [],
+        periods: data.forfaits?.periods || (typeof data.forfaits?.season === "object" ? data.forfaits.season?.periods || data.forfaits.season?.pricing_periods : undefined) || [],
       },
       webcams: {
         ...EMPTY_CFG.webcams,

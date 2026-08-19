@@ -1484,6 +1484,10 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
     enabled={cfg?.forfaits?.enabled}
     columns={cfg?.forfaits?.columns || []}
     items={cfg?.forfaits?.items || []}
+    periods={cfg?.forfaits?.periods || []}
+    season={cfg?.forfaits?.season}
+    source_url={cfg?.forfaits?.source_url}
+    sourceUrl={cfg?.forfaits?.sourceUrl}
         /></div> : null}
       </main>
 
@@ -1604,6 +1608,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       enabled: Boolean(cfg.forfaits?.enabled),
       columns: cfg.forfaits?.columns || [],
       items: cfg.forfaits?.items || [],
+      periods: cfg.forfaits?.periods || [],
+      season: cfg.forfaits?.season || null,
+      source_url: cfg.forfaits?.source_url || null,
     },
     webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
     snow: {
