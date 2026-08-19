@@ -20,8 +20,31 @@ const EMPTY_CFG: StationWidgetsConfig = {
   snowpark: { enabled: false, mapUrl: null, imageUrl: null, caption: null },
 };
 
+function normalizedForfaits(payload: any) {
+  const season = Array.isArray(payload?.seasons) ? payload.seasons[0] : null;
+  if (!season?.id) return null;
+  const passes = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
+  const periods = (season.periods || []).map((period: any) => ({
+    ...period,
+    passes: passes.map((product: any) => ({
+      ...product,
+      prices: (product.prices || []).filter((price: any) => String(price.period_id) === String(period.id)),
+    })),
+  }));
+  return { enabled: true, season: season.season, currency: season.currency, source_url: season.source_url, columns: [], items: [], periods };
+}
+
 export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
   try {
+    // A normalized season is authoritative. Widgets are requested afterwards only
+    // for the other blocks, and their legacy forfaits value is never allowed to
+    // overwrite an existing normalized grid.
+    const normalizedResponse = await fetch(`${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/ski-passes`, {
+      headers: { accept: "application/json" }, cache: "no-store",
+    });
+    let normalized = null;
+    if (normalizedResponse.ok) normalized = normalizedForfaits(await normalizedResponse.json());
+    else if (normalizedResponse.status !== 404) throw new Error(`normalized_ski_passes_http_${normalizedResponse.status}`);
     const url = `${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/widgets`;
     const res = await fetch(url, {
       headers: { accept: "application/json" },
@@ -60,10 +83,10 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
       },
       forfaits: {
         ...EMPTY_CFG.forfaits,
-        ...data.forfaits,
-        columns: data.forfaits?.columns || [],
-        items: data.forfaits?.items || [],
-        periods: data.forfaits?.periods || (typeof data.forfaits?.season === "object" ? data.forfaits.season?.periods || data.forfaits.season?.pricing_periods : undefined) || [],
+        ...(normalized || data.forfaits),
+        columns: normalized?.columns || data.forfaits?.columns || [],
+        items: normalized?.items || data.forfaits?.items || [],
+        periods: normalized?.periods || data.forfaits?.periods || (typeof data.forfaits?.season === "object" ? data.forfaits.season?.periods || data.forfaits.season?.pricing_periods : undefined) || [],
       },
       webcams: {
         ...EMPTY_CFG.webcams,
