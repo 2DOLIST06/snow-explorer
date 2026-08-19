@@ -15,14 +15,14 @@ const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const key = (value: unknown) => text(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
 const idOf = (value: unknown, fallback: string) => text(value) || fallback;
 
-const euro = (value: unknown, decimals = false) => {
+const euro = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "number") return `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: decimals ? 2 : 0, maximumFractionDigits: 2 }).format(value)} €`;
+  if (typeof value === "number") return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value)} €`;
   const valueText = text(value);
   if (!valueText) return "—";
   if (valueText.includes("€")) return valueText;
   const numeric = Number(valueText.replace(",", "."));
-  return Number.isFinite(numeric) ? `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: decimals ? 2 : 0, maximumFractionDigits: 2 }).format(numeric)} €` : valueText;
+  return Number.isFinite(numeric) ? `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(numeric)} €` : valueText;
 };
 
 const dateValue = (value: unknown) => {
@@ -107,7 +107,7 @@ function periodGrid(period: ForfaitPeriod): Grid {
 function Price({ value }: { value?: Cell }) {
   if (!value) return <>—</>;
   const dynamic = value.price_type === "dynamic" || value.type === "dynamic";
-  return <>{dynamic ? <><span className="forfait-price">{euro(value.price_min, true)} – {euro(value.price_max, true)}</span><small className="forfait-dynamic-label">Tarif dynamique</small></> : <span className="forfait-price">{euro(value.price ?? value.amount)}</span>}</>;
+  return <>{dynamic ? <><span className="forfait-price">{euro(value.price_min)} – {euro(value.price_max)}</span><small className="forfait-dynamic-label">Tarif dynamique</small></> : <span className="forfait-price">{euro(value.price ?? value.amount)}</span>}</>;
 }
 
 export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
