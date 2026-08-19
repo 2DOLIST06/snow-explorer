@@ -30,20 +30,21 @@ const adminSource = fs.readFileSync(
   "utf8",
 );
 
-test("admin forfait columns offer presets while retaining a custom text field", () => {
-  assert.match(adminSource, /Saisir un nom personnalisé/);
-  assert.match(
-    adminSource,
-    /FORFAIT_COLUMN_SUGGESTIONS = \["Adulte", "Enfant", "Senior", "Enfant \/ Senior"\]/,
-  );
-  assert.match(adminSource, /<select[\s\S]*Proposition pour la colonne/);
+test("normalized admin categories are data-driven and editable", () => {
+  const editor = fs.readFileSync(path.join(__dirname, "../src/components/admin/SkiPassEditor.tsx"), "utf8");
+  assert.match(editor, /category_label/);
+  assert.match(editor, /Ajouter une catégorie/);
+  assert.match(editor, /Supprimer/);
+  assert.doesNotMatch(editor, /\["Adulte", "Enfant", "Senior"\]/);
 });
 
-test("admin forfait rows offer duration presets while retaining a custom text field", () => {
-  assert.match(adminSource, /Saisir un type personnalisé/);
-  assert.match(adminSource, /FORFAIT_ROW_SUGGESTIONS = \[[\s\S]*"Demi-journée"/);
-  assert.match(adminSource, /"1 jour"[\s\S]*"10 jours"[\s\S]*"Saison"/);
-  assert.match(adminSource, /Proposition pour la ligne/);
+test("normalized admin products expose duration, ordering and price modes", () => {
+  const editor = fs.readFileSync(path.join(__dirname, "../src/components/admin/SkiPassEditor.tsx"), "utf8");
+  assert.match(editor, /duration_days/);
+  assert.match(editor, /duration_label/);
+  assert.match(editor, /sort_order/);
+  assert.match(editor, /<option value="fixed">Fixe<\/option>/);
+  assert.match(editor, /<option value="dynamic">Dynamique<\/option>/);
 });
 
 test("public forfait tables only retain columns configured globally by admin", () => {

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
+import type { SkiPassImportResult } from "@/types/skiPass";
 
 type Entry = string | { path?: string; message?: string; error?: string };
 type Preview = { valid?: boolean; station?: any; season?: any; periods_count?: number; passes_count?: number; products_count?: number; prices_count?: number; tariffs_count?: number; errors?: Entry[]; replaces_existing_season?: boolean; season_exists?: boolean; preview_token?: string };
 const entryText = (entry: Entry) => typeof entry === "string" ? entry : `${entry.path ? `${entry.path} : ` : ""}${entry.message || entry.error || "Erreur de validation"}`;
 const label = (value: any) => typeof value === "string" ? value : value?.name || value?.label || "—";
 
-export default function ForfaitsJsonImport({ stationSlug, onImported }: { stationSlug: string; onImported?: () => void | Promise<void> }) {
+export default function ForfaitsJsonImport({ stationSlug, onImported }: { stationSlug: string; onImported?: (result: SkiPassImportResult) => void | Promise<void> }) {
   const [json, setJson] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +22,17 @@ export default function ForfaitsJsonImport({ stationSlug, onImported }: { statio
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(Array.isArray(body.errors) ? body.errors.map(entryText).join("\n") : body.message || body.error || `Erreur HTTP ${response.status}`);
       if (action === "preview") { setPreview(body); setErrors(Array.isArray(body.errors) ? body.errors.map(entryText) : []); }
-      else { setResult(body.message || "Les tarifs ont été importés avec succès."); setPreview(null); await onImported?.(); }
+      else {
+        if (body?.success !== true) throw new Error(body?.message || "L’import n’a pas été confirmé par le backend.");
+        for (const field of ["station_slug", "season", "periods_count", "passes_count", "prices_count"]) {
+          if (body[field] === undefined || body[field] === null) throw new Error(`Réponse d’import incomplète : ${field} est absent.`);
+        }
+        if (body.periods_count < 1 || body.passes_count < 1 || body.prices_count < 1) throw new Error("Import refusé : aucune grille complète n’a été enregistrée.");
+        const imported = body as SkiPassImportResult;
+        setResult(`Import réussi — Saison ${imported.season} : ${imported.periods_count} période(s), ${imported.passes_count} forfait(s), ${imported.prices_count} tarif(s).`);
+        setPreview(null); setJson("");
+        await onImported?.(imported);
+      }
     } catch (error) { setErrors(String(error instanceof Error ? error.message : error).split("\n")); }
     finally { setBusy(false); }
   };
