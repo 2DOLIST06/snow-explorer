@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
+import ForfaitsJsonImport from "@/components/admin/ForfaitsJsonImport";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
@@ -2110,6 +2111,8 @@ const removeForfaitRow = (rowIdx: number) => {
       Exemple : Adulte / Enfant / Senior.  
       Chaque ligne correspond à un type de forfait : Journée, 4 heures, 6 jours, etc.
     </div>
+
+    <ForfaitsJsonImport stationSlug={slug} onImported={() => load(slug)} />
 
     <div style={styles.lineItem}>
       <div

@@ -4,7 +4,7 @@ import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import { ArrowRight, Search, ShieldCheck, Ticket } from "lucide-react";
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
-import type { ForfaitColumn, ForfaitItem } from "@/types/station";
+import type { ForfaitColumn, ForfaitItem, ForfaitPeriod } from "@/types/station";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
 
 type Resort = {
@@ -17,7 +17,7 @@ type Resort = {
 };
 
 type AvailableResort = Resort & {
-  forfaits: { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[] };
+  forfaits: { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[]; periods?: ForfaitPeriod[]; season?: string | { label?: string; name?: string } | null; source_url?: string | null; sourceUrl?: string | null };
 };
 type Props = { initialStations: Resort[] };
 
@@ -25,7 +25,9 @@ const hasValue = (value: unknown) => typeof value === "string" && value.trim().l
 
 export function hasActiveForfaits(payload: any): boolean {
   const forfaits = payload?.forfaits || payload?.widgets?.forfaits;
-  if (!forfaits?.enabled || !Array.isArray(forfaits.items)) return false;
+  if (!forfaits?.enabled) return false;
+  if (Array.isArray(forfaits.periods) && forfaits.periods.some((period: any) => [period?.passes, period?.products, period?.forfaits, period?.items].some((rows) => Array.isArray(rows) && rows.length))) return true;
+  if (!Array.isArray(forfaits.items)) return false;
   return forfaits.items.some((item: any) =>
     hasValue(item?.price) ||
     (item?.prices && Object.values(item.prices).some(hasValue)) ||
@@ -90,7 +92,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
           <section className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled ? <><StationForfaitsBlock enabled columns={selected.forfaits.columns || []} items={selected.forfaits.items || []} /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
+            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled ? <><StationForfaitsBlock {...selected.forfaits} enabled /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
           </section>
         </section>
 
