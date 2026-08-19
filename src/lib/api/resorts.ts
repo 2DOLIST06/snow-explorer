@@ -2,7 +2,7 @@ export type Resort = {
   id: string;
   name: string;
   slug: string;
-  is_active: boolean;
+  is_active?: boolean;
   region?: {
     id?: string;
     name?: string;
@@ -11,6 +11,7 @@ export type Resort = {
   };
   logo_url?: string | null;
   logoUrl?: string | null;
+  updated_at?: string | null;
 };
 
 const RESORTS_PATH = "/api/resorts/";
@@ -49,7 +50,7 @@ export function getServerApiBase(): string {
 }
 
 export function getServerResortsApiUrls(): string[] {
-  return getServerApiBases().map((base) => `${base}${RESORTS_PATH}`);
+  return getServerApiBases().map((base) => `${base}${RESORTS_PATH}?active=true`);
 }
 
 /** Use the same backend resource through the same-origin proxy in browsers. */
