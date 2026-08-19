@@ -13,7 +13,23 @@ export async function getAdminSkiPasses(slug: string): Promise<SkiPassAdminRespo
   if (!response.ok) throw new Error(await errorMessage(response));
   const body = await response.json();
   if (!body || !Array.isArray(body.seasons)) throw new Error("Réponse forfaits invalide : seasons est absent.");
-  return body;
+  return {
+    ...body,
+    mode: body.mode === "normalized" ? "normalized" : "legacy",
+    enabled: Boolean(body.enabled ?? body.is_active ?? body.active),
+  };
+}
+
+export async function setAdminSkiPassEnabled(slug: string, enabled: boolean): Promise<SkiPassAdminResponse> {
+  const response = await adminFetch(endpoint(slug), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) throw new Error(await errorMessage(response));
+  // Always read again: the switch reflects persisted backend state, never the
+  // optimistic value which was just clicked in React.
+  return getAdminSkiPasses(slug);
 }
 
 export async function saveAdminSkiPassSeason(slug: string, season: SkiPassSeason): Promise<void> {

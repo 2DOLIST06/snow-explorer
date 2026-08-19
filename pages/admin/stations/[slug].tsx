@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
 import SkiPassEditor from "@/components/admin/SkiPassEditor";
+import ForfaitsJsonImport from "@/components/admin/ForfaitsJsonImport";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
@@ -778,6 +779,7 @@ export default function AdminStationEdit() {
   const [err, setErr] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [skiPassMode, setSkiPassMode] = useState<"legacy" | "normalized">("legacy");
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -826,6 +828,8 @@ export default function AdminStationEdit() {
       const j = await r.json();
 
       const rcv: ResortType = j.resort || j;
+      const backendSkiPassMode = j.ski_pass_mode ?? j.forfaits_mode ?? j.ski_passes?.mode ?? j.forfaits?.mode ?? j.widgets?.forfaits?.mode;
+      setSkiPassMode(backendSkiPassMode === "normalized" ? "normalized" : "legacy");
       const w: any = normalizeAdminWidgets(j.widgets || {}, rcv);
       if (!w.pistes) w.pistes = {};
       if (!w.pistes.colors) w.pistes.colors = { green: 0, blue: 0, red: 0, black: 0 };
@@ -2095,7 +2099,234 @@ const removeForfaitRow = (rowIdx: number) => {
               title="Forfaits"
               description="Gérez les saisons, périodes, produits, catégories et tarifs stockés dans les tables normalisées."
             >
-              <SkiPassEditor stationSlug={slug} />
+              {skiPassMode === "normalized" ? (
+                <SkiPassEditor stationSlug={slug} onModeChange={setSkiPassMode} />
+              ) : (
+  <div style={styles.stack}>
+    <label style={styles.checkboxRow}>
+      <input
+        type="checkbox"
+        checked={!!widgets?.forfaits?.enabled}
+        onChange={(e) => setW("forfaits.enabled", e.target.checked)}
+      />
+      Activer
+    </label>
+
+    <div style={styles.helperBox}>
+      Le tableau du site utilisera exactement ces colonnes globales.
+      Exemple : Adulte / Enfant / Senior.
+      Chaque ligne correspond à un type de forfait : Journée, 4 heures, 6 jours, etc.
+    </div>
+
+    <ForfaitsJsonImport stationSlug={slug} onImported={async () => { setSkiPassMode("normalized"); await load(slug); }} />
+
+    <div style={styles.lineItem}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Colonnes du tableau</div>
+        <button onClick={addForfaitGlobalColumn} style={styles.ghostBtn}>
+          + Ajouter une colonne
+        </button>
+      </div>
+
+      {forfaitColumns.length === 0 ? (
+        <div style={styles.helperBox}>
+          Aucune colonne pour le moment. Commence par ajouter par exemple : Adulte, Enfant, Senior.
+        </div>
+      ) : (
+        <div style={styles.stack}>
+          {forfaitColumns.map((col, colIdx) => (
+            <div
+              key={col.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto",
+                gap: 10,
+                alignItems: "end",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                <label style={styles.label}>
+                  Nom de colonne
+                  <input
+                    placeholder="Saisir un nom personnalisé"
+                    value={col.label}
+                    onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+
+                <label style={styles.label}>
+                  Proposition
+                  <select
+                    aria-label={`Proposition pour la colonne ${colIdx + 1}`}
+                    value={
+                      FORFAIT_COLUMN_SUGGESTIONS.includes(
+                        col.label as (typeof FORFAIT_COLUMN_SUGGESTIONS)[number]
+                      )
+                        ? col.label
+                        : ""
+                    }
+                    onChange={(e) => updateForfaitGlobalColumnLabel(colIdx, e.target.value)}
+                    style={styles.input}
+                  >
+                    <option value="">Choisir…</option>
+                    {FORFAIT_COLUMN_SUGGESTIONS.map((suggestion) => (
+                      <option key={suggestion} value={suggestion}>
+                        {suggestion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <button
+                onClick={() => removeForfaitGlobalColumn(colIdx)}
+                style={styles.secondaryBtn}
+                title="Supprimer la colonne"
+              >
+                Supprimer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div style={styles.lineItem}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Lignes de forfaits</div>
+        <button onClick={addForfaitRow} style={styles.ghostBtn}>
+          + Ajouter une ligne
+        </button>
+      </div>
+
+      {forfaitItems.length === 0 ? (
+        <div style={styles.helperBox}>
+          Aucun type de forfait pour le moment.
+        </div>
+      ) : (
+        <div style={styles.stack}>
+          {forfaitItems.map((row, rowIdx) => (
+            <div key={row.id} style={styles.lineItem}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Ligne {rowIdx + 1}
+                </div>
+                <button
+                  onClick={() => removeForfaitRow(rowIdx)}
+                  style={styles.secondaryBtn}
+                  title="Supprimer la ligne"
+                >
+                  Supprimer la ligne
+                </button>
+              </div>
+
+              <div style={styles.stack}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <label style={styles.label}>
+                    Type de forfait
+                    <input
+                      placeholder="Saisir un type personnalisé"
+                      value={row.title}
+                      onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                      style={styles.input}
+                    />
+                  </label>
+
+                  <label style={styles.label}>
+                    Proposition
+                    <select
+                      aria-label={`Proposition pour la ligne ${rowIdx + 1}`}
+                      value={
+                        FORFAIT_ROW_SUGGESTIONS.includes(
+                          row.title as (typeof FORFAIT_ROW_SUGGESTIONS)[number]
+                        )
+                          ? row.title
+                          : ""
+                      }
+                      onChange={(e) => updateForfaitRowTitle(rowIdx, e.target.value)}
+                      style={styles.input}
+                    >
+                      <option value="">Choisir…</option>
+                      {FORFAIT_ROW_SUGGESTIONS.map((suggestion) => (
+                        <option key={suggestion} value={suggestion}>
+                          {suggestion}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {forfaitColumns.length > 0 ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {forfaitColumns.map((col) => (
+                      <label key={col.id} style={styles.label}>
+                        {col.label || "Colonne sans nom"}
+                        <input
+                          placeholder="Ex: 29.50"
+                          value={row.prices?.[col.id] || ""}
+                          onChange={(e) => updateForfaitPrice(rowIdx, col.id, e.target.value)}
+                          style={styles.input}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={styles.helperBox}>
+                    Ajoute d’abord les colonnes globales avant de saisir les prix.
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+
+              )}
             </SectionCard>
           </div>
         </div>

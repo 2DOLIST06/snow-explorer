@@ -47,6 +47,23 @@ test("normalized admin products expose duration, ordering and price modes", () =
   assert.match(editor, /<option value="dynamic">Dynamique<\/option>/);
 });
 
+test("admin keeps both editors and normalized activation is persisted through the API", () => {
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api/skiPasses.ts"), "utf8");
+  assert.match(adminSource, /skiPassMode === "normalized"/);
+  assert.match(adminSource, /ForfaitsJsonImport/);
+  assert.match(adminSource, /forfaits\.enabled/);
+  assert.match(api, /method: "PATCH"/);
+  assert.match(api, /JSON\.stringify\(\{ enabled \}\)/);
+  assert.match(api, /return getAdminSkiPasses\(slug\)/);
+});
+
+test("public normalized activation does not depend on legacy widgets", () => {
+  const stationApi = fs.readFileSync(path.join(__dirname, "../src/lib/api/stations.ts"), "utf8");
+  assert.match(stationApi, /enabled !== true/);
+  assert.match(stationApi, /if \(normalized\)/);
+  assert.match(stationApi, /forfaits: \{ \.\.\.EMPTY_CFG\.forfaits, \.\.\.normalized \}/);
+});
+
 test("public forfait tables only retain columns configured globally by admin", () => {
   const result = normalizeForfaits(
     [

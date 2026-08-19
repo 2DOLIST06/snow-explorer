@@ -21,8 +21,10 @@ const EMPTY_CFG: StationWidgetsConfig = {
 };
 
 function normalizedForfaits(payload: any) {
-  const season = Array.isArray(payload?.seasons) ? payload.seasons[0] : null;
-  if (!season?.id) return null;
+  const mode = payload?.mode || payload?.ski_pass_mode;
+  const season = payload?.season || (Array.isArray(payload?.seasons) ? payload.seasons.find((value: any) => value?.enabled !== false && value?.is_active !== false) : null);
+  const enabled = payload?.enabled ?? payload?.is_active ?? payload?.active ?? season?.enabled ?? season?.is_active ?? season?.active;
+  if (mode === "legacy" || enabled !== true || !season?.id) return null;
   const passes = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
   const periods = (season.periods || []).map((period: any) => ({
     ...period,
@@ -31,7 +33,7 @@ function normalizedForfaits(payload: any) {
       prices: (product.prices || []).filter((price: any) => String(price.period_id) === String(period.id)),
     })),
   }));
-  return { enabled: true, season: season.season, currency: season.currency, source_url: season.source_url, columns: [], items: [], periods };
+  return { mode: "normalized", enabled: true, season: season.season, currency: season.currency, source_url: season.source_url, columns: [], items: [], periods };
 }
 
 export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
@@ -44,7 +46,7 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
     });
     let normalized = null;
     if (normalizedResponse.ok) normalized = normalizedForfaits(await normalizedResponse.json());
-    else if (normalizedResponse.status !== 404) throw new Error(`normalized_ski_passes_http_${normalizedResponse.status}`);
+    // A missing/unavailable normalized grid must not hide a valid legacy grid.
     const url = `${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/widgets`;
     const res = await fetch(url, {
       headers: { accept: "application/json" },
@@ -54,13 +56,18 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
     console.info(`[fetchStationWidgetsConfig] GET ${url} -> ${res.status}`);
 
     if (res.status === 404) {
+      if (normalized) {
+        return { ...EMPTY_CFG, stationSlug, forfaits: { ...EMPTY_CFG.forfaits, ...normalized } };
+      }
       const notFoundError: any = new Error("widgets_not_found");
       notFoundError.status = 404;
       throw notFoundError;
     }
 
     if (!res.ok || res.status === 204) {
-      return { ...EMPTY_CFG, stationSlug };
+      return normalized
+        ? { ...EMPTY_CFG, stationSlug, forfaits: { ...EMPTY_CFG.forfaits, ...normalized } }
+        : { ...EMPTY_CFG, stationSlug };
     }
 
     const data = (await res.json()) as StationWidgetsConfig;
