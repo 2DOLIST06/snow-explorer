@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
-import { getStationApiBase, isResortInactive, loadPublicResort, resolveResortRegion } from "@/lib/api/stationPage";
+import { getStationApiBase, isResortInactive, resolveResortRegion } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 import { regionHref } from "@/lib/regions";
 
@@ -1556,10 +1556,41 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
 
-  // 1) Station via la route publique Flask. Les erreurs amont doivent rester
-  // des erreurs serveur : seule une absence explicite devient une page 404.
-  const loadedResort = (await loadPublicResort(slug)) as Resort | null;
-  if (!loadedResort) {
+  // 1) L'endpoint individuel renvoie directement la station (et non plus la
+  // liste dans laquelle l'ancien chargement devait rechercher le slug).
+  let loadedResort: Resort;
+  try {
+    const response = await fetch(
+      `${getStationApiBase()}/api/stations/${encodeURIComponent(slug)}`,
+      { headers: { accept: "application/json" }, cache: "no-store" },
+    );
+
+    // Ne pas tenter de décoder une page d'erreur HTML et ne jamais laisser une
+    // indisponibilité de l'API se transformer en exception de rendu Next.js.
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.error(`[stations/[slug]] station request failed for ${slug}: HTTP ${response.status}`);
+      }
+      return { notFound: true };
+    }
+
+    const station = await response.json();
+    if (
+      !station ||
+      typeof station !== "object" ||
+      Array.isArray(station) ||
+      typeof station.name !== "string" ||
+      typeof station.slug !== "string"
+    ) {
+      console.error(`[stations/[slug]] invalid station response for ${slug}`);
+      return { notFound: true };
+    }
+    loadedResort = station as Resort;
+  } catch (error) {
+    console.error(
+      `[stations/[slug]] station request failed for ${slug}`,
+      error instanceof Error ? error.message : "unknown_error",
+    );
     return { notFound: true };
   }
   if (isResortInactive(loadedResort)) {
