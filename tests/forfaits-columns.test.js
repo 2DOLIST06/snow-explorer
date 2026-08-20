@@ -60,6 +60,21 @@ test("normalized admin products expose duration, ordering and price modes", () =
   assert.match(editor, /<option value="dynamic">Dynamique<\/option>/);
 });
 
+test("normalized season visibility uses its dedicated PATCH and confirms backend state", () => {
+  const editor = fs.readFileSync(path.join(__dirname, "../src/components/admin/SkiPassEditor.tsx"), "utf8");
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api/skiPasses.ts"), "utf8");
+  const visibilityApi = api.slice(api.indexOf("export async function setAdminSkiPassSeasonActive"));
+  const toggle = editor.slice(editor.indexOf("const togglePublicDisplay"), editor.indexOf("\n\n  return"));
+
+  assert.match(visibilityApi, /method: "PATCH"/);
+  assert.doesNotMatch(visibilityApi, /method: "PUT"/);
+  assert.match(visibilityApi, /JSON\.stringify\(\{ is_active: isActive \}\)/);
+  assert.match(visibilityApi, /return body\.is_active/);
+  assert.match(toggle, /const isActive = !season\.is_active/);
+  assert.match(toggle, /is_active: confirmedIsActive/);
+  assert.doesNotMatch(toggle, /await reload\(\)/);
+});
+
 test("legacy and normalized ski pass editors remain visible and independent", () => {
   const legacyStart = adminSource.indexOf('id="forfaits"');
   const advancedStart = adminSource.indexOf('id="forfaits-avances"');
