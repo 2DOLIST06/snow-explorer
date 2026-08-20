@@ -1,4 +1,4 @@
-const PUBLIC_STATION_PATH = "/api/stations/";
+const PUBLIC_STATION_PATH = "/api/resorts/";
 const ERROR_BODY_LIMIT = 500;
 
 function withoutTrailingSlash(value) {
@@ -42,7 +42,7 @@ function stationFromPayload(payload, slug) {
     return undefined;
   }
 
-  const candidate = payload.station ?? payload.resort ?? payload.data ?? payload;
+  const candidate = payload.resort ?? payload.data ?? payload;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
   if (typeof candidate.name !== "string" || typeof candidate.slug !== "string") return null;
   return candidate;
@@ -84,7 +84,7 @@ async function loadPublicResort(slug, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const apiBase = getStationApiBase(options.env || process.env);
-  const url = `${apiBase}${PUBLIC_STATION_PATH}${encodeURIComponent(slug)}`;
+  const url = `${apiBase}${PUBLIC_STATION_PATH}?q=${encodeURIComponent(slug)}`;
   const safeUrl = getSafeStationApiUrl(url);
 
   logger.info("[station-page] API request", { slug, url: safeUrl });
