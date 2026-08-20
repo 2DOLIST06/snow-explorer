@@ -21,13 +21,9 @@ const EMPTY_CFG: StationWidgetsConfig = {
 };
 
 function normalizedForfaits(payload: any) {
-  const seasons = Array.isArray(payload?.seasons)
-    ? payload.seasons
-    : payload && typeof payload === "object"
-      ? [payload]
-      : [];
+  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
   const season = seasons.find((item: any) => item?.is_active === true) || seasons[0];
-  if (!season) return null;
+  if (!season?.id) return null;
   const passes = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
   const periods = (season.periods || []).map((period: any) => ({
     ...period,
@@ -39,18 +35,16 @@ function normalizedForfaits(payload: any) {
   return { enabled: season.is_active === true, season: season.season, currency: season.currency, source_url: season.source_url, columns: [], items: [], periods };
 }
 
-export async function fetchStationWidgetsConfig(stationSlug: string, skiPass?: unknown): Promise<StationWidgetsConfig> {
+export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
   try {
-    // The station page supplies its embedded normalized pass. Other callers keep
-    // the historical fallback, while both visibility flags remain independent.
-    let normalized = skiPass === undefined ? null : normalizedForfaits(skiPass);
-    if (skiPass === undefined) {
-      const normalizedResponse = await fetch(`${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/ski-passes`, {
-        headers: { accept: "application/json" }, cache: "no-store",
-      });
-      if (normalizedResponse.ok) normalized = normalizedForfaits(await normalizedResponse.json());
-      else if (normalizedResponse.status !== 404) throw new Error(`normalized_ski_passes_http_${normalizedResponse.status}`);
-    }
+    // Fetch normalized and legacy passes independently so neither visibility flag
+    // can overwrite the other one.
+    const normalizedResponse = await fetch(`${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/ski-passes`, {
+      headers: { accept: "application/json" }, cache: "no-store",
+    });
+    let normalized = null;
+    if (normalizedResponse.ok) normalized = normalizedForfaits(await normalizedResponse.json());
+    else if (normalizedResponse.status !== 404) throw new Error(`normalized_ski_passes_http_${normalizedResponse.status}`);
     const url = `${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/widgets`;
     const res = await fetch(url, {
       headers: { accept: "application/json" },

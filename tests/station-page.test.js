@@ -38,10 +38,9 @@ test("station regions support nested, flat and region_id API contracts", () => {
   );
 });
 
-test("public station payload supports direct, station, resort and data contracts", () => {
+test("public station payload supports direct, resort and data contracts", () => {
   const auron = { name: "Auron", slug: "auron", is_active: true };
   assert.equal(stationFromPayload(auron), auron);
-  assert.equal(stationFromPayload({ station: auron }), auron);
   assert.equal(stationFromPayload({ resort: auron }), auron);
   assert.equal(stationFromPayload({ data: auron }), auron);
   assert.equal(stationFromPayload([auron], "auron"), auron);
@@ -58,7 +57,7 @@ test("Auron and Isola 2000 valid responses remain public", async () => {
     const actual = await loadPublicResort(station.slug, {
       env: { API_URL: "https://backend.example.com", NODE_ENV: "production" },
       fetchImpl: async (url) => {
-        assert.equal(url, `https://backend.example.com/api/stations/${station.slug}`);
+        assert.equal(url, `https://backend.example.com/api/resorts/?q=${station.slug}`);
         return response(200, [station]);
       },
       logger: silentLogger,

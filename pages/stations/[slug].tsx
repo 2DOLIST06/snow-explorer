@@ -47,7 +47,6 @@ type Resort = {
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
-  ski_pass?: unknown;
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -1589,9 +1588,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // 2) Widgets config
   let cfg: StationWidgetsConfig | null = null;
   try {
-    // Le forfait normalisé fait partie de la réponse de la station : le passer
-    // au chargeur de widgets évite toute requête dédiée supplémentaire.
-    cfg = await fetchStationWidgetsConfig(slug, loadedResort.ski_pass ?? null);
+    cfg = await fetchStationWidgetsConfig(slug);
   } catch (e: any) {
     if (e?.status === 404) {
       console.info(`[stations/[slug]] widgets not configured for ${slug}`);
