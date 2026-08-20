@@ -2092,7 +2092,7 @@ const removeForfaitRow = (rowIdx: number) => {
 
             <SectionCard
   id="forfaits"
-  title="Forfaits"
+  title="Forfaits historiques"
   description="Définis d’abord les colonnes globales (Adulte, Enfant, Senior…), puis remplis les prix par type de forfait."
   actions={<SaveButton onClick={patchWidgets} />}
 >
@@ -2103,7 +2103,7 @@ const removeForfaitRow = (rowIdx: number) => {
         checked={!!widgets?.forfaits?.enabled}
         onChange={(e) => setW("forfaits.enabled", e.target.checked)}
       />
-      Activer
+      Afficher les forfaits historiques
     </label>
 
     <div style={styles.helperBox}>

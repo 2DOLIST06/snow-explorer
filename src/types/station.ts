@@ -71,6 +71,15 @@ export type StationWidgetsConfig = {
     sourceUrl?: string | null;
   };
 
+  normalizedForfaits?: {
+    enabled: boolean;
+    columns: ForfaitColumn[];
+    items: ForfaitItem[];
+    periods: ForfaitPeriod[];
+    season?: string | ForfaitSeason | null;
+    source_url?: string | null;
+  };
+
   webcams: {
     enabled: boolean;
     items: WebcamItem[];
