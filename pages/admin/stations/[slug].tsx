@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
+import SkiPassEditor from "@/components/admin/SkiPassEditor";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
@@ -2316,6 +2317,14 @@ const removeForfaitRow = (rowIdx: number) => {
       )}
     </div>
   </div>
+</SectionCard>
+
+<SectionCard
+  id="forfaits-avances"
+  title="Forfaits avancés / JSON"
+  description="Gérez indépendamment les saisons, périodes, produits, catégories et tarifs stockés dans les tables normalisées."
+>
+  <SkiPassEditor stationSlug={slug} />
 </SectionCard>
           </div>
         </div>

@@ -47,6 +47,25 @@ test("normalized admin products expose duration, ordering and price modes", () =
   assert.match(editor, /<option value="dynamic">Dynamique<\/option>/);
 });
 
+test("legacy and normalized ski pass editors remain visible and independent", () => {
+  const legacyStart = adminSource.indexOf('id="forfaits"');
+  const advancedStart = adminSource.indexOf('id="forfaits-avances"');
+
+  assert.ok(legacyStart >= 0, "the legacy forfait editor is present");
+  assert.ok(advancedStart > legacyStart, "the normalized editor follows the legacy editor");
+  assert.match(adminSource.slice(legacyStart, advancedStart), /<SaveButton onClick=\{patchWidgets\}/);
+  assert.match(adminSource.slice(legacyStart, advancedStart), /widgets\?\.forfaits\?\.enabled/);
+  assert.match(adminSource.slice(advancedStart), /<SkiPassEditor stationSlug=\{slug\}/);
+
+  const editor = fs.readFileSync(path.join(__dirname, "../src/components/admin/SkiPassEditor.tsx"), "utf8");
+  const importer = fs.readFileSync(path.join(__dirname, "../src/components/admin/ForfaitsJsonImport.tsx"), "utf8");
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api/skiPasses.ts"), "utf8");
+  assert.match(editor, /useEffect\(\(\) => \{ void reload\(\); \}, \[reload\]\)/);
+  assert.match(editor, /await reload\(\)/);
+  assert.match(importer, /\/forfaits\/\$\{action\}/);
+  assert.match(api, /\/ski-passes/);
+});
+
 test("public forfait tables only retain columns configured globally by admin", () => {
   const result = normalizeForfaits(
     [
