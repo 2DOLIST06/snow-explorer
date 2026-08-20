@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ForfaitsJsonImport from "./ForfaitsJsonImport";
-import { getAdminSkiPasses, saveAdminSkiPassSeason } from "@/lib/api/skiPasses";
+import { getAdminSkiPasses, saveAdminSkiPassSeason, setAdminSkiPassSeasonActive } from "@/lib/api/skiPasses";
 import type { SkiPassPrice, SkiPassSeason } from "@/types/skiPass";
 
 const uid = () => `new-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -10,7 +10,7 @@ const periodName = (period: SkiPassSeason["periods"][number]) => period.name || 
 export default function SkiPassEditor({ stationSlug }: { stationSlug: string }) {
   const [seasons, setSeasons] = useState<SkiPassSeason[]>([]), [seasonIndex, setSeasonIndex] = useState(0), [periodIndex, setPeriodIndex] = useState(0);
   const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState("");
-  const reload = useCallback(async () => { setLoading(true); setError(""); try { const data = await getAdminSkiPasses(stationSlug); setSeasons(data.seasons); setSeasonIndex(0); setPeriodIndex(0); } catch (e) { setError(e instanceof Error ? e.message : "Chargement impossible."); } finally { setLoading(false); } }, [stationSlug]);
+  const reload = useCallback(async () => { setLoading(true); setError(""); try { const data = await getAdminSkiPasses(stationSlug); setSeasons(data.seasons.map(item => ({ ...item, is_active: item.is_active === true }))); setSeasonIndex(0); setPeriodIndex(0); } catch (e) { setError(e instanceof Error ? e.message : "Chargement impossible."); } finally { setLoading(false); } }, [stationSlug]);
   useEffect(() => { void reload(); }, [reload]);
   const season = seasons[seasonIndex];
   const categories = useMemo(() => { const map = new Map<string, string>(); season?.passes.forEach(product => product.prices.forEach(price => map.set(price.category, price.category_label || price.category))); return [...map].map(([category, label]) => ({ category, label })); }, [season]);
@@ -18,10 +18,12 @@ export default function SkiPassEditor({ stationSlug }: { stationSlug: string }) 
   const priceFor = (productIndex: number, category: string) => season.passes[productIndex].prices.find(price => String(price.period_id) === String(season.periods[periodIndex]?.id) && price.category === category);
   const updatePrice = (productIndex: number, category: string, patch: Partial<SkiPassPrice>) => change(draft => { const product = draft.passes[productIndex]; let price = product.prices.find(value => String(value.period_id) === String(draft.periods[periodIndex]?.id) && value.category === category); if (!price) { price = { period_id: draft.periods[periodIndex]?.id, category, category_label: categories.find(c => c.category === category)?.label || category, price_type: "fixed", price: null, price_min: null, price_max: null }; product.prices.push(price); } Object.assign(price, patch); });
   const save = async () => { if (!season) return; setSaving(true); setError(""); setNotice(""); try { await saveAdminSkiPassSeason(stationSlug, season); await reload(); setNotice("Forfaits enregistrés avec succès."); } catch (e) { setError(e instanceof Error ? e.message : "Sauvegarde impossible."); } finally { setSaving(false); } };
+  const togglePublicDisplay = async (isActive: boolean) => { if (!season) return; setSaving(true); setError(""); setNotice(""); try { await setAdminSkiPassSeasonActive(stationSlug, season.id, isActive); await reload(); setNotice("Affichage public mis à jour."); } catch (e) { setError(e instanceof Error ? e.message : "Impossible de modifier l’affichage public."); } finally { setSaving(false); } };
 
   return <div className="ski-pass-admin">
     {error && <div className="forfaits-import-errors" role="alert">{error}</div>}{notice && <div className="forfaits-import-result" role="status">{notice}</div>}
     {loading ? <p>Chargement des tarifs normalisés…</p> : !season ? <p>Aucune saison normalisée. Les données legacy restent visibles sur le site public jusqu’au premier import.</p> : <>
+      <label className="ski-pass-admin__visibility"><span>Afficher ces forfaits sur le site</span><input type="checkbox" role="switch" checked={season.is_active} disabled={saving} onChange={e => void togglePublicDisplay(e.target.checked)} /></label>
       {seasons.length > 1 && <label>Saison affichée<select value={seasonIndex} onChange={e => { setSeasonIndex(Number(e.target.value)); setPeriodIndex(0); }}>{seasons.map((item, index) => <option key={item.id} value={index}>{item.season}</option>)}</select></label>}
       <div className="ski-pass-admin__meta"><label>Saison<input value={season.season} onChange={e => change(d => { d.season = e.target.value; })} /></label><label>Devise<input value={season.currency} onChange={e => change(d => { d.currency = e.target.value; })} /></label><label>Source officielle<input type="url" value={season.source_url || ""} onChange={e => change(d => { d.source_url = e.target.value; })} /></label></div>
       <section><div className="ski-pass-admin__heading"><h3>Périodes tarifaires</h3><button type="button" className="btn btn--secondary" onClick={() => change(d => { d.periods.push({ id: uid(), start_date: "", end_date: "", sort_order: d.periods.length }); })}>Ajouter une période</button></div>

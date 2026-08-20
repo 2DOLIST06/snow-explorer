@@ -15,6 +15,7 @@ import { regionHref } from "@/lib/regions";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
+import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 
 /* =========================
  * Types
@@ -63,6 +64,11 @@ interface Props {
  * Constantes UI
  * =======================*/
 const PANEL_HEIGHT = 420;
+
+const forfaitsVisibility = (cfg: StationWidgetsConfig | null) => getSkiPassBlocksVisibility(
+  Boolean(cfg?.forfaits?.enabled),
+  Boolean(cfg?.normalizedForfaits?.enabled),
+);
 
 // Source de vérité unique pour le bloc de répartition des pistes. Elle pilote
 // à la fois son rendu et la présence de ses données dans les props SSR.
@@ -1480,14 +1486,19 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         </section> : null}
 
         {/* Forfaits */}
-        {cfg?.forfaits?.enabled ? <div style={{ marginTop: 20 }}><StationForfaitsBlock
-    enabled={cfg?.forfaits?.enabled}
+        {forfaitsVisibility(cfg).any ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
+    enabled={forfaitsVisibility(cfg).legacy}
     columns={cfg?.forfaits?.columns || []}
     items={cfg?.forfaits?.items || []}
     periods={cfg?.forfaits?.periods || []}
     season={cfg?.forfaits?.season}
     source_url={cfg?.forfaits?.source_url}
     sourceUrl={cfg?.forfaits?.sourceUrl}
+        /><StationForfaitsBlock
+    enabled={forfaitsVisibility(cfg).normalized}
+    periods={cfg?.normalizedForfaits?.periods || []}
+    season={cfg?.normalizedForfaits?.season}
+    source_url={cfg?.normalizedForfaits?.source_url}
         /></div> : null}
       </main>
 
@@ -1612,6 +1623,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       season: cfg.forfaits?.season || null,
       source_url: cfg.forfaits?.source_url || null,
     },
+    ...(cfg.normalizedForfaits ? { normalizedForfaits: {
+      enabled: Boolean(cfg.normalizedForfaits.enabled),
+      columns: [],
+      items: [],
+      periods: cfg.normalizedForfaits.periods || [],
+      season: cfg.normalizedForfaits.season || null,
+      source_url: cfg.normalizedForfaits.source_url || null,
+    } } : {}),
     webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
     snow: {
       enabled: Boolean(cfg.snow?.enabled),

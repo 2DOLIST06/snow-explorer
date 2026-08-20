@@ -27,3 +27,14 @@ export async function saveAdminSkiPassSeason(slug: string, season: SkiPassSeason
   const body = await response.json().catch(() => null);
   if (body?.success !== true) throw new Error(body?.message || "Le backend n’a pas confirmé la sauvegarde.");
 }
+
+export async function setAdminSkiPassSeasonActive(slug: string, seasonId: string | number, isActive: boolean): Promise<void> {
+  const response = await adminFetch(`${endpoint(slug)}/${encodeURIComponent(String(seasonId))}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+  if (!response.ok) throw new Error(await errorMessage(response));
+  const body = await response.json().catch(() => null);
+  if (body?.success !== true) throw new Error(body?.message || "Le backend n’a pas confirmé la modification de l’affichage public.");
+}

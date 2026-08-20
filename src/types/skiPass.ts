@@ -29,6 +29,7 @@ export type SkiPassPeriod = {
 
 export type SkiPassSeason = {
   id: number | string;
+  is_active: boolean;
   season: string;
   currency: string;
   source_url?: string | null;

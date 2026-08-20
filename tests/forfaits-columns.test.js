@@ -25,6 +25,19 @@ new Function("exports", "require", "module", "__filename", "__dirname", compiled
 );
 const { normalizeForfaits } = componentModule.exports;
 
+const visibilitySource = fs.readFileSync(path.join(__dirname, "../src/lib/skiPassVisibility.ts"), "utf8");
+const visibilityCompiled = ts.transpileModule(visibilitySource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const visibilityModule = { exports: {} };
+new Function("exports", "require", "module", visibilityCompiled)(visibilityModule.exports, require, visibilityModule);
+const { getSkiPassBlocksVisibility } = visibilityModule.exports;
+
+test("legacy and normalized public visibility are independent", () => {
+  assert.deepEqual(getSkiPassBlocksVisibility(true, false), { legacy: true, normalized: false, any: true });
+  assert.deepEqual(getSkiPassBlocksVisibility(false, true), { legacy: false, normalized: true, any: true });
+  assert.deepEqual(getSkiPassBlocksVisibility(true, true), { legacy: true, normalized: true, any: true });
+  assert.deepEqual(getSkiPassBlocksVisibility(false, false), { legacy: false, normalized: false, any: false });
+});
+
 const adminSource = fs.readFileSync(
   path.join(__dirname, "../pages/admin/stations/[slug].tsx"),
   "utf8",
