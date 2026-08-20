@@ -14,6 +14,7 @@ type DepartmentRow = { code: string; name: string; region_id: string };
 
 type ResortType = {
   id?: string;
+  updated_at?: string | null;
   name?: string;
   slug?: string;
   latitude?: number | null;
@@ -905,6 +906,7 @@ setWidgets(w);
       id,
       slug: resortSlug,
       region,
+      updated_at,
       ...editableResort
     } = resort;
 
