@@ -9,8 +9,9 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
-import { getStationApiBase, isResortInactive, loadPublicResort, resolveResortRegion } from "@/lib/api/stationPage";
+import { getStationApiBase, isResortInactive, resolveResortRegion } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
+import type { SkiPassSeason } from "@/types/skiPass";
 import { regionHref } from "@/lib/regions";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
@@ -47,6 +48,7 @@ type Resort = {
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
+  ski_pass?: SkiPassSeason | null;
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -1555,12 +1557,31 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
 
-  // 1) Station via la route publique Flask. Les erreurs amont doivent rester
-  // des erreurs serveur : seule une absence explicite devient une page 404.
-  const loadedResort = (await loadPublicResort(slug)) as Resort | null;
-  if (!loadedResort) {
+  // 1) L'endpoint individuel renvoie directement l'objet station. Seul son
+  // véritable statut 404 devient une page introuvable ; toute autre erreur
+  // amont reste une erreur SSR.
+  const stationResponse = await fetch(
+    `${getStationApiBase()}/api/stations/${encodeURIComponent(slug)}`,
+    { headers: { accept: "application/json" }, cache: "no-store" },
+  );
+  if (stationResponse.status === 404) {
     return { notFound: true };
   }
+  if (!stationResponse.ok) {
+    throw new Error(`[stations/[slug]] station API returned HTTP ${stationResponse.status}`);
+  }
+
+  const stationPayload: unknown = await stationResponse.json();
+  if (
+    !stationPayload ||
+    typeof stationPayload !== "object" ||
+    Array.isArray(stationPayload) ||
+    typeof (stationPayload as Resort).name !== "string" ||
+    typeof (stationPayload as Resort).slug !== "string"
+  ) {
+    throw new Error("[stations/[slug]] station API returned an invalid payload");
+  }
+  const loadedResort = stationPayload as Resort;
   if (isResortInactive(loadedResort)) {
     return { notFound: true };
   }
@@ -1598,6 +1619,35 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = null;
   }
 
+  const activeSkiPass = loadedResort.ski_pass?.is_active === true ? loadedResort.ski_pass : null;
+  const normalizedPeriods = activeSkiPass
+    ? [...(activeSkiPass.periods || [])]
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+      .map((period) => ({
+        ...period,
+        passes: (activeSkiPass.passes || []).map((pass) => ({
+          ...pass,
+          prices: (pass.prices || []).filter((price) => String(price.period_id) === String(period.id)),
+        })),
+      }))
+    : [];
+
+  // Une station peut publier un forfait normalisé même sans configuration de
+  // widgets legacy. Dans ce cas, conserver un socle désactivé permet tout de
+  // même de rendre le forfait fourni par la réponse individuelle.
+  if (!cfg && activeSkiPass) {
+    cfg = {
+      stationSlug: resort.slug,
+      pistes: { enabled: false },
+      meteo: { enabled: false },
+      description: { enabled: false },
+      forfaits: { enabled: false, columns: [], items: [] },
+      webcams: { enabled: false, items: [] },
+      snow: { enabled: false },
+      snowpark: { enabled: false },
+    };
+  }
+
   const cleanCfg: StationWidgetsConfig | null = cfg ? {
     stationSlug: resort.slug,
     pistes: {
@@ -1623,13 +1673,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       season: cfg.forfaits?.season || null,
       source_url: cfg.forfaits?.source_url || null,
     },
-    ...(cfg.normalizedForfaits ? { normalizedForfaits: {
-      enabled: Boolean(cfg.normalizedForfaits.enabled),
+    ...(activeSkiPass ? { normalizedForfaits: {
+      enabled: true,
       columns: [],
       items: [],
-      periods: cfg.normalizedForfaits.periods || [],
-      season: cfg.normalizedForfaits.season || null,
-      source_url: cfg.normalizedForfaits.source_url || null,
+      periods: normalizedPeriods as NonNullable<StationWidgetsConfig["normalizedForfaits"]>["periods"],
+      season: activeSkiPass.season,
+      source_url: activeSkiPass.source_url || null,
     } } : {}),
     webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
     snow: {
@@ -1679,6 +1729,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     pistes_small_map_url: resort.pistes_small_map_url ?? null,
     pistes_large_map_url: resort.pistes_large_map_url ?? null,
     pistes_caption: resort.pistes_caption ?? null,
+    ski_pass: resort.ski_pass ?? null,
   };
 
   return { props: { resort: stationForPage, cfg: cleanCfg } };
