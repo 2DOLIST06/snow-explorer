@@ -17,6 +17,7 @@ import { regionHref } from "@/lib/regions";
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
 import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 /* =========================
  * Types
@@ -1275,6 +1276,7 @@ const StationExtraPanels: React.FC<{
  * =======================*/
 const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   const router = useRouter();
+  const adminAuth = useAdminAuth();
 
   const seoTitle =
     textOrEmpty(resort.meta_title) || textOrEmpty(cfg?.description?.metaTitle) ||
@@ -1419,6 +1421,11 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           <p>{resortRegionHref ? <Link className="station-profile-hero__region" href={resortRegionHref}>{resort.region?.name}</Link> : "Destination montagne"}</p>
           <div className="station-profile-hero__actions">
             <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
+            {adminAuth.status === "authenticated" ? (
+              <Link className="btn btn--primary" href={`/admin/stations/${encodeURIComponent(resort.slug)}`}>
+                Modifier la station
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>

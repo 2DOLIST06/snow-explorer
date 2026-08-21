@@ -23,6 +23,18 @@ test("session guard prevents admin content flash and preserves only safe next pa
   assert.match(redirect, /startsWith\("\/admin\/"\)/); assert.match(redirect, /startsWith\("\/\/"\)/);
 });
 
+test("public station editing is visible only to an authenticated administrator", () => {
+  const auth = read("src/contexts/AdminAuthContext.tsx");
+  const station = read("pages/stations/[slug].tsx");
+  const adminStation = read("pages/admin/stations/[slug].tsx");
+
+  assert.match(auth, /useEffect\(\(\) => \{ void refreshSession\(\); \}, \[refreshSession\]\)/);
+  assert.match(station, /adminAuth\.status === "authenticated"/);
+  assert.match(station, /Modifier la station/);
+  assert.match(station, /href=\{`\/admin\/stations\/\$\{encodeURIComponent\(resort\.slug\)\}`\}/);
+  assert.match(adminStation, /href="\/admin\/stations"[^>]*>Toutes les stations<\/Link>/);
+});
+
 test("central client sends cookies, applies CSRF only to writes and retries a 403 once", () => {
   const api = read("src/lib/adminApi.ts");
   assert.match(api, /credentials: "include"/); assert.match(api, /X-CSRF-Token/);

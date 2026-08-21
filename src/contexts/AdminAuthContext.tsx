@@ -12,18 +12,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<AdminAuthState>({ status: "loading", user: null, csrfToken: null });
   const stateRef = useRef(state); stateRef.current = state;
-  const isAdmin = router.pathname.startsWith("/admin");
-
   const refreshSession = useCallback(async () => {
-    const response = await fetch(`${ADMIN_API_BASE}/api/admin/auth/session`, { credentials: "include", cache: "no-store", headers: { Accept: "application/json" } });
-    if (!response.ok) { setState({ status: "unauthenticated", user: null, csrfToken: null }); return null; }
-    const data = await response.json();
-    if (!data.authenticated || !data.user) { setState({ status: "unauthenticated", user: null, csrfToken: null }); return null; }
-    setState({ status: "authenticated", user: data.user, csrfToken: data.csrf_token || null });
-    return data.csrf_token || null;
+    try {
+      const response = await fetch(`${ADMIN_API_BASE}/api/admin/auth/session`, { credentials: "include", cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) { setState({ status: "unauthenticated", user: null, csrfToken: null }); return null; }
+      const data = await response.json();
+      if (!data.authenticated || !data.user) { setState({ status: "unauthenticated", user: null, csrfToken: null }); return null; }
+      setState({ status: "authenticated", user: data.user, csrfToken: data.csrf_token || null });
+      return data.csrf_token || null;
+    } catch {
+      setState({ status: "unauthenticated", user: null, csrfToken: null });
+      return null;
+    }
   }, []);
 
-  useEffect(() => { if (isAdmin) void refreshSession(); }, [isAdmin, refreshSession]);
+  // Check the session on public pages too, so authenticated administrators can
+  // access contextual editing actions without exposing them to other visitors.
+  useEffect(() => { void refreshSession(); }, [refreshSession]);
   useEffect(() => registerAdminAuthHandlers({
     getCsrfToken: () => stateRef.current.csrfToken,
     refreshSession,
