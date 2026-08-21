@@ -74,6 +74,16 @@ export const normalizeForfaits = (rawColumns: ForfaitColumn[] = [], rawItems: Fo
 
 type Cell = ForfaitPrice & { category_id: string };
 type Grid = { columns: ForfaitColumn[]; rows: Array<{ id: string; title: string; cells: Record<string, Cell> }> };
+type PriceNote = { label: string; stars: string };
+
+export function collectPriceNotes(grid: Grid): PriceNote[] {
+  const labels: string[] = [];
+  grid.rows.forEach((row) => Object.values(row.cells).forEach((cell) => {
+    const label = text(cell.note);
+    if (label && !labels.includes(label)) labels.push(label);
+  }));
+  return labels.map((label, index) => ({ label, stars: "*".repeat(index + 1) }));
+}
 
 function periodGrid(period: ForfaitPeriod): Grid {
   const categories = Array.isArray(period.categories) ? period.categories : [];
@@ -104,10 +114,11 @@ function periodGrid(period: ForfaitPeriod): Grid {
   return { columns: columns.filter((column) => column.label), rows: rows.filter((row) => row.title) };
 }
 
-function Price({ value }: { value?: Cell }) {
+function Price({ value, notes }: { value?: Cell; notes: PriceNote[] }) {
   if (!value) return <>—</>;
   const dynamic = value.price_type === "dynamic" || value.type === "dynamic";
-  return <>{dynamic ? <><span className="forfait-price">{euro(value.price_min)} – {euro(value.price_max)}</span><small className="forfait-dynamic-label">Tarif dynamique</small></> : <span className="forfait-price">{euro(value.price ?? value.amount)}</span>}</>;
+  const marker = notes.find((note) => note.label === text(value.note))?.stars;
+  return <><span className="forfait-price">{dynamic ? <>{euro(value.price_min)} – {euro(value.price_max)}</> : euro(value.price ?? value.amount)}</span>{marker && <sup className="forfait-note-marker" aria-label={`Note ${marker.length}`}>{marker}</sup>}{dynamic && <small className="forfait-dynamic-label">Tarif dynamique</small>}</>;
 }
 
 export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
@@ -130,6 +141,7 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
   const grid: Grid = selected ? periodGrid(selected) : { columns: legacy.columns, rows: legacy.items.map((row) => ({ id: row.id, title: row.title, cells: Object.fromEntries(Object.entries(row.prices).map(([category_id, price]) => [category_id, { category_id, price_type: "fixed", price }])) })) };
   if (!grid.columns.length || !grid.rows.length) return null;
   const hasDynamic = grid.rows.some((row) => Object.values(row.cells).some((cell) => cell.price_type === "dynamic" || cell.type === "dynamic"));
+  const priceNotes = collectPriceNotes(grid);
   const source = source_url || sourceUrl || selected?.source_url || selected?.sourceUrl || seasonObject?.source_url || seasonObject?.sourceUrl;
   const seasonLabel = typeof season === "string" ? season : text(season?.label || season?.name);
   return <section className="forfaits-card">
@@ -137,8 +149,9 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
     {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
     {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}
     <div className="forfaits-table-wrap" tabIndex={0} aria-label="Tableau des tarifs, défilement horizontal possible">
-      <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id}><Price value={row.cells[column.id]} /></td>)}</tr>)}</tbody></table>
+      <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id}><Price value={row.cells[column.id]} notes={priceNotes} /></td>)}</tr>)}</tbody></table>
     </div>
+    {priceNotes.length > 0 && <div className="forfaits-price-notes" aria-label="Notes relatives aux tarifs">{priceNotes.map((note) => <p key={note.label}><span className="forfait-note-marker" aria-hidden="true">{note.stars}</span><span>{note.label}</span></p>)}</div>}
     {hasDynamic && <p className="forfaits-dynamic-note">Tarifs dynamiques : le prix peut varier notamment selon la date choisie et le moment de la réservation. Consultez le site officiel de la station pour connaître le tarif disponible au moment de l&apos;achat.</p>}
   </section>;
 }
