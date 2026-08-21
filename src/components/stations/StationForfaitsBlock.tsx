@@ -79,7 +79,7 @@ type PriceNote = { label: string; stars: string };
 export function collectPriceNotes(grid: Grid): PriceNote[] {
   const labels: string[] = [];
   grid.rows.forEach((row) => Object.values(row.cells).forEach((cell) => {
-    const label = text(cell.label);
+    const label = text(cell.note);
     if (label && !labels.includes(label)) labels.push(label);
   }));
   return labels.map((label, index) => ({ label, stars: "*".repeat(index + 1) }));
@@ -117,7 +117,7 @@ function periodGrid(period: ForfaitPeriod): Grid {
 function Price({ value, notes }: { value?: Cell; notes: PriceNote[] }) {
   if (!value) return <>—</>;
   const dynamic = value.price_type === "dynamic" || value.type === "dynamic";
-  const marker = notes.find((note) => note.label === text(value.label))?.stars;
+  const marker = notes.find((note) => note.label === text(value.note))?.stars;
   return <><span className="forfait-price">{dynamic ? <>{euro(value.price_min)} – {euro(value.price_max)}</> : euro(value.price ?? value.amount)}</span>{marker && <sup className="forfait-note-marker" aria-label={`Note ${marker.length}`}>{marker}</sup>}{dynamic && <small className="forfait-dynamic-label">Tarif dynamique</small>}</>;
 }
 

@@ -133,14 +133,14 @@ test("legacy forfait payloads can still infer columns when none are configured",
   assert.deepEqual(result.items[0].prices, { "fc-adulte": "77" });
 });
 
-test("price labels become ordered, deduplicated starred notes", () => {
+test("price notes become ordered stars without reusing the dynamic label", () => {
   const { collectPriceNotes } = componentModule.exports;
   const notes = collectPriceNotes({
     columns: [{ id: "adult", label: "Adulte" }],
     rows: [
-      { id: "one", title: "1 jour", cells: { adult: { category_id: "adult", label: "Hors assurance" } } },
-      { id: "two", title: "2 jours", cells: { adult: { category_id: "adult", label: "Hors assurance" } } },
-      { id: "three", title: "3 jours", cells: { adult: { category_id: "adult", label: "Achat en ligne uniquement" } } },
+      { id: "one", title: "1 jour", cells: { adult: { category_id: "adult", label: "Web flexible", note: "Hors assurance" } } },
+      { id: "two", title: "2 jours", cells: { adult: { category_id: "adult", label: "Web flexible", note: "Hors assurance" } } },
+      { id: "three", title: "3 jours", cells: { adult: { category_id: "adult", label: "Web flexible", note: "Achat en ligne uniquement" } } },
     ],
   });
 
@@ -148,4 +148,12 @@ test("price labels become ordered, deduplicated starred notes", () => {
     { label: "Hors assurance", stars: "*" },
     { label: "Achat en ligne uniquement", stars: "**" },
   ]);
+});
+
+test("the JSON preview reports imported starred notes", () => {
+  const importer = fs.readFileSync(path.join(__dirname, "../src/components/admin/ForfaitsJsonImport.tsx"), "utf8");
+
+  assert.match(importer, /collectImportedPriceNotes\(data\)/);
+  assert.match(importer, /Notes détectées dans le JSON/);
+  assert.match(importer, /Notes étoilées/);
 });

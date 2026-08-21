@@ -9,12 +9,27 @@ type Preview = { valid?: boolean; station?: any; season?: any; periods_count?: n
 const entryText = (entry: Entry) => typeof entry === "string" ? entry : `${entry.path ? `${entry.path} : ` : ""}${entry.message || entry.error || "Erreur de validation"}`;
 const label = (value: any) => typeof value === "string" ? value : value?.name || value?.label || "—";
 
-export default function ForfaitsJsonImport({ stationSlug, season, onImported }: { stationSlug: string; season?: SkiPassSeason; onImported?: (result: SkiPassImportResult) => void | Promise<void> }) {
+export function collectImportedPriceNotes(value: unknown): string[] {
+  const notes: string[] = [];
+  const visit = (candidate: unknown) => {
+    if (Array.isArray(candidate)) return candidate.forEach(visit);
+    if (!candidate || typeof candidate !== "object") return;
+    const record = candidate as Record<string, unknown>;
+    const note = typeof record.note === "string" ? record.note.trim() : "";
+    if (note && !notes.includes(note)) notes.push(note);
+    Object.values(record).forEach(visit);
+  };
+  visit(value);
+  return notes;
+}
+
+export default function ForfaitsJsonImport({ stationSlug, onImported }: { stationSlug: string; onImported?: (result: SkiPassImportResult) => void | Promise<void> }) {
   const [json, setJson] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState("");
+  const [previewNotes, setPreviewNotes] = useState<string[]>([]);
   const request = async (action: "preview" | "import") => {
     setBusy(true); setErrors([]); setResult("");
     try {
@@ -23,7 +38,7 @@ export default function ForfaitsJsonImport({ stationSlug, season, onImported }: 
       const response = await adminFetch(`/api/admin/stations/${encodeURIComponent(stationSlug)}/forfaits/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "import" && preview?.preview_token ? { data, preview_token: preview.preview_token } : data) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(Array.isArray(body.errors) ? body.errors.map(entryText).join("\n") : body.message || body.error || `Erreur HTTP ${response.status}`);
-      if (action === "preview") { setPreview(body); setErrors(Array.isArray(body.errors) ? body.errors.map(entryText) : []); }
+      if (action === "preview") { setPreview(body); setPreviewNotes(collectImportedPriceNotes(data)); setErrors(Array.isArray(body.errors) ? body.errors.map(entryText) : []); }
       else {
         if (body?.success !== true) throw new Error(body?.message || "L’import n’a pas été confirmé par le backend.");
         for (const field of ["station_slug", "season", "periods_count", "passes_count", "prices_count"]) {
@@ -32,7 +47,7 @@ export default function ForfaitsJsonImport({ stationSlug, season, onImported }: 
         if (body.periods_count < 1 || body.passes_count < 1 || body.prices_count < 1) throw new Error("Import refusé : aucune grille complète n’a été enregistrée.");
         const imported = body as SkiPassImportResult;
         setResult(`Import réussi — Saison ${imported.season} : ${imported.periods_count} période(s), ${imported.passes_count} forfait(s), ${imported.prices_count} tarif(s).`);
-        setPreview(null); setJson("");
+        setPreview(null); setPreviewNotes([]); setJson("");
         await onImported?.(imported);
       }
     } catch (error) { setErrors(String(error instanceof Error ? error.message : error).split("\n")); }
@@ -44,12 +59,10 @@ export default function ForfaitsJsonImport({ stationSlug, season, onImported }: 
     void request("import");
   };
   return <div className="forfaits-json-import">
-    <h3>Importer ou exporter une saison de forfaits</h3><p>Exportez les données de la saison affichée ou téléchargez une structure vide documentée. Dans le modèle, le bloc <code>_instructions</code> décrit notamment les dates, les tarifs fixes/dynamiques et les champs facultatifs&nbsp;: supprimez-le avant l’import.</p>
-    <div className="forfaits-json-export-actions" aria-label="Export JSON des forfaits"><button type="button" className="btn btn--secondary" disabled={!season} onClick={() => season && downloadJson(skiPassExport(stationSlug, season), `forfaits-${stationSlug}-${season.season}.json`)}>Exporter le JSON</button><button type="button" className="btn btn--secondary" onClick={() => downloadJson(SKI_PASS_TEMPLATE, "modele-forfaits.json")}>Exporter la structure vide</button></div>
-    <p>Collez le document JSON complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"label": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
-    <label htmlFor="forfaits-json">JSON des tarifs</label><textarea id="forfaits-json" value={json} onChange={(event) => { setJson(event.target.value); setPreview(null); setErrors([]); setResult(""); }} rows={12} spellCheck={false} placeholder={'{\n  "station": "…",\n  "season": "2026-2027",\n  "periods": []\n}'} />
+    <h3>Importer une saison de forfaits</h3><p>Collez le document JSON complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"note": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Le champ <code>label</code> des tarifs dynamiques reste inchangé. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
+    <label htmlFor="forfaits-json">JSON des tarifs</label><textarea id="forfaits-json" value={json} onChange={(event) => { setJson(event.target.value); setPreview(null); setPreviewNotes([]); setErrors([]); setResult(""); }} rows={12} spellCheck={false} placeholder={'{\n  "station": "…",\n  "season": "2026-2027",\n  "periods": []\n}'} />
     <div className="forfaits-json-actions"><button type="button" className="btn btn--secondary" disabled={busy || !json.trim()} onClick={() => void request("preview")}>{busy ? "Vérification…" : "Prévisualiser"}</button>{preview?.valid === true && <button type="button" className="btn btn--primary" disabled={busy} onClick={importData}>Importer</button>}</div>
-    {preview && <div className={`forfaits-preview ${preview.valid ? "is-valid" : "is-invalid"}`} aria-live="polite"><h4>{preview.valid ? "JSON valide" : "JSON à corriger"}</h4><dl><div><dt>Station</dt><dd>{label(preview.station)}</dd></div><div><dt>Saison</dt><dd>{label(preview.season)}</dd></div><div><dt>Périodes</dt><dd>{preview.periods_count ?? 0}</dd></div><div><dt>Forfaits</dt><dd>{preview.passes_count ?? preview.products_count ?? 0}</dd></div><div><dt>Tarifs</dt><dd>{preview.prices_count ?? preview.tariffs_count ?? 0}</dd></div></dl>{(preview.replaces_existing_season || preview.season_exists) && <p><strong>Attention :</strong> l’import remplacera la saison existante après confirmation.</p>}</div>}
+    {preview && <div className={`forfaits-preview ${preview.valid ? "is-valid" : "is-invalid"}`} aria-live="polite"><h4>{preview.valid ? "JSON valide" : "JSON à corriger"}</h4><dl><div><dt>Station</dt><dd>{label(preview.station)}</dd></div><div><dt>Saison</dt><dd>{label(preview.season)}</dd></div><div><dt>Périodes</dt><dd>{preview.periods_count ?? 0}</dd></div><div><dt>Forfaits</dt><dd>{preview.passes_count ?? preview.products_count ?? 0}</dd></div><div><dt>Tarifs</dt><dd>{preview.prices_count ?? preview.tariffs_count ?? 0}</dd></div><div><dt>Notes étoilées</dt><dd>{previewNotes.length}</dd></div></dl>{previewNotes.length > 0 && <div className="forfaits-preview__notes"><strong>Notes détectées dans le JSON</strong><ul>{previewNotes.map((note, index) => <li key={note}><span className="forfait-note-marker" aria-hidden="true">{"*".repeat(index + 1)}</span> {note}</li>)}</ul></div>}{(preview.replaces_existing_season || preview.season_exists) && <p><strong>Attention :</strong> l’import remplacera la saison existante après confirmation.</p>}</div>}
     {errors.length > 0 && <div className="forfaits-import-errors" role="alert"><strong>Erreurs</strong><ul>{errors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}</ul></div>}{result && <p className="forfaits-import-result" role="status">{result}</p>}
   </div>;
 }
