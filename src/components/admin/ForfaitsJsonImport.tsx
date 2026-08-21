@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
 import type { SkiPassImportResult } from "@/types/skiPass";
+import type { SkiPassSeason } from "@/types/skiPass";
+import { downloadJson, skiPassExport, SKI_PASS_TEMPLATE } from "@/lib/skiPassJsonExport";
 
 type Entry = string | { path?: string; message?: string; error?: string };
 type Preview = { valid?: boolean; station?: any; season?: any; periods_count?: number; passes_count?: number; products_count?: number; prices_count?: number; tariffs_count?: number; errors?: Entry[]; replaces_existing_season?: boolean; season_exists?: boolean; preview_token?: string };
 const entryText = (entry: Entry) => typeof entry === "string" ? entry : `${entry.path ? `${entry.path} : ` : ""}${entry.message || entry.error || "Erreur de validation"}`;
 const label = (value: any) => typeof value === "string" ? value : value?.name || value?.label || "—";
 
-export default function ForfaitsJsonImport({ stationSlug, onImported }: { stationSlug: string; onImported?: (result: SkiPassImportResult) => void | Promise<void> }) {
+export default function ForfaitsJsonImport({ stationSlug, season, onImported }: { stationSlug: string; season?: SkiPassSeason; onImported?: (result: SkiPassImportResult) => void | Promise<void> }) {
   const [json, setJson] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +44,9 @@ export default function ForfaitsJsonImport({ stationSlug, onImported }: { statio
     void request("import");
   };
   return <div className="forfaits-json-import">
-    <h3>Importer une saison de forfaits</h3><p>Collez le document JSON complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"label": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
+    <h3>Importer ou exporter une saison de forfaits</h3><p>Exportez les données de la saison affichée ou téléchargez une structure vide documentée. Dans le modèle, le bloc <code>_instructions</code> décrit notamment les dates, les tarifs fixes/dynamiques et les champs facultatifs&nbsp;: supprimez-le avant l’import.</p>
+    <div className="forfaits-json-export-actions" aria-label="Export JSON des forfaits"><button type="button" className="btn btn--secondary" disabled={!season} onClick={() => season && downloadJson(skiPassExport(stationSlug, season), `forfaits-${stationSlug}-${season.season}.json`)}>Exporter le JSON</button><button type="button" className="btn btn--secondary" onClick={() => downloadJson(SKI_PASS_TEMPLATE, "modele-forfaits.json")}>Exporter la structure vide</button></div>
+    <p>Collez le document JSON complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"label": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
     <label htmlFor="forfaits-json">JSON des tarifs</label><textarea id="forfaits-json" value={json} onChange={(event) => { setJson(event.target.value); setPreview(null); setErrors([]); setResult(""); }} rows={12} spellCheck={false} placeholder={'{\n  "station": "…",\n  "season": "2026-2027",\n  "periods": []\n}'} />
     <div className="forfaits-json-actions"><button type="button" className="btn btn--secondary" disabled={busy || !json.trim()} onClick={() => void request("preview")}>{busy ? "Vérification…" : "Prévisualiser"}</button>{preview?.valid === true && <button type="button" className="btn btn--primary" disabled={busy} onClick={importData}>Importer</button>}</div>
     {preview && <div className={`forfaits-preview ${preview.valid ? "is-valid" : "is-invalid"}`} aria-live="polite"><h4>{preview.valid ? "JSON valide" : "JSON à corriger"}</h4><dl><div><dt>Station</dt><dd>{label(preview.station)}</dd></div><div><dt>Saison</dt><dd>{label(preview.season)}</dd></div><div><dt>Périodes</dt><dd>{preview.periods_count ?? 0}</dd></div><div><dt>Forfaits</dt><dd>{preview.passes_count ?? preview.products_count ?? 0}</dd></div><div><dt>Tarifs</dt><dd>{preview.prices_count ?? preview.tariffs_count ?? 0}</dd></div></dl>{(preview.replaces_existing_season || preview.season_exists) && <p><strong>Attention :</strong> l’import remplacera la saison existante après confirmation.</p>}</div>}
