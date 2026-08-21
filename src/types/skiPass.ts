@@ -8,6 +8,7 @@ export type SkiPassPrice = {
   price_min: number | null;
   price_max: number | null;
   label?: string | null;
+  note?: string | null;
 };
 
 export type SkiPassProduct = {
