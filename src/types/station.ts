@@ -27,7 +27,7 @@ export type ForfaitItem = {
   note?: string | null;
 };
 
-export type ForfaitPrice = { price_type?: "fixed" | "dynamic" | string; type?: string; price?: string | number | null; amount?: string | number | null; price_min?: string | number | null; price_max?: string | number | null; category_id?: string; category_label?: string; category?: { id?: string; key?: string; label?: string; name?: string } };
+export type ForfaitPrice = { price_type?: "fixed" | "dynamic" | string; type?: string; price?: string | number | null; amount?: string | number | null; price_min?: string | number | null; price_max?: string | number | null; label?: string | null; category_id?: string; category_label?: string; category?: { id?: string; key?: string; label?: string; name?: string } };
 export type ForfaitProduct = { id?: string; label?: string; name?: string; title?: string; duration_label?: string; prices?: ForfaitPrice[] | Record<string, ForfaitPrice | string | number>; rates?: ForfaitPrice[]; tariffs?: ForfaitPrice[] };
 export type ForfaitPeriod = { id?: string; label?: string; name?: string; start_date?: string; end_date?: string; startDate?: string; endDate?: string; sort_order?: number; source_url?: string; sourceUrl?: string; categories?: Array<{ id?: string; key?: string; label?: string; name?: string }>; passes?: ForfaitProduct[]; products?: ForfaitProduct[]; forfaits?: ForfaitProduct[]; items?: ForfaitProduct[] };
 export type ForfaitSeason = { label?: string; name?: string; source_url?: string | null; sourceUrl?: string | null; periods?: ForfaitPeriod[]; pricing_periods?: ForfaitPeriod[] };
