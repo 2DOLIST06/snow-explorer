@@ -1350,6 +1350,14 @@ const removeForfaitRow = (rowIdx: number) => {
           </div>
 
           <div style={styles.actionRow}>
+            <Link
+              href={`/stations/${encodeURIComponent(resort.slug || slug)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.secondaryBtn}
+            >
+              Voir la station
+            </Link>
             <Link href="/admin/stations" style={styles.secondaryBtn}>Toutes les stations</Link>
             <button type="button" onClick={() => void exportJson()} disabled={exporting} style={styles.secondaryBtn}>{exporting ? "Export en cours…" : "Exporter le JSON"}</button>
             <button type="button" onClick={() => setImportOpen(true)} style={styles.secondaryBtn}>Importer un JSON</button>
