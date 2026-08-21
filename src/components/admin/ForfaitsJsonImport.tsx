@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
 import type { SkiPassImportResult } from "@/types/skiPass";
+import type { SkiPassSeason } from "@/types/skiPass";
+import { downloadJson, skiPassExport, SKI_PASS_TEMPLATE } from "@/lib/skiPassJsonExport";
 
 type Entry = string | { path?: string; message?: string; error?: string };
 type Preview = { valid?: boolean; station?: any; season?: any; periods_count?: number; passes_count?: number; products_count?: number; prices_count?: number; tariffs_count?: number; errors?: Entry[]; replaces_existing_season?: boolean; season_exists?: boolean; preview_token?: string };
