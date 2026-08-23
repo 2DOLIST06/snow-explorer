@@ -16,12 +16,13 @@ test("IndexNow admin offers bulk, individual and date-sorting controls", () => {
   assert.match(read("src/components/admin/AdminBar.tsx"), /href="\/admin\/indexnow"/);
 });
 
-test("IndexNow submission stays server-side, authenticated and host-limited", () => {
-  const route = read("pages/api/admin/indexnow.ts");
-  const config = read("src/lib/indexNow.ts");
-  assert.match(route, /"admin", "auth", "session"/);
-  assert.match(route, /X-CSRF|x-csrf-token/);
-  assert.match(route, /INDEXNOW_ENDPOINT/);
-  assert.match(config, /url\.host === INDEXNOW_HOST/);
-  assert.equal(read("public/7ccf80d73d9243f6b722189d96607f40.txt").trim(), "7ccf80d73d9243f6b722189d96607f40");
+test("IndexNow submission uses the shared authenticated admin API helper", () => {
+  const page = read("pages/admin/indexnow.tsx");
+  assert.match(page, /import \{ adminFetch \} from "@\/lib\/adminApi"/);
+  assert.match(page, /adminFetch\("\/api\/admin\/indexnow"/);
+  assert.match(page, /"Content-Type": "application\/json"/);
+  assert.match(page, /JSON\.stringify\(\{ urls: \[\.\.\.selected\] \}\)/);
+  assert.match(page, /admin_authentication_required/);
+  assert.match(page, /csrf_validation_failed/);
+  assert.equal(fs.existsSync(path.join(root, "pages/api/admin/indexnow.ts")), false);
 });
