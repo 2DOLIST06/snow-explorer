@@ -35,6 +35,21 @@ export function hasActiveForfaits(payload: any): boolean {
   );
 }
 
+export function activeJsonForfaits(payload: any): AvailableResort["forfaits"] | null {
+  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
+  const season = seasons.find((candidate: any) => candidate?.is_active === true);
+  if (!season) return null;
+  const products = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
+  const periods = (Array.isArray(season.periods) ? season.periods : []).map((period: any) => ({
+    ...period,
+    passes: products.map((product: any) => ({
+      ...product,
+      prices: (Array.isArray(product.prices) ? product.prices : []).filter((price: any) => String(price.period_id) === String(period.id)),
+    })),
+  }));
+  return { enabled: true, columns: [], items: [], periods, season: season.season, source_url: season.source_url };
+}
+
 const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
   const [stations] = useState<Resort[]>(initialStations);
@@ -57,11 +72,14 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
       });
     }
     try {
-      const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
-      if (!response.ok) throw new Error("widgets_fetch_failed");
-      const widgets = await response.json();
+      const [widgetsResponse, jsonResponse] = await Promise.all([
+        fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`),
+        fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-ski-passes`),
+      ]);
+      const widgets = widgetsResponse.ok ? await widgetsResponse.json() : null;
+      const jsonForfaits = jsonResponse.ok ? activeJsonForfaits(await jsonResponse.json()) : null;
       const forfaits = widgets?.forfaits || widgets?.widgets?.forfaits;
-      setSelected({ ...station, forfaits: hasActiveForfaits(widgets) ? forfaits : { enabled: false, columns: [], items: [] } });
+      setSelected({ ...station, forfaits: jsonForfaits || (hasActiveForfaits(widgets) ? forfaits : { enabled: false, columns: [], items: [] }) });
     } catch {
       setSelected({ ...station, forfaits: { enabled: false, columns: [], items: [] } });
     } finally {
