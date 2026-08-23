@@ -72,7 +72,7 @@
 /* Mobile weather selection: keep the chosen station and the way back visible. */
 .station-picker__mobile-summary{display:none}
 @media(max-width:640px){
-  .weather-content{scroll-margin-top:92px}
+  .weather-content,.passes-content{scroll-margin-top:92px}
   .station-picker{scroll-margin-top:92px}
   .station-picker__mobile-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .station-picker__selected{display:flex;align-items:center;gap:10px;min-width:0;color:var(--accent-2)}
