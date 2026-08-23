@@ -124,6 +124,15 @@ test("public forfait tables only retain columns configured globally by admin", (
   assert.deepEqual(result.items[0].prices, { adult: "77", child: "63.10" });
 });
 
+test("public forfait prices expose their category label for the mobile card layout", () => {
+  const component = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationForfaitsBlock.tsx"), "utf8");
+  const styles = fs.readFileSync(path.join(__dirname, "../src/styles/globals.css"), "utf8");
+
+  assert.match(component, /data-label=\{column\.label\}/);
+  assert.match(styles, /\.forfaits-table td::before\{content:attr\(data-label\)/);
+  assert.match(styles, /\.forfaits-table tbody\{display:grid;gap:12px\}/);
+});
+
 test("legacy forfait payloads can still infer columns when none are configured", () => {
   const result = normalizeForfaits([], [
     { id: "one-day", title: "1 jour", columns: [{ label: "Adulte", value: "77" }] },
