@@ -111,13 +111,13 @@ export function getValidActiveResorts(resorts: Resort[]): Resort[] {
   );
 }
 
-/** Return the most recently added stations first without mutating the API payload. */
+/** Return the most recently modified stations first without mutating the API payload. */
 export function getLatestAddedResorts(resorts: Resort[], limit = 6): Resort[] {
   return resorts
     .map((resort, index) => ({ resort, index }))
     .sort((a, b) => {
-      const aTimestamp = Date.parse(a.resort.created_at || "");
-      const bTimestamp = Date.parse(b.resort.created_at || "");
+      const aTimestamp = Date.parse(a.resort.updated_at || "");
+      const bTimestamp = Date.parse(b.resort.updated_at || "");
       const aHasDate = Number.isFinite(aTimestamp);
       const bHasDate = Number.isFinite(bTimestamp);
 
