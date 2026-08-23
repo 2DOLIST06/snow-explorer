@@ -38,6 +38,21 @@ function activeJsonForfaits(payload: any): ForfaitsConfig | null {
   return { enabled: true, columns: [], items: [], periods, season: season.season, source_url: season.source_url };
 }
 
+export function activeJsonForfaits(payload: any): AvailableResort["forfaits"] | null {
+  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
+  const season = seasons.find((candidate: any) => candidate?.is_active === true);
+  if (!season) return null;
+  const products = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
+  const periods = (Array.isArray(season.periods) ? season.periods : []).map((period: any) => ({
+    ...period,
+    passes: products.map((product: any) => ({
+      ...product,
+      prices: (Array.isArray(product.prices) ? product.prices : []).filter((price: any) => String(price.period_id) === String(period.id)),
+    })),
+  }));
+  return { enabled: true, columns: [], items: [], periods, season: season.season, source_url: season.source_url };
+}
+
 const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
   const [stations] = useState<Resort[]>(initialStations);
