@@ -2,13 +2,24 @@ import type { GetServerSideProps } from "next";
 import { useMemo, useState } from "react";
 import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 import { fetchRegionsServer } from "@/lib/api/regions";
-import { getAdminCsrfToken, refreshAdminSession } from "@/lib/adminApi";
+import { adminFetch } from "@/lib/adminApi";
 import { getSitemapEntries } from "@/lib/sitemap";
 import type { RegionSummary } from "@/lib/regions";
 
 type Row = { url: string; lastModified: string | null };
 type Props = { rows: Row[]; loadWarning: boolean };
 type SortDirection = "newest" | "oldest";
+type IndexNowResponse = { success?: boolean; submitted?: number; error?: string };
+
+function indexNowErrorMessage(status: number, result: IndexNowResponse): string {
+  if (status === 401 || result.error === "admin_authentication_required") {
+    return "Votre session administrateur n’est plus valide ou a expiré. Reconnectez-vous.";
+  }
+  if (status === 403 && result.error === "csrf_validation_failed") {
+    return "La vérification de sécurité CSRF a échoué. Rechargez la page puis réessayez.";
+  }
+  return result.error || "L’envoi a échoué.";
+}
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
   const [resortsResult, regionsResult] = await Promise.allSettled([
@@ -62,17 +73,15 @@ export default function AdminIndexNow({ rows, loadWarning }: Props) {
     if (selected.size === 0) return;
     setSending(true); setError(""); setMessage("Envoi à IndexNow en cours…");
     try {
-      const csrf = getAdminCsrfToken() || await refreshAdminSession();
-      if (!csrf) throw new Error("Votre session administrateur a expiré.");
-      const response = await fetch(["", "api", "admin", "indexnow"].join("/"), {
+      const response = await adminFetch("/api/admin/indexnow", {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: [...selected] }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.error === "indexnow_rejected" ? `IndexNow a refusé la demande (HTTP ${result.status}).` : "L’envoi a échoué.");
-      setMessage(`${result.submitted} URL${result.submitted > 1 ? "s" : ""} transmise${result.submitted > 1 ? "s" : ""} à IndexNow.`);
+      const result: IndexNowResponse = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(indexNowErrorMessage(response.status, result));
+      const submitted = typeof result.submitted === "number" ? result.submitted : 0;
+      setMessage(`${submitted} URL${submitted > 1 ? "s" : ""} transmise${submitted > 1 ? "s" : ""} à IndexNow.`);
     } catch (caught) {
       setMessage(""); setError(caught instanceof Error ? caught.message : "L’envoi a échoué.");
     } finally {
