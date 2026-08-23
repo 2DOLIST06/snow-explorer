@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
   getResortsApiUrl,
+  getLatestAddedResorts,
   getSafeApiUrlForLogs,
   getServerResortsApiUrls,
   getValidActiveResorts,
@@ -131,7 +132,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
   const featuredResorts = useMemo(() => {
     const source = allResorts.length > 0 ? allResorts : items;
 
-    return source.slice(0, 6);
+    return getLatestAddedResorts(source);
   }, [allResorts, items]);
 
   useEffect(() => {
@@ -1061,7 +1062,7 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
 
       const resorts = parseResortsPayload(await response.json());
       const activeResorts = getValidActiveResorts(resorts);
-      const initialResorts = activeResorts.slice(0, 6);
+      const initialResorts = getLatestAddedResorts(activeResorts);
       console.info(
         `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
       );

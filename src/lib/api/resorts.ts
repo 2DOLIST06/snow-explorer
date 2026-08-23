@@ -12,6 +12,7 @@ export type Resort = {
   };
   logo_url?: string | null;
   logoUrl?: string | null;
+  created_at?: string | null;
   updated_at?: string | null;
 };
 
@@ -108,6 +109,29 @@ export function getValidActiveResorts(resorts: Resort[]): Resort[] {
       typeof resort.slug === "string" &&
       resort.slug.trim().length > 0,
   );
+}
+
+/** Return the most recently added stations first without mutating the API payload. */
+export function getLatestAddedResorts(resorts: Resort[], limit = 6): Resort[] {
+  return resorts
+    .map((resort, index) => ({ resort, index }))
+    .sort((a, b) => {
+      const aTimestamp = Date.parse(a.resort.created_at || "");
+      const bTimestamp = Date.parse(b.resort.created_at || "");
+      const aHasDate = Number.isFinite(aTimestamp);
+      const bHasDate = Number.isFinite(bTimestamp);
+
+      if (aHasDate && bHasDate && aTimestamp !== bTimestamp) {
+        return bTimestamp - aTimestamp;
+      }
+      if (aHasDate !== bHasDate) {
+        return aHasDate ? -1 : 1;
+      }
+
+      return a.index - b.index;
+    })
+    .slice(0, limit)
+    .map(({ resort }) => resort);
 }
 
 /** Fetch the public station directory for a server-rendered page. */
