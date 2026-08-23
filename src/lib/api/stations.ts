@@ -1,5 +1,6 @@
 import axios from "@/config/axios";
 import type { StationWidgetsConfig } from "@/types/station";
+import { normalizeLegacyStationForfaits } from "@/lib/stationForfaits";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_SKI_API_BASE ||
@@ -81,13 +82,7 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
         ...EMPTY_CFG.description,
         ...data.description,
       },
-      forfaits: {
-        ...EMPTY_CFG.forfaits,
-        ...data.forfaits,
-        columns: data.forfaits?.columns || [],
-        items: data.forfaits?.items || [],
-        periods: data.forfaits?.periods || (typeof data.forfaits?.season === "object" ? data.forfaits.season?.periods || data.forfaits.season?.pricing_periods : undefined) || [],
-      },
+      forfaits: normalizeLegacyStationForfaits(data.forfaits),
       ...(normalized ? { normalizedForfaits: normalized } : {}),
       webcams: {
         ...EMPTY_CFG.webcams,

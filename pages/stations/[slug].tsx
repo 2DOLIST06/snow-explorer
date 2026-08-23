@@ -17,6 +17,7 @@ import { regionHref } from "@/lib/regions";
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
 import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
+import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 /* =========================
@@ -1626,23 +1627,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = null;
   }
 
-  const activeSkiPass = loadedResort.ski_pass?.is_active === true ? loadedResort.ski_pass : null;
-  const normalizedPeriods = activeSkiPass
-    ? [...(activeSkiPass.periods || [])]
-      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
-      .map((period) => ({
-        ...period,
-        passes: (activeSkiPass.passes || []).map((pass) => ({
-          ...pass,
-          prices: (pass.prices || []).filter((price) => String(price.period_id) === String(period.id)),
-        })),
-      }))
-    : [];
+  const normalizedForfaits = normalizeStationSkiPass(loadedResort.ski_pass);
 
   // Une station peut publier un forfait normalisé même sans configuration de
   // widgets legacy. Dans ce cas, conserver un socle désactivé permet tout de
   // même de rendre le forfait fourni par la réponse individuelle.
-  if (!cfg && activeSkiPass) {
+  if (!cfg && normalizedForfaits) {
     cfg = {
       stationSlug: resort.slug,
       pistes: { enabled: false },
@@ -1680,14 +1670,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       season: cfg.forfaits?.season || null,
       source_url: cfg.forfaits?.source_url || null,
     },
-    ...(activeSkiPass ? { normalizedForfaits: {
-      enabled: true,
-      columns: [],
-      items: [],
-      periods: normalizedPeriods as NonNullable<StationWidgetsConfig["normalizedForfaits"]>["periods"],
-      season: activeSkiPass.season,
-      source_url: activeSkiPass.source_url || null,
-    } } : {}),
+    ...(normalizedForfaits ? { normalizedForfaits } : {}),
     webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
     snow: {
       enabled: Boolean(cfg.snow?.enabled),

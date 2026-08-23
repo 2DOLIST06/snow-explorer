@@ -4,8 +4,11 @@ import Link from "next/link";
 import React, { useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin, Search, ShieldCheck, Ticket } from "lucide-react";
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
-import type { ForfaitColumn, ForfaitItem, ForfaitPeriod } from "@/types/station";
+import type { StationWidgetsConfig } from "@/types/station";
+import type { SkiPassSeason } from "@/types/skiPass";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
+import { normalizeLegacyStationForfaits, normalizeStationSkiPass } from "@/lib/stationForfaits";
 
 type Resort = {
   id?: string;
@@ -14,26 +17,16 @@ type Resort = {
   is_active?: boolean;
   region?: { name?: string };
   department?: { name?: string };
+  ski_pass?: SkiPassSeason | null;
 };
 
 type AvailableResort = Resort & {
-  forfaits: { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[]; periods?: ForfaitPeriod[]; season?: string | { label?: string; name?: string } | null; source_url?: string | null; sourceUrl?: string | null };
+  forfaits: StationWidgetsConfig["forfaits"];
+  normalizedForfaits?: StationWidgetsConfig["normalizedForfaits"];
 };
 type Props = { initialStations: Resort[] };
 
-const hasValue = (value: unknown) => typeof value === "string" && value.trim().length > 0;
-
-export function hasActiveForfaits(payload: any): boolean {
-  const forfaits = payload?.forfaits || payload?.widgets?.forfaits;
-  if (!forfaits?.enabled) return false;
-  if (Array.isArray(forfaits.periods) && forfaits.periods.some((period: any) => [period?.passes, period?.products, period?.forfaits, period?.items].some((rows) => Array.isArray(rows) && rows.length))) return true;
-  if (!Array.isArray(forfaits.items)) return false;
-  return forfaits.items.some((item: any) =>
-    hasValue(item?.price) ||
-    (item?.prices && Object.values(item.prices).some(hasValue)) ||
-    (Array.isArray(item?.columns) && item.columns.some((column: any) => hasValue(column?.value)))
-  );
-}
+const emptyForfaits = (): StationWidgetsConfig["forfaits"] => ({ enabled: false, columns: [], items: [] });
 
 const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
@@ -57,13 +50,24 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
       });
     }
     try {
-      const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
-      if (!response.ok) throw new Error("widgets_fetch_failed");
-      const widgets = await response.json();
-      const forfaits = widgets?.forfaits || widgets?.widgets?.forfaits;
-      setSelected({ ...station, forfaits: hasActiveForfaits(widgets) ? forfaits : { enabled: false, columns: [], items: [] } });
+      const encodedSlug = encodeURIComponent(station.slug);
+      const [widgetsResult, resortResult] = await Promise.allSettled([
+        fetch(`/api/ski/stations/${encodedSlug}-widgets`).then(async (response) => {
+          if (!response.ok) throw new Error("widgets_fetch_failed");
+          return response.json();
+        }),
+        fetch(`/api/ski/resorts/${encodedSlug}`).then(async (response) => {
+          if (!response.ok) throw new Error("resort_fetch_failed");
+          return response.json() as Promise<Resort>;
+        }),
+      ]);
+      const widgets = widgetsResult.status === "fulfilled" ? widgetsResult.value : null;
+      const loadedResort = resortResult.status === "fulfilled" ? resortResult.value : null;
+      const forfaits = normalizeLegacyStationForfaits(widgets?.forfaits || widgets?.widgets?.forfaits);
+      const normalizedForfaits = normalizeStationSkiPass(loadedResort?.ski_pass);
+      setSelected({ ...station, forfaits, ...(normalizedForfaits ? { normalizedForfaits } : {}) });
     } catch {
-      setSelected({ ...station, forfaits: { enabled: false, columns: [], items: [] } });
+      setSelected({ ...station, forfaits: emptyForfaits() });
     } finally {
       setLoading(false);
     }
@@ -81,6 +85,11 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
     const needle = query.trim().toLocaleLowerCase("fr");
     return stations.filter((station) => !needle || `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle));
   }, [query, stations]);
+
+  const visibility = getSkiPassBlocksVisibility(
+    Boolean(selected?.forfaits?.enabled),
+    Boolean(selected?.normalizedForfaits?.enabled),
+  );
 
   return (
     <>
@@ -115,7 +124,20 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
           <section ref={contentRef} className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled ? <><StationForfaitsBlock {...selected.forfaits} enabled /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
+            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{visibility.any ? <><StationForfaitsBlock
+              enabled={visibility.legacy}
+              columns={selected.forfaits?.columns || []}
+              items={selected.forfaits?.items || []}
+              periods={selected.forfaits?.periods || []}
+              season={selected.forfaits?.season}
+              source_url={selected.forfaits?.source_url}
+              sourceUrl={selected.forfaits?.sourceUrl}
+            /><StationForfaitsBlock
+              enabled={visibility.normalized}
+              periods={selected.normalizedForfaits?.periods || []}
+              season={selected.normalizedForfaits?.season}
+              source_url={selected.normalizedForfaits?.source_url}
+            /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
           </section>
         </section>
 
