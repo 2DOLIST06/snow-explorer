@@ -23,7 +23,7 @@ new Function("exports", "require", "module", "__filename", "__dirname", compiled
   "StationForfaitsBlock.tsx",
   path.dirname(path.join(__dirname, "../src/components/stations/StationForfaitsBlock.tsx")),
 );
-const { normalizeForfaits } = componentModule.exports;
+const { hasForfaitPrice, normalizeForfaits, periodGrid } = componentModule.exports;
 
 const visibilitySource = fs.readFileSync(path.join(__dirname, "../src/lib/skiPassVisibility.ts"), "utf8");
 const visibilityCompiled = ts.transpileModule(visibilitySource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
@@ -122,6 +122,41 @@ test("public forfait tables only retain columns configured globally by admin", (
     { id: "child", label: "Enfant" },
   ]);
   assert.deepEqual(result.items[0].prices, { adult: "77", child: "63.10" });
+});
+
+test("forfait rows without any price are hidden independently for each period", () => {
+  const periodOne = periodGrid({
+    id: "low",
+    categories: [
+      { id: "adult", label: "Adulte" },
+      { id: "child", label: "Enfant" },
+    ],
+    passes: [
+      { id: "day", name: "1 jour", prices: [
+        { category_id: "adult", price_type: "fixed", price: 42 },
+        { category_id: "child", price_type: "fixed", price: null },
+      ] },
+      { id: "week", name: "6 jours", prices: [
+        { category_id: "adult", price_type: "fixed", price: null },
+        { category_id: "child", price_type: "dynamic", price_min: "", price_max: null },
+      ] },
+    ],
+  });
+  const periodTwo = periodGrid({
+    id: "high",
+    passes: [
+      { id: "day", name: "1 jour", prices: [{ category_id: "adult", category_label: "Adulte", price_type: "fixed", price: null }] },
+      { id: "week", name: "6 jours", prices: [{ category_id: "adult", category_label: "Adulte", price_type: "dynamic", price_min: 250, price_max: null }] },
+    ],
+  });
+
+  assert.deepEqual(periodOne.rows.map((row) => row.id), ["day"]);
+  assert.deepEqual(periodTwo.rows.map((row) => row.id), ["week"]);
+});
+
+test("zero remains a displayable forfait price", () => {
+  assert.equal(hasForfaitPrice({ price_type: "fixed", price: 0 }), true);
+  assert.equal(hasForfaitPrice({ price_type: "fixed", price: "   " }), false);
 });
 
 test("public forfait prices expose their category label for the mobile card layout", () => {
