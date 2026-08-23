@@ -9,6 +9,7 @@ const API_ORIGIN =
   "http://127.0.0.1:5001";
 
 const WIDGETS_SUFFIX = "-widgets";
+const SKI_PASSES_SUFFIX = "-ski-passes";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
@@ -17,16 +18,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const station = Array.isArray(req.query.station) ? req.query.station[0] : req.query.station;
-  if (!station?.endsWith(WIDGETS_SUFFIX)) {
+  const suffix = station?.endsWith(WIDGETS_SUFFIX)
+    ? WIDGETS_SUFFIX
+    : station?.endsWith(SKI_PASSES_SUFFIX)
+      ? SKI_PASSES_SUFFIX
+      : null;
+  if (!suffix) {
     return res.status(404).json({ error: "not_found" });
   }
 
-  const slug = station.slice(0, -WIDGETS_SUFFIX.length);
+  const slug = station!.slice(0, -suffix.length);
   if (!slug) return res.status(404).json({ error: "not_found" });
 
   try {
     const upstream = await fetch(
-      `${API_ORIGIN.replace(/\/$/, "")}/api/stations/${encodeURIComponent(slug)}/widgets`,
+      `${API_ORIGIN.replace(/\/$/, "")}/api/stations/${encodeURIComponent(slug)}/${suffix === WIDGETS_SUFFIX ? "widgets" : "ski-passes"}`,
       { headers: { Accept: "application/json" } },
     );
     const body = await upstream.text();
