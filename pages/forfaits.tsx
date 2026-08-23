@@ -17,22 +17,25 @@ type Resort = {
 };
 
 type AvailableResort = Resort & {
-  forfaits: { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[]; periods?: ForfaitPeriod[]; season?: string | { label?: string; name?: string } | null; source_url?: string | null; sourceUrl?: string | null };
+  forfaits: ForfaitsConfig;
+  normalizedForfaits: ForfaitsConfig | null;
 };
+type ForfaitsConfig = { enabled: boolean; columns: ForfaitColumn[]; items: ForfaitItem[]; periods?: ForfaitPeriod[]; season?: string | { label?: string; name?: string } | null; source_url?: string | null; sourceUrl?: string | null };
 type Props = { initialStations: Resort[] };
 
-const hasValue = (value: unknown) => typeof value === "string" && value.trim().length > 0;
-
-export function hasActiveForfaits(payload: any): boolean {
-  const forfaits = payload?.forfaits || payload?.widgets?.forfaits;
-  if (!forfaits?.enabled) return false;
-  if (Array.isArray(forfaits.periods) && forfaits.periods.some((period: any) => [period?.passes, period?.products, period?.forfaits, period?.items].some((rows) => Array.isArray(rows) && rows.length))) return true;
-  if (!Array.isArray(forfaits.items)) return false;
-  return forfaits.items.some((item: any) =>
-    hasValue(item?.price) ||
-    (item?.prices && Object.values(item.prices).some(hasValue)) ||
-    (Array.isArray(item?.columns) && item.columns.some((column: any) => hasValue(column?.value)))
-  );
+function activeJsonForfaits(payload: any): ForfaitsConfig | null {
+  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
+  const season = seasons.find((candidate: any) => candidate?.is_active === true);
+  if (!season) return null;
+  const products = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
+  const periods = (Array.isArray(season.periods) ? season.periods : []).map((period: any) => ({
+    ...period,
+    passes: products.map((product: any) => ({
+      ...product,
+      prices: (Array.isArray(product.prices) ? product.prices : []).filter((price: any) => String(price.period_id) === String(period.id)),
+    })),
+  }));
+  return { enabled: true, columns: [], items: [], periods, season: season.season, source_url: season.source_url };
 }
 
 const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
@@ -57,13 +60,24 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
       });
     }
     try {
-      const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
-      if (!response.ok) throw new Error("widgets_fetch_failed");
-      const widgets = await response.json();
+      const [widgetsResponse, jsonResponse] = await Promise.all([
+        fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`),
+        fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-ski-passes`),
+      ]);
+      // The station page treats the two pass sources as independent blocks. Do
+      // the same here: an unavailable normalized endpoint must never hide a
+      // valid historical table (and conversely).
+      const widgets = widgetsResponse.ok ? await widgetsResponse.json().catch(() => null) : null;
+      const jsonPayload = jsonResponse.ok ? await jsonResponse.json().catch(() => null) : null;
+      const jsonForfaits = activeJsonForfaits(jsonPayload);
       const forfaits = widgets?.forfaits || widgets?.widgets?.forfaits;
-      setSelected({ ...station, forfaits: hasActiveForfaits(widgets) ? forfaits : { enabled: false, columns: [], items: [] } });
+      setSelected({
+        ...station,
+        forfaits: forfaits?.enabled ? forfaits : { enabled: false, columns: [], items: [] },
+        normalizedForfaits: jsonForfaits,
+      });
     } catch {
-      setSelected({ ...station, forfaits: { enabled: false, columns: [], items: [] } });
+      setSelected({ ...station, forfaits: { enabled: false, columns: [], items: [] }, normalizedForfaits: null });
     } finally {
       setLoading(false);
     }
@@ -115,7 +129,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
           <section ref={contentRef} className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled ? <><StationForfaitsBlock {...selected.forfaits} enabled /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
+            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{selected.forfaits.enabled || selected.normalizedForfaits?.enabled ? <><StationForfaitsBlock {...selected.forfaits} /><StationForfaitsBlock {...(selected.normalizedForfaits || {})} /><p className="passes-disclaimer"><ShieldCheck size={18} /> Tarifs indicatifs communiqués par la station. Vérifiez les conditions et le prix final avant votre achat.</p></> : <div className="notice notice--warning"><strong>Forfaits indisponibles</strong><span>Aucun tarif actif n’est actuellement renseigné pour {selected.name}.</span></div>}</div>}
           </section>
         </section>
 
