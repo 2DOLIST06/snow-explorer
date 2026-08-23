@@ -76,6 +76,18 @@ type Cell = ForfaitPrice & { category_id: string };
 type Grid = { columns: ForfaitColumn[]; rows: Array<{ id: string; title: string; cells: Record<string, Cell> }> };
 type PriceNote = { label: string; stars: string };
 
+const hasValue = (value: unknown) => value !== null && value !== undefined && (typeof value !== "string" || value.trim() !== "");
+
+export function hasForfaitPrice(cell?: ForfaitPrice): boolean {
+  if (!cell) return false;
+  return [cell.price, cell.amount, cell.price_min, cell.price_max].some(hasValue);
+}
+
+const onlyPricedRows = (grid: Grid): Grid => ({
+  ...grid,
+  rows: grid.rows.filter((row) => Object.values(row.cells).some(hasForfaitPrice)),
+});
+
 export function collectPriceNotes(grid: Grid): PriceNote[] {
   const labels: string[] = [];
   grid.rows.forEach((row) => Object.values(row.cells).forEach((cell) => {
@@ -85,7 +97,7 @@ export function collectPriceNotes(grid: Grid): PriceNote[] {
   return labels.map((label, index) => ({ label, stars: "*".repeat(index + 1) }));
 }
 
-function periodGrid(period: ForfaitPeriod): Grid {
+export function periodGrid(period: ForfaitPeriod): Grid {
   const categories = Array.isArray(period.categories) ? period.categories : [];
   const columns: ForfaitColumn[] = categories.map((category, index) => ({ id: idOf(category.id || category.key, `category-${index}`), label: text(category.label || category.name) }));
   const ensure = (label: unknown, categoryId?: unknown) => {
@@ -111,7 +123,7 @@ function periodGrid(period: ForfaitPeriod): Grid {
     });
     return { id: idOf(product.id, `pass-${index}`), title: text(product.label || product.name || product.title || product.duration_label), cells };
   });
-  return { columns: columns.filter((column) => column.label), rows: rows.filter((row) => row.title) };
+  return onlyPricedRows({ columns: columns.filter((column) => column.label), rows: rows.filter((row) => row.title) });
 }
 
 function Price({ value, notes }: { value?: Cell; notes: PriceNote[] }) {
@@ -124,7 +136,9 @@ function Price({ value, notes }: { value?: Cell; notes: PriceNote[] }) {
 export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
   const seasonObject = typeof season === "object" && season ? season : null;
   const availablePeriods = periods.length ? periods : seasonObject?.periods || seasonObject?.pricing_periods || [];
-  const orderedPeriods = useMemo(() => [...availablePeriods].sort((a, b) => (Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0)) || text(a.start_date || a.startDate).localeCompare(text(b.start_date || b.startDate))), [availablePeriods]);
+  const orderedPeriods = useMemo(() => [...availablePeriods]
+    .filter((period) => periodGrid(period).rows.length > 0)
+    .sort((a, b) => (Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0)) || text(a.start_date || a.startDate).localeCompare(text(b.start_date || b.startDate))), [availablePeriods]);
   const initialPeriod = useMemo(() => {
     const now = new Date();
     return orderedPeriods.findIndex((period) => {
@@ -138,7 +152,7 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
   const selectedIndex = Math.max(0, orderedPeriods.findIndex((period, index) => idOf(period.id, String(index)) === selectedId));
   const selected = orderedPeriods[selectedIndex];
   const legacy = normalizeForfaits(columns, items);
-  const grid: Grid = selected ? periodGrid(selected) : { columns: legacy.columns, rows: legacy.items.map((row) => ({ id: row.id, title: row.title, cells: Object.fromEntries(Object.entries(row.prices).map(([category_id, price]) => [category_id, { category_id, price_type: "fixed", price }])) })) };
+  const grid: Grid = selected ? periodGrid(selected) : onlyPricedRows({ columns: legacy.columns, rows: legacy.items.map((row) => ({ id: row.id, title: row.title, cells: Object.fromEntries(Object.entries(row.prices).map(([category_id, price]) => [category_id, { category_id, price_type: "fixed", price }])) })) });
   if (!grid.columns.length || !grid.rows.length) return null;
   const hasDynamic = grid.rows.some((row) => Object.values(row.cells).some((cell) => cell.price_type === "dynamic" || cell.type === "dynamic"));
   const priceNotes = collectPriceNotes(grid);
