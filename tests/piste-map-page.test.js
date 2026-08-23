@@ -16,6 +16,13 @@ test("the piste map page keeps the shared station selection experience", () => {
   assert.match(page, /Plan des pistes de \{selected\.name\}/);
 });
 
+test("mobile station selection reveals the piste map and keeps a change action", () => {
+  assert.match(page, /contentRef\.current\?\.scrollIntoView/);
+  assert.match(page, /station-picker--collapsed/);
+  assert.match(page, />Changer</);
+  assert.match(page, /ref=\{contentRef\} className="passes-content"/);
+});
+
 test("station choices do not duplicate the profile link shown in the result", () => {
   assert.doesNotMatch(page, /Voir la fiche/);
   assert.match(page, /Voir la station/);

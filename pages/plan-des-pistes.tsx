@@ -1,8 +1,8 @@
 import Head from "next/head";
 import type { GetServerSideProps, NextPage } from "next";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Map, Search } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, ChevronDown, Map, MapPin, Search } from "lucide-react";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
 import { getOfficialMapPresentation } from "@/lib/officialMap";
 
@@ -51,6 +51,10 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
   const [selected, setSelected] = useState<SelectedResort | null>(null);
   const [loading, setLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [mobileSelection, setMobileSelection] = useState<Resort | null>(null);
+  const [mobilePickerOpen, setMobilePickerOpen] = useState(true);
+  const pickerRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
   const filteredStations = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("fr");
@@ -61,6 +65,14 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
     setMapOpen(false);
     setLoading(true);
     setSelected(null);
+    setMobileSelection(station);
+    setMobilePickerOpen(false);
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      window.requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        contentRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      });
+    }
     try {
       const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
       if (!response.ok) throw new Error("widgets_fetch_failed");
@@ -70,6 +82,14 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
     } finally {
       setLoading(false);
     }
+  }
+
+  function reopenMobilePicker() {
+    setMobilePickerOpen(true);
+    window.requestAnimationFrame(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      pickerRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    });
   }
 
   const mapUrl = selected && (selected.pistes.largeMapUrl || selected.pistes.smallMapUrl);
@@ -104,16 +124,19 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
         </section>
 
         <section className="passes-layout">
-          <aside className="station-picker passes-picker" aria-label="Choisir une station">
-            <div className="section-heading"><div><p className="eyebrow">Stations disponibles</p><h2>Choisir une station</h2></div>{query && <span>{filteredStations.length} résultat(s)</span>}</div>
-            <label className="passes-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Rechercher une station</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nom, région, département…" /></label>
-            <div className="station-list" role="listbox" aria-label="Stations actives">
-              {filteredStations.map((station) => <div className={selected?.slug === station.slug ? "station-choice is-selected" : "station-choice"} key={station.id || station.slug}><button type="button" role="option" aria-selected={selected?.slug === station.slug} onClick={() => void selectStation(station)}><strong>{station.name}</strong><span>{station.region?.name || station.department?.name || "Station de ski"}</span></button></div>)}
-              {query && filteredStations.length === 0 && <div className="empty-state"><strong>Aucune station trouvée</strong><span>Essayez un nom plus court ou une région proche.</span></div>}
+          <aside ref={pickerRef} className={`station-picker passes-picker${mobileSelection && !mobilePickerOpen ? " station-picker--collapsed" : ""}`} aria-label="Choisir une station">
+            {mobileSelection && <div className="station-picker__mobile-summary"><div className="station-picker__selected"><MapPin size={20} aria-hidden="true" /><div><span>Station sélectionnée</span><strong>{mobileSelection.name}</strong></div></div><button type="button" onClick={reopenMobilePicker} aria-expanded={mobilePickerOpen}><span>Changer</span><ChevronDown size={18} aria-hidden="true" /></button></div>}
+            <div className="station-picker__controls">
+              <div className="section-heading"><div><p className="eyebrow">Stations disponibles</p><h2>Choisir une station</h2></div>{query && <span>{filteredStations.length} résultat(s)</span>}</div>
+              <label className="passes-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Rechercher une station</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nom, région, département…" /></label>
+              <div className="station-list" role="listbox" aria-label="Stations actives">
+                {filteredStations.map((station) => <div className={(selected?.slug || mobileSelection?.slug) === station.slug ? "station-choice is-selected" : "station-choice"} key={station.id || station.slug}><button type="button" role="option" aria-selected={(selected?.slug || mobileSelection?.slug) === station.slug} onClick={() => void selectStation(station)}><strong>{station.name}</strong><span>{station.region?.name || station.department?.name || "Station de ski"}</span></button></div>)}
+                {query && filteredStations.length === 0 && <div className="empty-state"><strong>Aucune station trouvée</strong><span>Essayez un nom plus court ou une région proche.</span></div>}
+              </div>
             </div>
           </aside>
 
-          <section className="passes-content" aria-live="polite">
+          <section ref={contentRef} className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Map size={30} /></span><p className="eyebrow">Le domaine en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour afficher son plan des pistes.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
             {selected && <div className="passes-result"><header><div><p className="eyebrow">Plan du domaine</p><h2>Plan des pistes de {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>
