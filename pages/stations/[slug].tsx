@@ -1414,7 +1414,14 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
       {/* HERO */}
       <section className="station-profile-hero">
-        <Image src={cover} alt={`Photo de ${resort.name}`} fill sizes="100vw" priority className="station-profile-hero__image" />
+        <Image
+          src={cover}
+          alt={`Photo de ${resort.name}`}
+          fill
+          sizes="(max-width: 640px) calc(100vw - 28px), (max-width: 1280px) calc(100vw - 40px), 1200px"
+          priority
+          className="station-profile-hero__image"
+        />
         <div className="station-profile-hero__overlay" />
         <div className="station-profile-hero__content">
           <p className="eyebrow">Fiche station</p>
