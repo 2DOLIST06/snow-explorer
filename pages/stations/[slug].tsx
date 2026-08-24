@@ -1440,7 +1440,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
 
       {/* LAYOUT */}
       <main className="station-profile-page">
-        <nav aria-label="Fil d’Ariane" style={{ margin: "16px 0", color: "#4b5563", fontSize: 14 }}>
+        <nav className="station-profile-breadcrumb" aria-label="Fil d’Ariane">
           <Link href="/">Accueil</Link><span aria-hidden="true"> &gt; </span>
           <Link href="/stations">Stations</Link><span aria-hidden="true"> &gt; </span>
           {resortRegionHref ? <><Link href={resortRegionHref}>{resort.region?.name}</Link><span aria-hidden="true"> &gt; </span></> : null}
