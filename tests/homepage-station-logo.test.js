@@ -8,6 +8,6 @@ const homepage = fs.readFileSync(path.join(__dirname, "../pages/index.tsx"), "ut
 test("homepage featured station cards display the station logo instead of a cover", () => {
   assert.match(homepage, /const logoUrl = resort\.logo_url \|\| resort\.logoUrl/);
   assert.match(homepage, /src=\{logoUrl\}/);
-  assert.match(homepage, /alt=\{`Logo de la station \$\{resort\.name\}`\}/);
+  assert.match(homepage, /alt=\{`Logo \$\{resort\.name\}`\}/);
   assert.doesNotMatch(homepage, /featuredResortsWithImage/);
 });

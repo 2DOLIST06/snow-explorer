@@ -1403,7 +1403,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
         <meta property="og:description" content={seoDescription} />
         <meta property="og:url" content={canonicalUrl} />
         {resort.cover_image_url ? <meta property="og:image" content={resort.cover_image_url} /> : null}
-        {resort.cover_image_url ? <meta property="og:image:alt" content={`Photo de ${resort.name}`} /> : null}
+        {resort.cover_image_url ? <meta property="og:image:alt" content={`Paysage ${resort.name}`} /> : null}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={seoTitle} />
         <meta name="twitter:description" content={seoDescription} />
@@ -1416,7 +1416,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
       <section className="station-profile-hero">
         <Image
           src={cover}
-          alt={`Photo de ${resort.name}`}
+          alt={`Paysage ${resort.name}`}
           fill
           sizes="(max-width: 640px) calc(100vw - 28px), (max-width: 1280px) calc(100vw - 40px), 1200px"
           priority
