@@ -169,6 +169,20 @@ test("public forfait prices expose their category label for the mobile card layo
   assert.match(styles, /\.forfaits-table tbody\{display:grid;gap:12px\}/);
 });
 
+test("wide forfait tables stay inside the page and keep their first column visible", () => {
+  const component = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationForfaitsBlock.tsx"), "utf8");
+  const styles = fs.readFileSync(path.join(__dirname, "../src/styles/globals.css"), "utf8");
+
+  assert.match(component, /grid\.columns\.length > 4/);
+  assert.match(component, /maintenez le clic pour déplacer le tableau/);
+  assert.match(component, /forfaits-table-scroll--top/);
+  assert.match(component, /setPointerCapture/);
+  assert.match(component, /table\.scrollLeft = top\.scrollLeft/);
+  assert.match(styles, /\.forfaits-card\{min-width:0;max-width:100%/);
+  assert.match(styles, /\.forfaits-table-wrap\{max-width:100%;overflow-x:auto/);
+  assert.match(styles, /\.forfaits-table tr>\*:first-child\{position:sticky;left:0/);
+});
+
 test("legacy forfait payloads can still infer columns when none are configured", () => {
   const result = normalizeForfaits([], [
     { id: "one-day", title: "1 jour", columns: [{ label: "Adulte", value: "77" }] },

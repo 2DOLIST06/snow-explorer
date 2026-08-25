@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ForfaitColumn, ForfaitItem, ForfaitPeriod, ForfaitPrice, ForfaitSeason } from "@/types/station";
 
 type Props = {
@@ -133,6 +133,57 @@ function Price({ value, notes }: { value?: Cell; notes: PriceNote[] }) {
   return <><span className="forfait-price">{dynamic ? <>{euro(value.price_min)} – {euro(value.price_max)}</> : euro(value.price ?? value.amount)}</span>{marker && <sup className="forfait-note-marker" aria-label={`Note ${marker.length}`}>{marker}</sup>}{dynamic && <small className="forfait-dynamic-label">Tarif dynamique</small>}</>;
 }
 
+function ForfaitsTable({ grid, notes }: { grid: Grid; notes: PriceNote[] }) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ startX: 0, startScrollLeft: 0 });
+  const [tableWidth, setTableWidth] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const isWide = grid.columns.length > 4;
+
+  useEffect(() => {
+    const wrapper = tableRef.current;
+    if (!wrapper) return;
+    const updateWidth = () => setTableWidth(wrapper.scrollWidth);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(wrapper);
+    const table = wrapper.querySelector("table");
+    if (table) observer.observe(table);
+    return () => observer.disconnect();
+  }, [grid]);
+
+  const syncScroll = (source: "top" | "table") => {
+    const top = topRef.current;
+    const table = tableRef.current;
+    if (!top || !table) return;
+    if (source === "top") table.scrollLeft = top.scrollLeft;
+    else top.scrollLeft = table.scrollLeft;
+  };
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    dragRef.current = { startX: event.clientX, startScrollLeft: event.currentTarget.scrollLeft };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(true);
+  };
+  const drag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragging) return;
+    event.currentTarget.scrollLeft = dragRef.current.startScrollLeft - (event.clientX - dragRef.current.startX);
+  };
+  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragging) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    setDragging(false);
+  };
+
+  return <>
+    {isWide && <div ref={topRef} className="forfaits-table-scroll forfaits-table-scroll--top" tabIndex={0} aria-label="Défilement horizontal des tarifs" onScroll={() => syncScroll("top")}><div style={{ width: tableWidth }} /></div>}
+    <div ref={tableRef} className={`forfaits-table-wrap${dragging ? " is-dragging" : ""}`} tabIndex={0} aria-label="Tableau des tarifs. Maintenez le clic et déplacez la souris pour faire défiler." onScroll={() => syncScroll("table")} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+      <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id} data-label={column.label}><Price value={row.cells[column.id]} notes={notes} /></td>)}</tr>)}</tbody></table>
+    </div>
+  </>;
+}
+
 export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
   const seasonObject = typeof season === "object" && season ? season : null;
   const availablePeriods = periods.length ? periods : seasonObject?.periods || seasonObject?.pricing_periods || [];
@@ -162,9 +213,8 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
     <div className="forfaits-heading"><div><h2>Forfaits</h2>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
     {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
     {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}
-    <div className="forfaits-table-wrap" tabIndex={0} aria-label="Tableau des tarifs">
-      <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id} data-label={column.label}><Price value={row.cells[column.id]} notes={priceNotes} /></td>)}</tr>)}</tbody></table>
-    </div>
+    {grid.columns.length > 4 && <p className="forfaits-scroll-hint">Utilisez la barre ou maintenez le clic pour déplacer le tableau <span aria-hidden="true">↔</span></p>}
+    <ForfaitsTable grid={grid} notes={priceNotes} />
     {priceNotes.length > 0 && <div className="forfaits-price-notes" aria-label="Notes relatives aux tarifs">{priceNotes.map((note) => <p key={note.label}><span className="forfait-note-marker" aria-hidden="true">{note.stars}</span><span>{note.label}</span></p>)}</div>}
     {hasDynamic && <p className="forfaits-dynamic-note">Tarifs dynamiques : le prix peut varier notamment selon la date choisie et le moment de la réservation. Consultez le site officiel de la station pour connaître le tarif disponible au moment de l&apos;achat.</p>}
   </section>;
