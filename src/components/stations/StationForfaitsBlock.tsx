@@ -162,6 +162,7 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
     <div className="forfaits-heading"><div><h2>Forfaits</h2>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
     {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
     {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}
+    {grid.columns.length > 4 && <p className="forfaits-scroll-hint">Faites défiler le tableau horizontalement pour voir tous les tarifs <span aria-hidden="true">→</span></p>}
     <div className="forfaits-table-wrap" tabIndex={0} aria-label="Tableau des tarifs">
       <table className="forfaits-table"><thead><tr><th scope="col">Forfait</th>{grid.columns.map((column) => <th scope="col" key={column.id}>{column.label}</th>)}</tr></thead><tbody>{grid.rows.map((row) => <tr key={row.id}><th scope="row">{row.title}</th>{grid.columns.map((column) => <td key={column.id} data-label={column.label}><Price value={row.cells[column.id]} notes={priceNotes} /></td>)}</tr>)}</tbody></table>
     </div>
