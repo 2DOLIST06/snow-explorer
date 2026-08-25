@@ -174,7 +174,10 @@ test("wide forfait tables stay inside the page and keep their first column visib
   const styles = fs.readFileSync(path.join(__dirname, "../src/styles/globals.css"), "utf8");
 
   assert.match(component, /grid\.columns\.length > 4/);
-  assert.match(component, /Faites défiler le tableau horizontalement/);
+  assert.match(component, /maintenez le clic pour déplacer le tableau/);
+  assert.match(component, /forfaits-table-scroll--top/);
+  assert.match(component, /setPointerCapture/);
+  assert.match(component, /table\.scrollLeft = top\.scrollLeft/);
   assert.match(styles, /\.forfaits-card\{min-width:0;max-width:100%/);
   assert.match(styles, /\.forfaits-table-wrap\{max-width:100%;overflow-x:auto/);
   assert.match(styles, /\.forfaits-table tr>\*:first-child\{position:sticky;left:0/);
