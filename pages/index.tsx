@@ -554,7 +554,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
                         {logoUrl ? (
                           <img
                             src={logoUrl}
-                            alt={`Logo de la station ${resort.name}`}
+                            alt={`Logo ${resort.name}`}
                             style={{
                               display: "block",
                               width: "100%",
