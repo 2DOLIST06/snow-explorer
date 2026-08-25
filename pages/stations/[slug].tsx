@@ -1450,7 +1450,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           <div className="station-overview-card__logo">
             {resort.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={resort.logo_url} alt={`Logo ${resort.name}`} />
+              <img src={resort.logo_url} alt={`Logo ${resort.name} - Snow Explorer`} />
             ) : (
               <span>{resort.name.slice(0, 2).toUpperCase()}</span>
             )}

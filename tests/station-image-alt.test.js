@@ -7,6 +7,6 @@ const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slu
 
 test("station logo and cover image alts include the station name", () => {
   assert.match(stationPage, /alt=\{`Paysage \$\{resort\.name\}`\}/);
-  assert.match(stationPage, /alt=\{`Logo \$\{resort\.name\}`\}/);
+  assert.match(stationPage, /alt=\{`Logo \$\{resort\.name\} - Snow Explorer`\}/);
   assert.match(stationPage, /property="og:image:alt" content=\{`Paysage \$\{resort\.name\}`\}/);
 });
