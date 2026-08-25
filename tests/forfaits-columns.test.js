@@ -81,7 +81,8 @@ test("legacy and normalized ski pass editors remain visible and independent", ()
 
   assert.ok(legacyStart >= 0, "the legacy forfait editor is present");
   assert.ok(advancedStart > legacyStart, "the normalized editor follows the legacy editor");
-  assert.match(adminSource.slice(legacyStart, advancedStart), /<SaveButton onClick=\{patchWidgets\}/);
+  assert.doesNotMatch(adminSource.slice(legacyStart, advancedStart), /<SaveButton/);
+  assert.match(adminSource, /"Tout enregistrer"/);
   assert.match(adminSource.slice(legacyStart, advancedStart), /widgets\?\.forfaits\?\.enabled/);
   assert.match(adminSource.slice(advancedStart), /<SkiPassEditor stationSlug=\{slug\}/);
 

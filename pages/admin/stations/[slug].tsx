@@ -709,20 +709,6 @@ function SectionCard({
   );
 }
 
-function SaveButton({
-  onClick,
-  label = "Enregistrer",
-}: {
-  onClick: () => void;
-  label?: string;
-}) {
-  return (
-    <button onClick={onClick} style={styles.primaryBtn}>
-      {label}
-    </button>
-  );
-}
-
 const buildCanonicalForfaitsPayload = (rawForfaits: any) => {
   const normalized = normalizeForfaitConfig(rawForfaits);
 
@@ -779,6 +765,7 @@ export default function AdminStationEdit() {
   const [err, setErr] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -895,96 +882,74 @@ setWidgets(w);
     })();
   }, [resort?.region_id, resort]);
 
-  const patchResort = async () => {
-  if (!resort) return;
+  const saveAll = async () => {
+    if (!resort || saving) return;
 
-  setMsg("Enregistrement…");
-  setErr("");
+    setSaving(true);
+    setMsg("Enregistrement de toutes les modifications…");
+    setErr("");
 
-  try {
-    const {
-      id,
-      slug: resortSlug,
-      region,
-      updated_at,
-      ...editableResort
-    } = resort;
+    try {
+      const {
+        id,
+        slug: resortSlug,
+        region,
+        updated_at,
+        ...editableResort
+      } = resort;
 
-    const payload: ResortType = {
-      ...editableResort,
-      pistes_large_map_url:
-        resort.pistes_large_map_url ??
-        (widgets?.pistes?.largeMapUrl || null),
-      pistes_small_map_url:
-        resort.pistes_small_map_url ??
-        (widgets?.pistes?.smallMapUrl || null),
-      region_id:
-        resort.region_id ??
-        resort.region?.id ??
-        null,
-    };
+      const payload: ResortType = {
+        ...editableResort,
+        pistes_large_map_url:
+          resort.pistes_large_map_url ??
+          (widgets?.pistes?.largeMapUrl || null),
+        pistes_small_map_url:
+          resort.pistes_small_map_url ??
+          (widgets?.pistes?.smallMapUrl || null),
+        region_id:
+          resort.region_id ??
+          resort.region?.id ??
+          null,
+      };
 
-    console.log("PATCH resort payload =", payload);
+      const widgetsPayload = {
+        ...widgets,
+        forfaits: buildCanonicalForfaitsPayload(widgets?.forfaits),
+      };
 
-    const r = await adminFetch(
-      `/api/admin/stations/${encodeURIComponent(slug)}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const stationUrl = `/api/admin/stations/${encodeURIComponent(slug)}`;
+      const [stationResponse, widgetsResponse] = await Promise.all([
+        adminFetch(stationUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        adminFetch(`${stationUrl}/widgets`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(widgetsPayload),
+        }),
+      ]);
+
+      const failures: string[] = [];
+      if (!stationResponse.ok) {
+        failures.push(`station (${stationResponse.status}) : ${await stationResponse.text()}`);
       }
-    );
+      if (!widgetsResponse.ok) {
+        failures.push(`contenus (${widgetsResponse.status}) : ${await widgetsResponse.text()}`);
+      }
+      if (failures.length > 0) {
+        throw new Error(`Enregistrement incomplet — ${failures.join(" ; ")}`);
+      }
 
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`PATCH failed ${r.status}: ${txt}`);
+      await load(slug);
+      setMsg("Toutes les modifications ont été enregistrées.");
+    } catch (e: any) {
+      setErr(e?.message || "Erreur API");
+      setMsg("");
+    } finally {
+      setSaving(false);
     }
-
-    await load(slug);
-    setMsg("Infos enregistrées.");
-  } catch (e: any) {
-    setErr(e?.message || "Erreur API");
-    setMsg("");
-  }
-};
-
-  const patchWidgets = async () => {
-  setMsg("Enregistrement widgets…");
-  setErr("");
-
-  try {
-    const payload = {
-      ...widgets,
-      forfaits: buildCanonicalForfaitsPayload(widgets?.forfaits),
-    };
-
-    console.log("PATCH widgets payload =", payload);
-
-    const r = await adminFetch(`/api/admin/stations/${encodeURIComponent(slug)}/widgets`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`PATCH widgets failed ${r.status}: ${txt}`);
-    }
-
-    setWidgets(payload);
-    await load(slug);
-    setMsg("Widgets enregistrés.");
-  } catch (e: any) {
-    setErr(e?.message || "Erreur API");
-    setMsg("");
-  }
-};
-
-  const patchPistesBoth = async () => {
-    await patchWidgets();
-    await patchResort();
   };
 
   const exportJson = async () => { setExporting(true); setErr(""); try { downloadBlobResponse(await getStationExportResponse(String(resort?.id || slug)), `${slug}.json`); setMsg("Téléchargement démarré."); } catch (e) { setErr(e instanceof Error ? e.message : "Export impossible."); } finally { setExporting(false); } };
@@ -1365,11 +1330,8 @@ const removeForfaitRow = (rowIdx: number) => {
             <button onClick={() => load(slug)} style={styles.secondaryBtn}>
               Rafraîchir
             </button>
-            <button onClick={patchWidgets} style={styles.secondaryBtn}>
-              Enregistrer widgets
-            </button>
-            <button onClick={patchResort} style={styles.primaryBtn}>
-              Enregistrer station
+            <button onClick={() => void saveAll()} disabled={saving} style={styles.primaryBtn}>
+              {saving ? "Enregistrement…" : "Tout enregistrer"}
             </button>
           </div>
         </div>
@@ -1466,7 +1428,6 @@ const removeForfaitRow = (rowIdx: number) => {
               id="infos"
               title="Infos station"
               description="Informations principales, localisation, images, altitudes et dates."
-              actions={<SaveButton onClick={patchResort} />}
             >
               <div style={styles.stack}>
                 <div style={styles.grid2}>
@@ -1743,7 +1704,6 @@ const removeForfaitRow = (rowIdx: number) => {
               id="pistes"
               title="Pistes & snowpark"
               description="Comptages par couleur et nombre de snowparks."
-              actions={<SaveButton onClick={patchPistesBoth} />}
             >
               <div style={styles.grid4}>
   <label style={styles.label}>
@@ -1853,7 +1813,6 @@ const removeForfaitRow = (rowIdx: number) => {
               id="plan"
               title="Plan des pistes"
               description="Gestion des images du plan et du lien de secours vers le site officiel."
-              actions={<SaveButton onClick={patchPistesBoth} />}
             >
               <div style={styles.stack}>
                 <label style={styles.checkboxRow}>
@@ -1953,7 +1912,6 @@ const removeForfaitRow = (rowIdx: number) => {
               id="description"
               title="Description"
               description="Bloc widgets.description.html"
-              actions={<SaveButton onClick={patchWidgets} />}
             >
               <div style={styles.stack}>
                 <label style={styles.checkboxRow}>
@@ -1981,7 +1939,6 @@ const removeForfaitRow = (rowIdx: number) => {
               id="snowpark"
               title="Snowpark visuel"
               description="Aperçu, image, logo et description HTML du snowpark."
-              actions={<SaveButton onClick={patchWidgets} />}
             >
               <div style={styles.stack}>
                 <label style={styles.checkboxRow}>
@@ -2105,7 +2062,6 @@ const removeForfaitRow = (rowIdx: number) => {
   id="forfaits"
   title="Forfaits historiques"
   description="Définis d’abord les colonnes globales (Adulte, Enfant, Senior…), puis remplis les prix par type de forfait."
-  actions={<SaveButton onClick={patchWidgets} />}
 >
   <div style={styles.stack}>
     <label style={styles.checkboxRow}>
