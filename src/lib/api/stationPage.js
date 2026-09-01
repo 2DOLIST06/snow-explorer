@@ -80,6 +80,35 @@ function resolveResortRegion(resort, regions = []) {
   };
 }
 
+/**
+ * Start the two independent station-page requests together. Widget failures are
+ * returned as data so the caller can still apply the page's existing optional
+ * widget behaviour after it has handled the authoritative station response.
+ */
+async function loadStationPageSources(slug, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const loadWidgets = options.loadWidgets;
+  const apiBase = options.apiBase || getStationApiBase(options.env || process.env);
+
+  if (typeof loadWidgets !== "function") {
+    throw new TypeError("[station-page] loadWidgets must be a function");
+  }
+
+  const stationPromise = fetchImpl(
+    `${apiBase}/api/stations/${encodeURIComponent(slug)}`,
+    { headers: { accept: "application/json" }, cache: "no-store" },
+  );
+  const widgetsPromise = Promise.resolve()
+    .then(() => loadWidgets(slug))
+    .then(
+      (config) => ({ config, error: null }),
+      (error) => ({ config: null, error }),
+    );
+
+  const [stationResponse, widgets] = await Promise.all([stationPromise, widgetsPromise]);
+  return { stationResponse, widgets };
+}
+
 async function loadPublicResort(slug, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
@@ -161,6 +190,7 @@ module.exports = {
   PUBLIC_STATION_PATH,
   getStationApiBase,
   isResortInactive,
+  loadStationPageSources,
   loadPublicResort,
   resolveResortRegion,
   stationFromPayload,

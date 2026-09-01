@@ -6,6 +6,7 @@ const path = require("node:path");
 const {
   getStationApiBase,
   isResortInactive,
+  loadStationPageSources,
   loadPublicResort,
   resolveResortRegion,
   stationFromPayload,
@@ -94,6 +95,75 @@ test("all supported public active-field variants identify inactive stations", ()
   assert.equal(isResortInactive({ resort_is_active: false }), true);
   assert.equal(isResortInactive({ active: false }), true);
   assert.equal(isResortInactive({ is_active: true, active: false }), false);
+});
+
+test("station page starts its two remaining backend calls in parallel", async () => {
+  const started = [];
+  let releaseStation;
+  let releaseWidgets;
+  const stationGate = new Promise((resolve) => { releaseStation = resolve; });
+  const widgetsGate = new Promise((resolve) => { releaseWidgets = resolve; });
+
+  const pending = loadStationPageSources("auron", {
+    apiBase: "https://backend.example.com",
+    fetchImpl: async (url) => {
+      started.push(url);
+      await stationGate;
+      return response(200, { name: "Auron", slug: "auron" });
+    },
+    loadWidgets: async (slug) => {
+      started.push(`widgets:${slug}`);
+      await widgetsGate;
+      return { stationSlug: slug };
+    },
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, [
+    "https://backend.example.com/api/stations/auron",
+    "widgets:auron",
+  ], "neither request waits for the other to finish");
+  releaseWidgets();
+  releaseStation();
+  const result = await pending;
+  assert.equal(result.stationResponse.status, 200);
+  assert.deepEqual(result.widgets.config, { stationSlug: "auron" });
+});
+
+test("station page backend budget excludes ski-passes and regions", () => {
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  const widgetsApi = fs.readFileSync(path.join(__dirname, "../src/lib/api/stations.ts"), "utf8");
+
+  assert.match(stationPage, /loadStationPageSources\(slug/);
+  assert.match(stationPage, /normalizeStationSkiPass\(loadedResort\.ski_pass\)/);
+  assert.doesNotMatch(stationPage, /\/api\/regions/);
+  assert.doesNotMatch(widgetsApi, /\/ski-passes/);
+  assert.equal((widgetsApi.match(/await fetch\(/g) || []).length, 1);
+});
+
+test("station detail region and ski pass preserve functional content and SEO", () => {
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+
+  assert.match(stationPage, /region\?: \{ id\?: string; name\?: string; slug\?: string/);
+  assert.match(stationPage, /<StationForfaitsBlock/);
+  assert.match(stationPage, /<title>\{seoTitle\}<\/title>/);
+  assert.match(stationPage, /<meta name="description" content=\{seoDescription\}/);
+  assert.match(stationPage, /<link rel="canonical" href=\{canonicalUrl\}/);
+  assert.match(stationPage, /application\/ld\+json/);
+});
+
+test("station 404 handling remains authoritative when widgets fail", async () => {
+  const { stationResponse, widgets } = await loadStationPageSources("missing", {
+    apiBase: "https://backend.example.com",
+    fetchImpl: async () => response(404, { error: "not_found" }),
+    loadWidgets: async () => { throw Object.assign(new Error("widgets_not_found"), { status: 404 }); },
+  });
+
+  assert.equal(stationResponse.status, 404);
+  assert.equal(widgets.config, null);
+  assert.equal(widgets.error.status, 404);
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  assert.match(stationPage, /if \(stationResponse\.status === 404\) \{\s*return \{ notFound: true \};/);
 });
 
 test("piste color details use one display switch for rendering and SSR serialization", () => {
