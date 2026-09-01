@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import StationImportModal from "@/components/admin/imports/StationImportModal";
 import SkiPassEditor from "@/components/admin/SkiPassEditor";
+import CachePurgeButton from "@/components/admin/CachePurgeButton";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
@@ -1327,6 +1328,11 @@ const removeForfaitRow = (rowIdx: number) => {
             <button type="button" onClick={() => void exportJson()} disabled={exporting} style={styles.secondaryBtn}>{exporting ? "Export en cours…" : "Exporter le JSON"}</button>
             <button type="button" onClick={() => setImportOpen(true)} style={styles.secondaryBtn}>Importer un JSON</button>
             <Link href={`/admin/imports?station=${encodeURIComponent(String(resort.id || slug))}`} style={styles.secondaryBtn}>Voir l’historique</Link>
+            <CachePurgeButton
+              endpoint={`/api/admin/cache/stations/${encodeURIComponent(slug)}/purge`}
+              label="Vider le cache de cette station"
+              successMessage="Cache de la station vidé. Les données seront régénérées au prochain affichage."
+            />
             <button onClick={() => load(slug)} style={styles.secondaryBtn}>
               Rafraîchir
             </button>
