@@ -21,31 +21,8 @@ const EMPTY_CFG: StationWidgetsConfig = {
   snowpark: { enabled: false, mapUrl: null, imageUrl: null, caption: null },
 };
 
-function normalizedForfaits(payload: any) {
-  const seasons = Array.isArray(payload?.seasons) ? payload.seasons : [];
-  const season = seasons.find((item: any) => item?.is_active === true) || seasons[0];
-  if (!season?.id) return null;
-  const passes = Array.isArray(season.passes) ? season.passes : Array.isArray(season.products) ? season.products : [];
-  const periods = (season.periods || []).map((period: any) => ({
-    ...period,
-    passes: passes.map((product: any) => ({
-      ...product,
-      prices: (product.prices || []).filter((price: any) => String(price.period_id) === String(period.id)),
-    })),
-  }));
-  return { enabled: season.is_active === true, season: season.season, currency: season.currency, source_url: season.source_url, columns: [], items: [], periods };
-}
-
 export async function fetchStationWidgetsConfig(stationSlug: string): Promise<StationWidgetsConfig> {
   try {
-    // Fetch normalized and legacy passes independently so neither visibility flag
-    // can overwrite the other one.
-    const normalizedResponse = await fetch(`${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/ski-passes`, {
-      headers: { accept: "application/json" }, cache: "no-store",
-    });
-    let normalized = null;
-    if (normalizedResponse.ok) normalized = normalizedForfaits(await normalizedResponse.json());
-    else if (normalizedResponse.status !== 404) throw new Error(`normalized_ski_passes_http_${normalizedResponse.status}`);
     const url = `${API_BASE}/api/stations/${encodeURIComponent(stationSlug)}/widgets`;
     const res = await fetch(url, {
       headers: { accept: "application/json" },
@@ -83,7 +60,6 @@ export async function fetchStationWidgetsConfig(stationSlug: string): Promise<St
         ...data.description,
       },
       forfaits: normalizeLegacyStationForfaits(data.forfaits),
-      ...(normalized ? { normalizedForfaits: normalized } : {}),
       webcams: {
         ...EMPTY_CFG.webcams,
         ...data.webcams,

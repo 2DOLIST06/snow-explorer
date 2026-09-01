@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
-import { getStationApiBase, isResortInactive, resolveResortRegion } from "@/lib/api/stationPage";
+import { getStationApiBase, isResortInactive, loadStationPageSources, resolveResortRegion } from "@/lib/api/stationPage";
 import { StationWidgetsConfig } from "@/types/station";
 import type { SkiPassSeason } from "@/types/skiPass";
 import { regionHref } from "@/lib/regions";
@@ -29,7 +29,7 @@ type Resort = {
   is_active?: boolean;
   resort_is_active?: boolean;
   active?: boolean;
-  region?: { id?: string; name?: string; country_code?: string };
+  region?: { id?: string; name?: string; slug?: string; country_code?: string };
   region_id?: string | null;
   region_name?: string | null;
   region_label?: string | null;
@@ -1575,10 +1575,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // 1) L'endpoint individuel renvoie directement l'objet station. Seul son
   // véritable statut 404 devient une page introuvable ; toute autre erreur
   // amont reste une erreur SSR.
-  const stationResponse = await fetch(
-    `${getStationApiBase()}/api/stations/${encodeURIComponent(slug)}`,
-    { headers: { accept: "application/json" }, cache: "no-store" },
-  );
+  // Le détail station fournit les données métier (dont `ski_pass` et la
+  // région). Seule la configuration des widgets reste sur un second endpoint ;
+  // les deux requêtes indépendantes démarrent au même moment.
+  const { stationResponse, widgets } = await loadStationPageSources(slug, {
+    apiBase: getStationApiBase(),
+    loadWidgets: fetchStationWidgetsConfig,
+  });
   if (stationResponse.status === 404) {
     return { notFound: true };
   }
@@ -1601,31 +1604,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     return { notFound: true };
   }
 
-  // Selon la version du backend, la région est imbriquée, renvoyée dans
-  // `region_name`, ou seulement référencée par `region_id`. On normalise ces
-  // trois contrats avant le rendu afin de toujours afficher le vrai nom.
-  let resort = resolveResortRegion(loadedResort) as Resort;
-  if (!resort.region?.name && resort.region_id) {
-    try {
-      const response = await fetch(`${getStationApiBase()}/api/regions`, {
-        headers: { accept: "application/json" },
-        cache: "no-store",
-      });
-      if (response.ok) {
-        const payload = await response.json();
-        const regions = Array.isArray(payload) ? payload : payload?.items || payload?.data || [];
-        resort = resolveResortRegion(resort, regions) as Resort;
-      }
-    } catch (error) {
-      console.error("[stations/[slug]] region lookup failed", error instanceof Error ? error.message : "unknown_error");
-    }
-  }
+  // Le détail accepte déjà la région imbriquée et les champs plats historiques.
+  // Le backend peut donc ajouter `{ id, name, slug }` sans modifier le contrat.
+  const resort = resolveResortRegion(loadedResort) as Resort;
 
   // 2) Widgets config
-  let cfg: StationWidgetsConfig | null = null;
-  try {
-    cfg = await fetchStationWidgetsConfig(slug);
-  } catch (e: any) {
+  let cfg: StationWidgetsConfig | null = widgets.config;
+  if (widgets.error) {
+    const e: any = widgets.error;
     if (e?.status === 404) {
       console.info(`[stations/[slug]] widgets not configured for ${slug}`);
     } else {
