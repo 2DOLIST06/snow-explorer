@@ -19,3 +19,11 @@ test("the ski-pass JSON UI offers data and structure exports", () => {
   assert.match(component, /skiPassExport\(stationSlug, season\)/);
   assert.match(component, /SKI_PASS_TEMPLATE/);
 });
+
+test("the ski-pass JSON UI can load a local JSON file before preview", () => {
+  assert.match(component, /type="file"/);
+  assert.match(component, /accept="application\/json,.json"/);
+  assert.match(component, /await file\.text\(\)/);
+  assert.match(component, /JSON\.parse\(content\)/);
+  assert.match(component, /Choisir un fichier JSON/);
+});

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
+import { downloadJson, skiPassExport, SKI_PASS_TEMPLATE } from "@/lib/skiPassJsonExport";
 import type { SkiPassImportResult, SkiPassSeason } from "@/types/skiPass";
 
 type Entry = string | { path?: string; message?: string; error?: string };
@@ -22,13 +23,31 @@ export function collectImportedPriceNotes(value: unknown): string[] {
   return notes;
 }
 
-export default function ForfaitsJsonImport({ stationSlug, onImported }: Props) {
+export default function ForfaitsJsonImport({ stationSlug, season, onImported }: Props) {
   const [json, setJson] = useState("");
+  const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState("");
   const [previewNotes, setPreviewNotes] = useState<string[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const resetValidation = () => { setPreview(null); setPreviewNotes([]); setErrors([]); setResult(""); };
+  const loadFile = async (file?: File) => {
+    if (!file) return;
+    setBusy(true); resetValidation();
+    try {
+      const content = await file.text();
+      JSON.parse(content);
+      setJson(content); setFileName(file.name);
+    } catch (error) {
+      setFileName("");
+      setErrors([`Fichier JSON invalide : ${error instanceof Error ? error.message : "lecture impossible"}`]);
+    } finally {
+      setBusy(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
   const request = async (action: "preview" | "import") => {
     setBusy(true); setErrors([]); setResult("");
     try {
@@ -58,8 +77,17 @@ export default function ForfaitsJsonImport({ stationSlug, onImported }: Props) {
     void request("import");
   };
   return <div className="forfaits-json-import">
-    <h3>Importer une saison de forfaits</h3><p>Collez le document JSON complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"note": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Le champ <code>label</code> des tarifs dynamiques reste inchangé. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
-    <label htmlFor="forfaits-json">JSON des tarifs</label><textarea id="forfaits-json" value={json} onChange={(event) => { setJson(event.target.value); setPreview(null); setPreviewNotes([]); setErrors([]); setResult(""); }} rows={12} spellCheck={false} placeholder={'{\n  "station": "…",\n  "season": "2026-2027",\n  "periods": []\n}'} />
+    <h3>Importer une saison de forfaits</h3><p>Importez un fichier JSON ou collez le document complet, puis vérifiez-le avant de lancer manuellement l’import. Ajoutez <code>"note": "Votre note"</code> sur un tarif pour afficher une étoile rouge et sa note sous la grille. Le champ <code>label</code> des tarifs dynamiques reste inchangé. Plusieurs textes différents génèrent *, **, puis *** dans leur ordre d’apparition.</p>
+    <div className="forfaits-json-export-actions">
+      <button type="button" className="btn btn--secondary" disabled={!season} onClick={() => season && downloadJson(skiPassExport(stationSlug, season), `forfaits-${stationSlug}-${season.season}.json`)}>Exporter le JSON</button>
+      <button type="button" className="btn btn--secondary" onClick={() => downloadJson(SKI_PASS_TEMPLATE, "modele-forfaits.json")}>Exporter la structure vide</button>
+    </div>
+    <div className="forfaits-json-file">
+      <input ref={fileInput} id="forfaits-json-file" type="file" accept="application/json,.json" disabled={busy} onChange={event => void loadFile(event.target.files?.[0])} />
+      <label htmlFor="forfaits-json-file" className="btn btn--secondary" aria-disabled={busy}>{busy ? "Lecture en cours…" : "Choisir un fichier JSON"}</label>
+      <span aria-live="polite">{fileName ? `Fichier chargé : ${fileName}` : "Aucun fichier sélectionné"}</span>
+    </div>
+    <label htmlFor="forfaits-json">JSON des tarifs</label><textarea id="forfaits-json" value={json} onChange={(event) => { setJson(event.target.value); setFileName(""); resetValidation(); }} rows={12} spellCheck={false} placeholder={'{\n  "station": "…",\n  "season": "2026-2027",\n  "periods": []\n}'} />
     <div className="forfaits-json-actions"><button type="button" className="btn btn--secondary" disabled={busy || !json.trim()} onClick={() => void request("preview")}>{busy ? "Vérification…" : "Prévisualiser"}</button>{preview?.valid === true && <button type="button" className="btn btn--primary" disabled={busy} onClick={importData}>Importer</button>}</div>
     {preview && <div className={`forfaits-preview ${preview.valid ? "is-valid" : "is-invalid"}`} aria-live="polite"><h4>{preview.valid ? "JSON valide" : "JSON à corriger"}</h4><dl><div><dt>Station</dt><dd>{label(preview.station)}</dd></div><div><dt>Saison</dt><dd>{label(preview.season)}</dd></div><div><dt>Périodes</dt><dd>{preview.periods_count ?? 0}</dd></div><div><dt>Forfaits</dt><dd>{preview.passes_count ?? preview.products_count ?? 0}</dd></div><div><dt>Tarifs</dt><dd>{preview.prices_count ?? preview.tariffs_count ?? 0}</dd></div><div><dt>Notes étoilées</dt><dd>{previewNotes.length}</dd></div></dl>{previewNotes.length > 0 && <div className="forfaits-preview__notes"><strong>Notes détectées dans le JSON</strong><ul>{previewNotes.map((note, index) => <li key={note}><span className="forfait-note-marker" aria-hidden="true">{"*".repeat(index + 1)}</span> {note}</li>)}</ul></div>}{(preview.replaces_existing_season || preview.season_exists) && <p><strong>Attention :</strong> l’import remplacera la saison existante après confirmation.</p>}</div>}
     {errors.length > 0 && <div className="forfaits-import-errors" role="alert"><strong>Erreurs</strong><ul>{errors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}</ul></div>}{result && <p className="forfaits-import-result" role="status">{result}</p>}
