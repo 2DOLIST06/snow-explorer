@@ -10,10 +10,11 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const showHeader = !router.pathname.startsWith("/admin") && !router.pathname.startsWith("/api");
   const showFooter = !router.pathname.startsWith("/api");
+  const stationDirectory = pageProps.stationDirectory ?? pageProps.initialStations;
 
   return (
     <>
-      {showHeader && <ProHeader />}
+      {showHeader && <ProHeader initialStations={stationDirectory} />}
       <AdminAuthProvider>{router.pathname.startsWith("/admin") ? <AdminRoute>{router.pathname !== "/admin/login" && <AdminBar />}<Component {...pageProps} /></AdminRoute> : <Component {...pageProps} />}</AdminAuthProvider>
       {showFooter && <Footer />}
     </>

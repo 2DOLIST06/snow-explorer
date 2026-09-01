@@ -1,40 +1,23 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { regionHref } from "@/lib/regions";
-import { fetchActiveResortsServer, getValidActiveResorts, parseResortsPayload } from "@/lib/api/resorts";
+import { fetchActiveResortsServer } from "@/lib/api/resorts";
 
-type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string } };
+type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string }; department?: { name?: string } };
 
 type Props = { initialStations: Resort[] };
 
 const StationsList: NextPage<Props> = ({ initialStations }) => {
   const [q, setQ] = useState("");
-  const [data, setData] = useState<Resort[]>(initialStations);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancel = false;
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const query = q.trim();
-        const url = query.length ? `/api/ski/resorts/?q=${encodeURIComponent(query)}` : `/api/ski/resorts/`;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error("fetch_failed");
-        const j: Resort[] = await r.json();
-        const onlyActive = getValidActiveResorts(parseResortsPayload(j)) as Resort[];
-        if (!cancel) setData(onlyActive);
-      } catch {
-        if (!cancel && q.trim()) setData([]);
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    }, 200);
-    return () => { cancel = true; clearTimeout(t); };
-  }, [q]);
+  const data = useMemo(() => {
+    const needle = q.trim().toLocaleLowerCase("fr");
+    return needle
+      ? initialStations.filter((station) => `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle))
+      : initialStations;
+  }, [initialStations, q]);
 
   const regionsCount = useMemo(() => new Set(data.map((r) => r.region?.name).filter(Boolean)).size, [data]);
 
@@ -66,8 +49,6 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
         <button type="button" className="btn btn--secondary"><SlidersHorizontal size={18} /> Filtres</button>
       </section>
 
-      {loading && <div className="station-list-skeleton"><Loader2 size={18} /> Chargement des stations…</div>}
-
       <section className="station-results-grid" aria-label="Résultats stations">
         {data.map((r) => (
           <article key={r.id} className="station-result-card">
@@ -81,14 +62,15 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
         ))}
       </section>
 
-      {!loading && data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
+      {data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
       </main>
     </>
   );
 };
 
-export const getServerSideProps: GetServerSideProps<Props> = async () => ({
-  props: { initialStations: await fetchActiveResortsServer() },
-});
+export const getServerSideProps: GetServerSideProps<Props> = async () => {
+  const initialStations = await fetchActiveResortsServer();
+  return { props: { initialStations } };
+};
 
 export default StationsList;
