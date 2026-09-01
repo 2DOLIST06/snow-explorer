@@ -10,6 +10,7 @@ export type Resort = {
     country_code?: string;
     updated_at?: string | null;
   };
+  department?: { id?: string; name?: string; slug?: string };
   logo_url?: string | null;
   logoUrl?: string | null;
   created_at?: string | null;

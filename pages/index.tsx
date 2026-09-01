@@ -6,7 +6,6 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
-  getResortsApiUrl,
   getLatestAddedResorts,
   getSafeApiUrlForLogs,
   getServerResortsApiUrls,
@@ -16,7 +15,8 @@ import {
 } from "@/lib/api/resorts";
 
 type HomeProps = {
-  initialResorts: Resort[];
+  featuredResorts: Resort[];
+  stationDirectory: Resort[];
 };
 
 const websiteStructuredData = {
@@ -35,14 +35,11 @@ const organizationStructuredData = {
   logo: "https://www.snow-explorer.com/logo.png",
 };
 
-const Home: NextPage<HomeProps> = ({ initialResorts }) => {
+const Home: NextPage<HomeProps> = ({ featuredResorts, stationDirectory }) => {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<Resort[]>([]);
-  const [allResorts, setAllResorts] = useState<Resort[]>(initialResorts);
-  const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<number>(-1);
 
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -57,83 +54,12 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
     [],
   );
 
-  const fetchUrl = useMemo(() => {
-    return getResortsApiUrl({ query });
-  }, [query]);
-
-  useEffect(() => {
-    let cancel = false;
-
-    const timeout = setTimeout(async () => {
-      setLoading(true);
-
-      try {
-        const response = await fetch(fetchUrl);
-
-        if (!response.ok) {
-          throw new Error("Impossible de récupérer les stations");
-        }
-
-        const activeOnly = getValidActiveResorts(
-          parseResortsPayload(await response.json()),
-        );
-
-        if (!cancel) {
-          setItems(activeOnly);
-        }
-      } catch (error) {
-        console.error("Échec de la recherche de stations:", error);
-        if (!cancel) {
-          setItems([]);
-        }
-      } finally {
-        if (!cancel) {
-          setLoading(false);
-        }
-      }
-    }, 250);
-
-    return () => {
-      cancel = true;
-      clearTimeout(timeout);
-    };
-  }, [fetchUrl]);
-
-  useEffect(() => {
-    let cancel = false;
-
-    async function loadAllResorts() {
-      try {
-        const response = await fetch(getResortsApiUrl());
-
-        if (!response.ok) {
-          throw new Error("Impossible de récupérer les stations");
-        }
-
-        const activeOnly = getValidActiveResorts(
-          parseResortsPayload(await response.json()),
-        );
-
-        if (!cancel) {
-          setAllResorts(activeOnly);
-        }
-      } catch (error) {
-        console.error("Échec du rafraîchissement des stations:", error);
-      }
-    }
-
-    loadAllResorts();
-
-    return () => {
-      cancel = true;
-    };
-  }, []);
-
-  const featuredResorts = useMemo(() => {
-    const source = allResorts.length > 0 ? allResorts : items;
-
-    return getLatestAddedResorts(source);
-  }, [allResorts, items]);
+  const items = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("fr");
+    return needle
+      ? stationDirectory.filter((resort) => `${resort.name} ${resort.region?.name || ""} ${resort.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle))
+      : stationDirectory;
+  }, [query, stationDirectory]);
 
   useEffect(() => {
     function onDocumentClick(event: MouseEvent) {
@@ -396,18 +322,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
                     boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
                   }}
                 >
-                  {loading && (
-                    <div
-                      style={{
-                        padding: 12,
-                        color: "#666666",
-                      }}
-                    >
-                      Chargement…
-                    </div>
-                  )}
-
-                  {!loading && items.length === 0 && (
+                  {items.length === 0 && (
                     <div
                       style={{
                         padding: 12,
@@ -418,8 +333,7 @@ const Home: NextPage<HomeProps> = ({ initialResorts }) => {
                     </div>
                   )}
 
-                  {!loading &&
-                    items.map((resort, index) => (
+                  {items.map((resort, index) => (
                       <div
                         key={resort.id}
                         role="option"
@@ -1062,12 +976,12 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
 
       const resorts = parseResortsPayload(await response.json());
       const activeResorts = getValidActiveResorts(resorts);
-      const initialResorts = getLatestAddedResorts(activeResorts);
+      const featuredResorts = getLatestAddedResorts(activeResorts);
       console.info(
-        `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${initialResorts.length}`,
+        `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${featuredResorts.length}`,
       );
 
-      return { props: { initialResorts }, revalidate: 3600 };
+      return { props: { featuredResorts, stationDirectory: activeResorts }, revalidate: 3600 };
     }
 
     throw new Error(`All configured resort API origins failed:\n${failures.join("\n")}`);

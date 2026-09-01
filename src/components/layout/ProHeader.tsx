@@ -14,6 +14,28 @@ type Resort = {
   department?: { name?: string };
 };
 
+type Props = { initialStations?: Resort[] };
+
+let fallbackStationsPromise: Promise<Resort[]> | null = null;
+
+function fetchFallbackStations(): Promise<Resort[]> {
+  if (!fallbackStationsPromise) {
+    fallbackStationsPromise = fetch("/api/ski/resorts/")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("load_failed");
+        const data = await response.json();
+        return Array.isArray(data)
+          ? data.filter((station: Resort) => station?.is_active !== false && station?.is_active !== null)
+          : [];
+      })
+      .catch((error) => {
+        fallbackStationsPromise = null;
+        throw error;
+      });
+  }
+  return fallbackStationsPromise;
+}
+
 const navItems = [
   { label: "Stations", href: "/stations", kind: "stations" },
   { label: "Météo", href: "/meteo" },
@@ -22,18 +44,17 @@ const navItems = [
   { label: "Contact", href: "/contact" },
 ];
 
-export default function ProHeader() {
+export default function ProHeader({ initialStations }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Resort[]>([]);
-  const [stations, setStations] = useState<Resort[]>([]);
+  const [stations, setStations] = useState<Resort[]>(() => initialStations || []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [stationsFilter, setStationsFilter] = useState("");
   const [cursor, setCursor] = useState(-1);
-  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(!initialStations);
   const [scrolled, setScrolled] = useState(false);
 
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -43,38 +64,25 @@ export default function ProHeader() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingSearch(true);
-    const timer = setTimeout(async () => {
-      try {
-        const url = query.trim() ? `/api/ski/resorts/?q=${encodeURIComponent(query.trim())}` : "/api/ski/resorts/";
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("search_failed");
-        const data = await res.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false && x?.is_active !== null) : [];
-        if (!cancelled) setResults(activeOnly.slice(0, 8));
-      } catch {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setLoadingSearch(false);
-      }
-    }, 220);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [query]);
-
-  useEffect(() => {
-    let cancelled = false;
+    if (initialStations) {
+      setStations(initialStations);
+      setLoadingSearch(false);
+      return () => { cancelled = true; };
+    }
+    if (stations.length > 0) {
+      setLoadingSearch(false);
+      return () => { cancelled = true; };
+    }
     async function loadStations() {
       try {
-        const res = await fetch("/api/ski/resorts/");
-        if (!res.ok) throw new Error("load_failed");
-        const data = await res.json();
-        const activeOnly = Array.isArray(data) ? data.filter((x: Resort) => x?.is_active !== false && x?.is_active !== null) : [];
-        if (!cancelled) setStations(activeOnly);
+        const data = await fetchFallbackStations();
+        if (!cancelled) setStations(data);
       } catch { if (!cancelled) setStations([]); }
+      finally { if (!cancelled) setLoadingSearch(false); }
     }
     loadStations();
     return () => { cancelled = true; };
-  }, []);
+  }, [initialStations, stations.length]);
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 12); }
@@ -113,9 +121,11 @@ export default function ProHeader() {
 
   const filteredResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return results;
-    return results.filter((station) => `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle));
-  }, [query, results]);
+    const matches = needle
+      ? stations.filter((station) => `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle))
+      : stations;
+    return matches.slice(0, 8);
+  }, [query, stations]);
 
   const stationsByLetter = useMemo(() => {
     const needle = stationsFilter.trim().toLowerCase();
