@@ -5,50 +5,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, Map, MapPin, Search } from "lucide-react";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
 import { getOfficialMapPresentation } from "@/lib/officialMap";
+import type { Resort } from "@/lib/api/resorts";
+import { getDirectoryPistes, getPistes, type PublicPisteMap } from "@/lib/publicPisteMap";
 
-type Resort = {
-  id?: string;
-  name: string;
-  slug: string;
-  region?: { name?: string };
-  department?: { name?: string };
-};
-
-type Pistes = {
-  enabled?: boolean;
-  smallMapUrl?: string | null;
-  largeMapUrl?: string | null;
-  officialMapUrl?: string | null;
-  caption?: string | null;
-};
-
-type SelectedResort = Resort & { pistes: Pistes };
 type Props = { initialStations: Resort[] };
-
-function safeMapUrl(value: unknown): string | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-  try {
-    const url = new URL(value.trim());
-    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-export function getPistes(payload: any): Pistes {
-  const pistes = payload?.pistes || payload?.widgets?.pistes || {};
-  return {
-    enabled: pistes.enabled !== false,
-    smallMapUrl: safeMapUrl(pistes.smallMapUrl || pistes.small_map_url),
-    largeMapUrl: safeMapUrl(pistes.largeMapUrl || pistes.large_map_url),
-    officialMapUrl: safeMapUrl(pistes.officialMapUrl || pistes.official_map_url),
-    caption: typeof pistes.caption === "string" ? pistes.caption : null,
-  };
-}
 
 const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<SelectedResort | null>(null);
+  const [selected, setSelected] = useState<Resort | null>(null);
+  const [legacyPistes, setLegacyPistes] = useState<PublicPisteMap | null>(null);
   const [loading, setLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [mobileSelection, setMobileSelection] = useState<Resort | null>(null);
@@ -63,8 +28,8 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
 
   async function selectStation(station: Resort) {
     setMapOpen(false);
-    setLoading(true);
-    setSelected(null);
+    setSelected(station);
+    setLegacyPistes(null);
     setMobileSelection(station);
     setMobilePickerOpen(false);
     if (window.matchMedia("(max-width: 640px)").matches) {
@@ -73,12 +38,18 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
         contentRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       });
     }
+    const directoryPistes = getDirectoryPistes(station);
+    if (directoryPistes) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const response = await fetch(`/api/ski/stations/${encodeURIComponent(station.slug)}-widgets`);
       if (!response.ok) throw new Error("widgets_fetch_failed");
-      setSelected({ ...station, pistes: getPistes(await response.json()) });
+      setLegacyPistes(getPistes(await response.json()));
     } catch {
-      setSelected({ ...station, pistes: {} });
+      setLegacyPistes({});
     } finally {
       setLoading(false);
     }
@@ -92,8 +63,9 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
     });
   }
 
-  const mapUrl = selected && (selected.pistes.largeMapUrl || selected.pistes.smallMapUrl);
-  const officialMapUrl = selected?.pistes.officialMapUrl;
+  const pistes = selected ? (getDirectoryPistes(selected) || legacyPistes) : null;
+  const mapUrl = pistes && (pistes.largeMapUrl || pistes.smallMapUrl);
+  const officialMapUrl = pistes?.officialMapUrl;
   const officialMap = getOfficialMapPresentation(officialMapUrl);
 
   useEffect(() => {
@@ -139,13 +111,13 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
           <section ref={contentRef} className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Map size={30} /></span><p className="eyebrow">Le domaine en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour afficher son plan des pistes.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Plan du domaine</p><h2>Plan des pistes de {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>
-              {mapUrl ? <figure className="pistes-map"><button type="button" onClick={() => setMapOpen(true)} aria-label={`Agrandir le plan des pistes de ${selected.name}`}><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} /></button>{selected.pistes.caption && <figcaption>{selected.pistes.caption}</figcaption>}</figure> : officialMap ? <div className="pistes-official-link"><Map size={38} /><strong>Plan officiel de {selected.name}</strong><p>Le plan est proposé sur le site officiel de la station.</p><button type="button" className="btn btn--primary" onClick={() => setMapOpen(true)}>Ouvrir le plan</button></div> : <div className="notice notice--warning"><strong>Plan indisponible</strong><span>Aucun plan des pistes n’est actuellement renseigné pour {selected.name}.</span></div>}
+            {selected && !loading && <div className="passes-result"><header><div><p className="eyebrow">Plan du domaine</p><h2>Plan des pistes de {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>
+              {mapUrl ? <figure className="pistes-map"><button type="button" onClick={() => setMapOpen(true)} aria-label={`Agrandir le plan des pistes de ${selected.name}`}><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} /></button>{pistes?.caption && <figcaption>{pistes.caption}</figcaption>}</figure> : officialMap ? <div className="pistes-official-link"><Map size={38} /><strong>Plan officiel de {selected.name}</strong><p>Le plan est proposé sur le site officiel de la station.</p><button type="button" className="btn btn--primary" onClick={() => setMapOpen(true)}>Ouvrir le plan</button></div> : <div className="notice notice--warning"><strong>Plan indisponible</strong><span>Aucun plan des pistes n’est actuellement renseigné pour {selected.name}.</span></div>}
             </div>}
           </section>
         </section>
 
-        {mapOpen && selected && (mapUrl || officialMap) && <div className="pistes-modal-backdrop" onClick={() => setMapOpen(false)} role="presentation"><div className={mapUrl ? "pistes-modal pistes-modal--image" : "pistes-modal pistes-modal--official"} role="dialog" aria-modal="true" aria-label={`Plan des pistes de ${selected.name}`} onClick={(event) => event.stopPropagation()}><button type="button" className="pistes-modal__close" onClick={() => setMapOpen(false)} aria-label="Fermer">×</button>{mapUrl ? <><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} />{selected.pistes.caption && <p>{selected.pistes.caption}</p>}</> : officialMap ? <iframe src={officialMap.embedUrl} title={`Plan des pistes officiel de ${selected.name}`} referrerPolicy="strict-origin-when-cross-origin" allow={officialMap.provider === "calameo" ? "fullscreen" : undefined} allowFullScreen={officialMap.provider === "calameo"} /> : null}</div></div>}
+        {mapOpen && selected && (mapUrl || officialMap) && <div className="pistes-modal-backdrop" onClick={() => setMapOpen(false)} role="presentation"><div className={mapUrl ? "pistes-modal pistes-modal--image" : "pistes-modal pistes-modal--official"} role="dialog" aria-modal="true" aria-label={`Plan des pistes de ${selected.name}`} onClick={(event) => event.stopPropagation()}><button type="button" className="pistes-modal__close" onClick={() => setMapOpen(false)} aria-label="Fermer">×</button>{mapUrl ? <><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} />{pistes?.caption && <p>{pistes.caption}</p>}</> : officialMap ? <iframe src={officialMap.embedUrl} title={`Plan des pistes officiel de ${selected.name}`} referrerPolicy="strict-origin-when-cross-origin" allow={officialMap.provider === "calameo" ? "fullscreen" : undefined} allowFullScreen={officialMap.provider === "calameo"} /> : null}</div></div>}
       </main>
     </>
   );
