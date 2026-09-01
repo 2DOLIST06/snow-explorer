@@ -1,10 +1,23 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
 
 const page = fs.readFileSync("pages/plan-des-pistes.tsx", "utf8");
 const projection = fs.readFileSync("src/lib/publicPisteMap.ts", "utf8");
 const header = fs.readFileSync("src/components/layout/ProHeader.tsx", "utf8");
+
+function loadProjection() {
+  const javascript = ts.transpileModule(projection, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  const module = { exports: {} };
+  vm.runInNewContext(`(function (module, exports) { ${javascript}\n})(module, module.exports);`, { module, URL });
+  return module.exports;
+}
+
+const { getDirectoryPistes, getPistes } = loadProjection();
 
 test("the main navigation links to the piste map directory", () => {
   assert.match(header, /label: "Plan des pistes", href: "\/plan-des-pistes"/);
@@ -39,6 +52,37 @@ test("all current and historical piste map fields remain normalised", () => {
     "pistes_official_map_url", "caption", "pistes_map_caption",
   ]) assert.match(projection, new RegExp(field));
   assert.match(projection, /source\.pistes \|\| source\.widgets\?\.pistes/);
+});
+
+test("only a usable directory map suppresses the widgets fallback", () => {
+  const projected = getDirectoryPistes({ pistes_large_map_url: "https://maps.example/projected.jpg" });
+  assert.equal(projected.largeMapUrl, "https://maps.example/projected.jpg");
+
+  assert.equal(getDirectoryPistes({
+    pistes_small_map_url: null,
+    pistes_large_map_url: null,
+    pistes_map_url: null,
+    pistes_official_map_url: null,
+    pistes_map_caption: null,
+  }), null);
+  assert.equal(getDirectoryPistes({ name: "Legacy station" }), null);
+  assert.equal(getDirectoryPistes({ name: "No map anywhere" }), null);
+
+  const official = getDirectoryPistes({ officialMapUrl: "https://maps.example/official.pdf" });
+  assert.equal(official.officialMapUrl, "https://maps.example/official.pdf");
+
+  const historical = getDirectoryPistes({
+    pistes: { small_map_url: "https://maps.example/small.jpg", large_map_url: "https://maps.example/large.jpg" },
+  });
+  assert.equal(historical.smallMapUrl, "https://maps.example/small.jpg");
+  assert.equal(historical.largeMapUrl, "https://maps.example/large.jpg");
+});
+
+test("a null directory projection still permits a legacy widgets map", () => {
+  const station = { pistes_small_map_url: null, pistes_large_map_url: null, pistes_official_map_url: null };
+  assert.equal(getDirectoryPistes(station), null);
+  const widgets = getPistes({ widgets: { pistes: { largeMapUrl: "https://maps.example/legacy.jpg" } } });
+  assert.equal(widgets.largeMapUrl, "https://maps.example/legacy.jpg");
 });
 
 test("selection stores only a station reference plus legacy fallback data", () => {
