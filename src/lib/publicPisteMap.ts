@@ -6,19 +6,6 @@ export type PublicPisteMap = {
   caption?: string | null;
 };
 
-const NESTED_KEYS = ["enabled", "smallMapUrl", "small_map_url", "largeMapUrl", "large_map_url", "officialMapUrl", "official_map_url", "caption"];
-const RESORT_KEYS = [
-  "pistes_small_map_url", "piste_small_map_url", "smallMapUrl", "small_map_url",
-  "pistes_large_map_url", "piste_large_map_url", "largeMapUrl", "large_map_url",
-  "pistes_map_url", "piste_map_url",
-  "pistes_official_map_url", "piste_official_map_url", "officialMapUrl", "official_map_url",
-  "pistes_map_caption", "piste_map_caption", "pistes_caption", "caption",
-];
-
-function own(object: unknown, key: string): boolean {
-  return Boolean(object && typeof object === "object" && Object.prototype.hasOwnProperty.call(object, key));
-}
-
 function first(object: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
     if (object[key] !== undefined && object[key] !== null && object[key] !== "") return object[key];
@@ -62,12 +49,16 @@ export function getPistes(payload: unknown): PublicPisteMap {
   };
 }
 
-/** Null means the directory has no plan projection at all and requires the legacy endpoint. */
+/**
+ * Null means the directory has no usable plan and requires the legacy endpoint.
+ *
+ * The directory currently serialises projection columns even when they are null.
+ * Field presence therefore cannot prove that a station has been migrated (nor that
+ * it deliberately has no map). Once the API exposes an explicit migration marker,
+ * that marker can be handled here without treating nullable columns as one.
+ */
 export function getDirectoryPistes(resort: unknown): PublicPisteMap | null {
   if (!resort || typeof resort !== "object") return null;
-  const source = resort as Record<string, any>;
-  const nested = source.pistes || source.widgets?.pistes;
-  const hasNestedProjection = Boolean(nested && typeof nested === "object" && NESTED_KEYS.some((key) => own(nested, key)));
-  const hasFlatProjection = RESORT_KEYS.some((key) => own(source, key));
-  return hasNestedProjection || hasFlatProjection ? getPistes(source) : null;
+  const pistes = getPistes(resort);
+  return pistes.smallMapUrl || pistes.largeMapUrl || pistes.officialMapUrl ? pistes : null;
 }
