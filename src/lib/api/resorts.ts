@@ -13,12 +13,20 @@ export type Resort = {
   department?: { id?: string; name?: string; slug?: string };
   latitude?: number | null;
   longitude?: number | null;
+  pistes_small_map_url?: string | null;
+  pistes_large_map_url?: string | null;
+  piste_map_url?: string | null;
+  pistes_map_url?: string | null;
+  pistes_official_map_url?: string | null;
+  pistes_map_caption?: string | null;
+  pistes?: import("@/lib/publicPisteMap").PublicPisteMap;
   meteo?: {
     enabled?: boolean;
     iframeUrl?: string | null;
     iframe_url?: string | null;
   };
   widgets?: {
+    pistes?: import("@/lib/publicPisteMap").PublicPisteMap;
     meteo?: {
       enabled?: boolean;
       iframeUrl?: string | null;
