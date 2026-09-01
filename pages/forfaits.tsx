@@ -26,13 +26,12 @@ type AvailableResort = Resort & {
 };
 type Props = { initialStations: Resort[] };
 
-const emptyForfaits = (): StationWidgetsConfig["forfaits"] => ({ enabled: false, columns: [], items: [] });
-
 const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   const [query, setQuery] = useState("");
   const [stations] = useState<Resort[]>(initialStations);
   const [selected, setSelected] = useState<AvailableResort | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [mobileSelection, setMobileSelection] = useState<Resort | null>(null);
   const [mobilePickerOpen, setMobilePickerOpen] = useState(true);
   const pickerRef = useRef<HTMLElement>(null);
@@ -40,6 +39,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
 
   async function selectStation(station: Resort) {
     setLoading(true);
+    setLoadError(false);
     setSelected(null);
     setMobileSelection(station);
     setMobilePickerOpen(false);
@@ -51,23 +51,14 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
     }
     try {
       const encodedSlug = encodeURIComponent(station.slug);
-      const [widgetsResult, resortResult] = await Promise.allSettled([
-        fetch(`/api/ski/stations/${encodedSlug}-widgets`).then(async (response) => {
-          if (!response.ok) throw new Error("widgets_fetch_failed");
-          return response.json();
-        }),
-        fetch(`/api/ski/resorts/${encodedSlug}`).then(async (response) => {
-          if (!response.ok) throw new Error("resort_fetch_failed");
-          return response.json() as Promise<Resort>;
-        }),
-      ]);
-      const widgets = widgetsResult.status === "fulfilled" ? widgetsResult.value : null;
-      const loadedResort = resortResult.status === "fulfilled" ? resortResult.value : null;
-      const forfaits = normalizeLegacyStationForfaits(widgets?.forfaits || widgets?.widgets?.forfaits);
-      const normalizedForfaits = normalizeStationSkiPass(loadedResort?.ski_pass);
+      const response = await fetch(`/api/ski/stations/${encodedSlug}-ski-passes`);
+      if (!response.ok) throw new Error("ski_passes_fetch_failed");
+      const payload = await response.json();
+      const forfaits = normalizeLegacyStationForfaits(payload.legacy_forfaits);
+      const normalizedForfaits = normalizeStationSkiPass(payload.ski_pass);
       setSelected({ ...station, forfaits, ...(normalizedForfaits ? { normalizedForfaits } : {}) });
     } catch {
-      setSelected({ ...station, forfaits: emptyForfaits() });
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -124,6 +115,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
           <section ref={contentRef} className="passes-content" aria-live="polite">
             {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
+            {loadError && !loading && <div className="notice notice--warning" role="alert"><strong>Forfaits indisponibles</strong><span>Impossible de charger les tarifs de {mobileSelection?.name || "cette station"}. Réessayez en sélectionnant à nouveau la station.</span></div>}
             {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{visibility.any ? <><StationForfaitsBlock
               enabled={visibility.legacy}
               columns={selected.forfaits?.columns || []}

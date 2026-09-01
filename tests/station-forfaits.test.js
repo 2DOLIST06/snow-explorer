@@ -69,7 +69,23 @@ test("station detail and forfaits pages share the normalized ski-pass preparatio
   const forfaitsPage = fs.readFileSync("pages/forfaits.tsx", "utf8");
 
   assert.match(stationPage, /normalizeStationSkiPass\(loadedResort\.ski_pass\)/);
-  assert.match(forfaitsPage, /normalizeStationSkiPass\(loadedResort\?\.ski_pass\)/);
+  assert.match(forfaitsPage, /normalizeStationSkiPass\(payload\.ski_pass\)/);
   assert.match(forfaitsPage, /getSkiPassBlocksVisibility/);
   assert.doesNotMatch(forfaitsPage, /hasActiveForfaits/);
+});
+
+test("public forfait selection uses one aggregate request and never loads station detail directly", () => {
+  const page = fs.readFileSync("pages/forfaits.tsx", "utf8");
+  assert.match(page, /fetch\(`\/api\/ski\/stations\/\$\{encodedSlug\}-ski-passes`\)/);
+  assert.doesNotMatch(page, /fetch\(`\/api\/ski\/resorts\/\$\{encodedSlug\}`/);
+  assert.doesNotMatch(page, /fetch\(`\/api\/ski\/stations\/\$\{encodedSlug\}-widgets`/);
+  assert.doesNotMatch(page, /Promise\.allSettled/);
+});
+
+test("a failed aggregate request is rendered as an explicit error, not an empty complete result", () => {
+  const page = fs.readFileSync("pages/forfaits.tsx", "utf8");
+  assert.match(page, /if \(!response\.ok\) throw new Error\("ski_passes_fetch_failed"\)/);
+  assert.match(page, /setLoadError\(true\)/);
+  assert.match(page, /role="alert"/);
+  assert.doesNotMatch(page, /catch \{\s*setSelected/);
 });
