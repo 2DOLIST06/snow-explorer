@@ -30,7 +30,7 @@ export default function SkiWeatherWidget({ name, lat, lon, className }: Props) {
       setLoading(true); setErr(null);
       try {
         let usedLat = lat; let usedLon = lon;
-        if (!usedLat || !usedLon) {
+        if (usedLat == null || usedLon == null) {
           const g = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name)}`);
           const gdata = await g.json();
           if (gdata.length > 0) { usedLat = parseFloat(gdata[0].lat); usedLon = parseFloat(gdata[0].lon); }

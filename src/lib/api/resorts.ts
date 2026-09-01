@@ -11,6 +11,20 @@ export type Resort = {
     updated_at?: string | null;
   };
   department?: { id?: string; name?: string; slug?: string };
+  latitude?: number | null;
+  longitude?: number | null;
+  meteo?: {
+    enabled?: boolean;
+    iframeUrl?: string | null;
+    iframe_url?: string | null;
+  };
+  widgets?: {
+    meteo?: {
+      enabled?: boolean;
+      iframeUrl?: string | null;
+      iframe_url?: string | null;
+    };
+  };
   logo_url?: string | null;
   logoUrl?: string | null;
   created_at?: string | null;

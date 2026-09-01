@@ -4,19 +4,16 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin } from "lucide-react";
 import SkiWeatherWidget from "@/components/SkiWeatherWidget";
-import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 
-type Resort = { id?: string; name: string; slug: string; region?: { name?: string }; latitude?: number | null; longitude?: number | null };
 type StationWidgets = { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null }; widgets?: { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null } } };
 
 type Props = { initialStations: Resort[] };
 
 const MeteoPage: NextPage<Props> = ({ initialStations }) => {
   const [q, setQ] = useState("");
-  const [stations, setStations] = useState<Resort[]>(initialStations);
   const [selected, setSelected] = useState<Resort | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
-  const [loadingStations, setLoadingStations] = useState(false);
   const [loadingWidget, setLoadingWidget] = useState(false);
   const [mobilePickerOpen, setMobilePickerOpen] = useState(true);
   const pickerRef = useRef<HTMLElement>(null);
@@ -39,37 +36,21 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
     window.requestAnimationFrame(() => pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
-  useEffect(() => {
-    let cancel = false;
-    async function loadAllStations() {
-      setLoadingStations(true);
-      try {
-        const [adminRes, publicRes] = await Promise.all([fetch("/api/ski/stations").catch(() => null), fetch("/api/ski/resorts/").catch(() => null)]);
-        const adminPayload = adminRes?.ok ? await adminRes.json().catch(() => []) : [];
-        const publicPayload = publicRes?.ok ? await publicRes.json().catch(() => []) : [];
-        const adminData = Array.isArray(adminPayload) ? adminPayload : Array.isArray(adminPayload?.items) ? adminPayload.items : [];
-        const publicData = Array.isArray(publicPayload) ? publicPayload : Array.isArray(publicPayload?.items) ? publicPayload.items : [];
-        const bySlug = new Map<string, Resort>();
-        [...adminData, ...publicData].forEach((s: any) => {
-          if (!s?.slug || s.is_active === false || s.is_active === null || bySlug.has(s.slug)) return;
-          bySlug.set(s.slug, { id: s.id, slug: s.slug, name: s.name || s.slug, region: s.region, latitude: typeof s.latitude === "number" ? s.latitude : typeof s.lat === "number" ? s.lat : typeof s.location?.lat === "number" ? s.location.lat : null, longitude: typeof s.longitude === "number" ? s.longitude : typeof s.lon === "number" ? s.lon : typeof s.location?.lon === "number" ? s.location.lon : null });
-        });
-        if (!cancel) setStations(Array.from(bySlug.values()).sort((a, b) => a.name.localeCompare(b.name, "fr")));
-      } catch { /* keep the server-rendered directory if refresh fails */ }
-      finally { if (!cancel) setLoadingStations(false); }
-    }
-    loadAllStations();
-    return () => { cancel = true; };
-  }, []);
-
   const filteredStations = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return needle ? stations.filter((station) => `${station.name} ${station.region?.name || ""}`.toLowerCase().includes(needle)) : stations;
-  }, [q, stations]);
+    return needle ? initialStations.filter((station) => `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLowerCase().includes(needle)) : initialStations;
+  }, [q, initialStations]);
 
   useEffect(() => {
     async function loadWidget() {
       if (!selected?.slug) { setIframeUrl(null); return; }
+      const directoryMeteo = selected.meteo || selected.widgets?.meteo;
+      const directoryIframeUrl = directoryMeteo?.iframeUrl || directoryMeteo?.iframe_url || null;
+      if (directoryIframeUrl || directoryMeteo?.enabled === false) {
+        setIframeUrl(directoryIframeUrl);
+        setLoadingWidget(false);
+        return;
+      }
       setLoadingWidget(true);
       try {
         const r = await fetch(`/api/ski/stations/${encodeURIComponent(selected.slug)}-widgets`);
@@ -97,8 +78,7 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
           <div className="station-picker__controls">
             <div className="section-heading"><div><p className="eyebrow">Recherche</p><h2>Choisir une station</h2></div>{q && <span>{filteredStations.length} résultat(s)</span>}</div>
             <label className="field"><span>Station ou région</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex. Auron, Chamonix, Alpes…" /></label>
-            {loadingStations && stations.length === 0 && <div className="skeleton-panel"><div /><div /><div /></div>}
-            <div className="station-list" role="listbox">{filteredStations.map((station) => <div className={selected?.slug === station.slug ? "station-choice is-selected" : "station-choice"} key={station.id || station.slug}><button type="button" role="option" aria-selected={selected?.slug === station.slug} onClick={() => selectStation(station)}><strong>{station.name}</strong><span>{station.region?.name || "Station de ski"}</span></button></div>)}{q && !loadingStations && filteredStations.length === 0 && <div className="empty-state"><strong>Aucune station trouvée</strong><span>Essayez un nom plus court ou une région proche.</span></div>}</div>
+            <div className="station-list" role="listbox">{filteredStations.map((station) => <div className={selected?.slug === station.slug ? "station-choice is-selected" : "station-choice"} key={station.id || station.slug}><button type="button" role="option" aria-selected={selected?.slug === station.slug} onClick={() => selectStation(station)}><strong>{station.name}</strong><span>{station.region?.name || "Station de ski"}</span></button></div>)}{q && filteredStations.length === 0 && <div className="empty-state"><strong>Aucune station trouvée</strong><span>Essayez un nom plus court ou une région proche.</span></div>}</div>
           </div>
         </aside>
         <section ref={contentRef} className="weather-content">
