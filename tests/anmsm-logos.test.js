@@ -11,7 +11,7 @@ const normalizerSource = fs.readFileSync("src/lib/anmsmWorkspace.ts", "utf8");
 const compiledNormalizer = ts.transpileModule(normalizerSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const normalizerModule = new Module("anmsmWorkspace.test.js", module);
 normalizerModule._compile(compiledNormalizer, "anmsmWorkspace.test.js");
-const { EMPTY_ANMSM_STATS, normalizeAnmsmWorkspace, paginateAnmsmRows } = normalizerModule.exports;
+const { EMPTY_ANMSM_STATS, filterAnmsmRowsReadyToPublish, normalizeAnmsmWorkspace, paginateAnmsmRows } = normalizerModule.exports;
 
 test("the workspace is loaded first and retained when a refresh fails", () => {
   assert.match(api, /getAnmsmWorkspace[\s\S]*\/workspace/);
@@ -70,9 +70,26 @@ test("bulk publishing handles complete and partial success without navigation", 
 });
 
 test("published candidates are not selectable", () => {
-  assert.match(page, /candidate\?\.status === "ready"/);
-  assert.match(page, /candidate\?\.status === "published" \? "Déjà publié"/);
+  assert.match(normalizerSource, /row\.candidate_id !== null && row\.candidate_status === "pending"/);
+  assert.match(page, /row\.candidate_status === "approved" \? "Déjà publié"/);
   assert.match(page, /disabled=\{!selectable\}/);
+});
+
+test("all 32 pending candidates are ready before pagination even without preparation or source", () => {
+  const rows = Array.from({ length: 32 }, (_, index) => ({
+    external_station_id: String(index + 1), candidate_id: index + 1,
+    candidate_status: "pending", candidate_preview_url: `/candidate-${index + 1}.png`,
+    station_id: String(100 + index), station_name: `Station ${index + 1}`,
+    current_logo_url: null, warnings: [], preparation_required: false,
+  }));
+  const normalized = normalizeAnmsmWorkspace({ rows }).rows;
+  const ready = filterAnmsmRowsReadyToPublish(normalized);
+  assert.equal(ready.length, 32);
+  assert.equal(paginateAnmsmRows(ready, 1, 20).length, 20);
+  assert.equal(paginateAnmsmRows(ready, 2, 20).length, 12);
+  for (const field of ["candidate_id", "candidate_status", "candidate_preview_url", "station_id", "station_name", "current_logo_url", "warnings"]) {
+    assert.deepEqual(normalized.map(row => row[field]), rows.map(row => row[field]));
+  }
 });
 
 test("presigned previews are used verbatim and refreshed after expiry", () => {
