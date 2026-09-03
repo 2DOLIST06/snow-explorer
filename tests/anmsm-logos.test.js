@@ -66,14 +66,16 @@ test("mapping and candidate workflows share one screen with session page sizes",
   assert.match(page, /<StationMappings/); assert.match(page, /id="candidats"/); assert.doesNotMatch(page, /setSection/);
   for (const size of [20, 50, 100]) assert.match(page + mappings, new RegExp(`>${size}<|\\[20, 50, 100\\]`));
   assert.match(page + mappings, /value="all">Tous/); assert.match(page + mappings, /for \(let page = 2;/);
-  assert.match(mappings, /Sélectionner toutes les correspondances exactes/); assert.match(mappings, /Tout cocher dans tous les résultats/);
+  assert.match(mappings, /initializeItems/); assert.match(mappings, /Tout cocher dans tous les résultats/);
   assert.match(mappings, /Valider les correspondances et préparer les logos/);
 });
 
-test("mapping suggestions remain in table flow and bulk actions do not cover content", () => {
+test("only the best credible mapping suggestion remains in table flow", () => {
   const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
-  assert.match(mappings, /anmsm-suggestions-inline/);
-  assert.match(css, /anmsm-suggestions-inline\{position:static/);
+  assert.match(mappings, /bestSuggestion\(item\)/);
+  assert.match(mappings, /Aucune correspondance fiable trouvée/);
+  assert.match(mappings, /Choisir cette station/);
+  assert.match(css, /anmsm-best-suggestion\{position:static/);
   assert.match(css, /anmsm-bulk\{position:static/);
 });
 test("filters persist in the URL and pagination is server-driven", () => {
@@ -93,8 +95,10 @@ test("station mappings normalize the backend snake_case contract once", () => {
   for (const field of ["external_name", "external_station_id", "match_type", "station_id", "without_logo", "per_page"]) assert.match(api + types, new RegExp(field));
   for (const field of ["externalName", "externalStationId", "matchType", "stationId", "withoutLogo", "totalPages"]) assert.match(mappings, new RegExp(field));
   assert.match(mappings, /response\.pagination\.totalPages/);
-  assert.match(mappings, /suggestion\.matchType === "normalized_exact"/);
-  assert.match(mappings, /item\.suggestions\.map/);
+  assert.match(mappings, /suggestion\?\.matchType === "normalized_exact"/);
+  assert.match(api, /right\.score - left\.score/);
+  assert.match(api, /index === 0/);
+  assert.match(api, /suggestion\.score >= 70/);
   assert.doesNotMatch(mappings, /suggestion_type|suggested_resort|anmsm_station_name|anmsm_logo_url/);
 });
 

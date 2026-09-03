@@ -120,3 +120,5 @@
 .anmsm-anchors{display:flex;gap:10px;margin:18px 0 26px}.anmsm-anchors a{padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--brand);font-weight:850;text-decoration:none}
 .anmsm-candidates{margin-top:44px;padding-top:12px;border-top:2px solid var(--line)}.anmsm-progress{display:flex;justify-content:space-between;gap:12px;margin:12px 0;padding:12px 14px;border-radius:12px;background:#e0f2fe;color:#075985}
 .anmsm-mapping-tools select{min-height:40px;padding:7px;border:1px solid #94a3b8;border-radius:9px;background:#fff}
+.anmsm-mapping-summary{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.anmsm-mapping-summary strong{padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--brand)}
+.anmsm-best-suggestion{position:static;display:grid;gap:5px;align-items:start}.anmsm-best-suggestion .btn{width:max-content;margin-top:4px;padding:7px 9px}.anmsm-suggestion--exact{background:#dcfce7;color:#166534}.anmsm-no-suggestion{color:var(--muted);font-weight:700}
