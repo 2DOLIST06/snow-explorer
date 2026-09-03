@@ -1,5 +1,5 @@
 // src/pages/index.tsx
-import type { GetStaticProps, NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -871,14 +871,14 @@ const Home: NextPage<HomeProps> = ({ featuredResorts, stationDirectory }) => {
 
 export default Home;
 
-const BUILD_FETCH_ATTEMPTS = 4;
-const RETRYABLE_BUILD_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const SERVER_FETCH_ATTEMPTS = 4;
+const RETRYABLE_SERVER_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function wait(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-function sanitizeBuildError(error: unknown, url: string, safeUrl: string): Error {
+function sanitizeServerError(error: unknown, url: string, safeUrl: string): Error {
   const source = error instanceof Error ? error : new Error(String(error));
   const sanitized = new Error(source.message.split(url).join(safeUrl));
   sanitized.name = source.name;
@@ -886,41 +886,42 @@ function sanitizeBuildError(error: unknown, url: string, safeUrl: string): Error
   return sanitized;
 }
 
-async function fetchResortsDuringBuild(url: string): Promise<Response> {
+async function fetchFreshResorts(url: string): Promise<Response> {
   const safeUrl = getSafeApiUrlForLogs(url);
 
-  for (let attempt = 1; attempt <= BUILD_FETCH_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= SERVER_FETCH_ATTEMPTS; attempt += 1) {
     try {
       console.info(
-        `[homepage:getStaticProps] GET ${safeUrl} attempt=${attempt}/${BUILD_FETCH_ATTEMPTS}`,
+        `[homepage:getServerSideProps] GET ${safeUrl} attempt=${attempt}/${SERVER_FETCH_ATTEMPTS}`,
       );
       const response = await fetch(url, {
         headers: { accept: "application/json" },
+        cache: "no-store",
         signal: AbortSignal.timeout(15_000),
       });
       const contentType = response.headers.get("content-type") || "unknown";
       console.info(
-        `[homepage:getStaticProps] attempt=${attempt} status=${response.status} content-type=${contentType}`,
+        `[homepage:getServerSideProps] attempt=${attempt} status=${response.status} content-type=${contentType}`,
       );
 
       // A suspended hosting service is a permanent configuration failure, not a
-      // transient 503. Return immediately so getStaticProps can try the next
+      // transient 503. Return immediately so getServerSideProps can try the next
       // configured API origin instead of retrying the same suspended service.
       if (response.status === 503 && contentType.toLowerCase().includes("text/html")) {
         const body = await response.clone().text();
         if (/service\s+suspended/i.test(body)) {
           console.error(
-            `[homepage:getStaticProps] ${safeUrl} reports a suspended service; trying the next configured API origin`,
+            `[homepage:getServerSideProps] ${safeUrl} reports a suspended service; trying the next configured API origin`,
           );
           return response;
         }
       }
 
-      if (response.ok || !RETRYABLE_BUILD_STATUSES.has(response.status)) {
+      if (response.ok || !RETRYABLE_SERVER_STATUSES.has(response.status)) {
         return response;
       }
 
-      if (attempt === BUILD_FETCH_ATTEMPTS) {
+      if (attempt === SERVER_FETCH_ATTEMPTS) {
         return response;
       }
 
@@ -929,33 +930,33 @@ async function fetchResortsDuringBuild(url: string): Promise<Response> {
         ? Math.min(retryAfter * 1_000, 10_000)
         : 1_000 * 2 ** (attempt - 1);
       console.warn(
-        `[homepage:getStaticProps] transient HTTP ${response.status}; retrying in ${delayMs}ms`,
+        `[homepage:getServerSideProps] transient HTTP ${response.status}; retrying in ${delayMs}ms`,
       );
       await wait(delayMs);
     } catch (error) {
-      const sanitizedError = sanitizeBuildError(error, url, safeUrl);
+      const sanitizedError = sanitizeServerError(error, url, safeUrl);
       console.error(
-        `[homepage:getStaticProps] attempt=${attempt} request error:`,
+        `[homepage:getServerSideProps] attempt=${attempt} request error:`,
         sanitizedError,
       );
-      if (attempt === BUILD_FETCH_ATTEMPTS) {
+      if (attempt === SERVER_FETCH_ATTEMPTS) {
         throw sanitizedError;
       }
       await wait(1_000 * 2 ** (attempt - 1));
     }
   }
 
-  throw new Error("Unreachable build-time resort fetch state");
+  throw new Error("Unreachable server-side resort fetch state");
 }
 
-export const getStaticProps: GetStaticProps<HomeProps> = async () => {
+export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
   const urls = getServerResortsApiUrls();
   const failures: string[] = [];
 
   try {
     for (const url of urls) {
       const safeUrl = getSafeApiUrlForLogs(url);
-      const response = await fetchResortsDuringBuild(url);
+      const response = await fetchFreshResorts(url);
       const contentType = response.headers.get("content-type") || "unknown";
 
       if (!response.ok) {
@@ -964,13 +965,13 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
           `GET ${safeUrl} failed with HTTP ${response.status}` +
           (responseBody ? `; response=${responseBody}` : "");
         failures.push(failure);
-        console.error(`[homepage:getStaticProps] ${failure}`);
+        console.error(`[homepage:getServerSideProps] ${failure}`);
         continue;
       }
       if (!contentType.toLowerCase().includes("application/json")) {
         const failure = `GET ${safeUrl} returned an unexpected content-type: ${contentType}`;
         failures.push(failure);
-        console.error(`[homepage:getStaticProps] ${failure}`);
+        console.error(`[homepage:getServerSideProps] ${failure}`);
         continue;
       }
 
@@ -978,15 +979,15 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
       const activeResorts = getValidActiveResorts(resorts);
       const featuredResorts = getLatestAddedResorts(activeResorts);
       console.info(
-        `[homepage:getStaticProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${featuredResorts.length}`,
+        `[homepage:getServerSideProps] received=${resorts.length} valid-active=${activeResorts.length} rendered=${featuredResorts.length}`,
       );
 
-      return { props: { featuredResorts, stationDirectory: activeResorts }, revalidate: 3600 };
+      return { props: { featuredResorts, stationDirectory: activeResorts } };
     }
 
     throw new Error(`All configured resort API origins failed:\n${failures.join("\n")}`);
   } catch (error) {
-    console.error("[homepage:getStaticProps] Resort preload failed:", error);
+    console.error("[homepage:getServerSideProps] Resort preload failed:", error);
     throw error;
   }
 };

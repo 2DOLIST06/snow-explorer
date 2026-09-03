@@ -11,3 +11,9 @@ test("homepage featured station cards display the station logo instead of a cove
   assert.match(homepage, /alt=\{`Logo \$\{resort\.name\} - Snow Explorer`\}/);
   assert.doesNotMatch(homepage, /featuredResortsWithImage/);
 });
+
+test("homepage reloads station logos for every request instead of serving stale ISR data", () => {
+  assert.match(homepage, /export const getServerSideProps: GetServerSideProps<HomeProps>/);
+  assert.match(homepage, /cache: "no-store"/);
+  assert.doesNotMatch(homepage, /getStaticProps|revalidate:/);
+});
