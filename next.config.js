@@ -23,6 +23,7 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "2dolist-ski-images.s3.eu-west-3.amazonaws.com",
+        pathname: "/station-logos/**",
       },
       {
         protocol: "https",

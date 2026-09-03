@@ -12,7 +12,8 @@ test("the authenticated admin navigation exposes the ANMSM review page", () => {
   assert.match(fs.readFileSync("pages/_app.tsx", "utf8"), /<AdminRoute>/);
 });
 test("published and candidate logos are compared and use the real public frame", () => {
-  assert.match(page, /Logo publié/); assert.match(page, /Nouveau logo optimisé/);
+  assert.match(page, /Logo source ANMSM/); assert.match(page, /Nouveau logo optimisé/); assert.match(page, /Logo actuellement publié/);
+  assert.match(page, /src=\{item\.sourceUrl\}/); assert.match(page, /src=\{item\.optimizedUrl\}/); assert.match(page, /src=\{item\.currentLogoUrl\}/);
   assert.match(page, /StationLogoFrame preview="desktop"/); assert.match(page, /StationLogoFrame preview="mobile"/);
   assert.match(publicPage, /<StationLogoFrame src=\{resort\.logo_url\}/);
   assert.match(frame, /onError=\{\(\) => setFailed\(true\)\}/);
@@ -152,4 +153,25 @@ test("the ANMSM media host is allowed without removing existing image hosts", ()
   assert.match(config, /hostname: "anmsm\.media\.tourinsoft\.eu"/);
   assert.match(config, /pathname: "\/upload\/\*\*"/);
   assert.match(config, /hostname: "d38x6kuhd141c9\.cloudfront\.net"/);
+  assert.match(config, /hostname: "2dolist-ski-images\.s3\.eu-west-3\.amazonaws\.com",\s+pathname: "\/station-logos\/\*\*"/);
+});
+
+test("logo candidates normalize the complete snake-case API contract once", () => {
+  const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
+  assert.match(api, /normalizeLogoCandidate/);
+  for (const field of ["external_station_id", "source_url", "optimized_url", "source_width", "optimized_width", "visual_occupancy_width", "detected_at", "checked_at"]) {
+    assert.match(api + types, new RegExp(field));
+  }
+  for (const field of ["externalStationId", "sourceUrl", "optimizedUrl", "sourceWidth", "optimizedWidth", "visualOccupancyWidth", "detectedAt", "checkedAt"]) {
+    assert.match(page, new RegExp(field));
+  }
+  assert.doesNotMatch(page, /item\.(?:source_url|optimized_url|external_station_id|source_width|optimized_width|detected_at|checked_at)/);
+  assert.match(api, /Array\.isArray\(item\.warnings\)/);
+});
+
+test("real image failures remain identifiable and actionable", () => {
+  assert.match(page, /Image \$\{label\} indisponible/);
+  assert.match(page, /NODE_ENV === "development"/);
+  assert.match(page, /Ouvrir l’image/);
+  assert.match(page, /label: "source" \| "optimisée" \| "actuelle"/);
 });
