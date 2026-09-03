@@ -62,17 +62,25 @@ test("sync prevents duplicate POSTs, exposes progress, refreshes on success and 
   assert.match(page, /JSON\.stringify\(e\.payload/);
 });
 
-test("logo preparation runs sequential two-item batches and can resume its cursor", () => {
+test("logo preparation runs sequential one-item requests and can resume its cursor", () => {
   assert.match(api, /syncAnmsmLogos = \(cursor: string \| null\)/);
-  assert.match(api, /\{ cursor, batch_size: 2 \}/);
+  assert.match(api, /\{ cursor, batch_size: 1 \}/);
   assert.match(page, /while \(hasMore\)/);
   assert.match(page, /await syncAnmsmLogos\(cursor\)/);
   assert.match(page, /lastSuccessfulCursor\.current = response\.batch\.next_cursor/);
   assert.match(page, /hasMore = response\.batch\.has_more/);
   assert.match(page, /Préparation des logos : \$\{response\.batch\.processed\} sur \$\{response\.batch\.total\}/);
-  assert.match(page, /La préparation s’est arrêtée après \$\{processedCount\.current\} logos/);
+  assert.match(page, /La préparation s’est arrêtée sur une station/);
   assert.match(page, /Reprendre la préparation/);
   assert.match(page, /runSync\(true\)/);
+});
+
+test("the deployed recovery resumes after the 17 existing candidates", () => {
+  assert.match(page, /DEPLOYMENT_RESUME_CURSOR = "STATANMSM01730054"/);
+  assert.match(page, /DEPLOYMENT_PROCESSED_COUNT = 17/);
+  assert.match(page, /lastSuccessfulCursor = useRef<string \| null>\(DEPLOYMENT_RESUME_CURSOR\)/);
+  assert.match(page, /useState\("La préparation s’est arrêtée sur une station"\)/);
+  assert.match(page, /useState\(true\)/);
 });
 
 test("batch preparation retains per-logo errors and always resets loading", () => {

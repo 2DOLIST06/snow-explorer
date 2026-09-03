@@ -7,6 +7,10 @@ import { AnmsmApiError, bulkApproveAnmsmLogos, bulkIgnoreAnmsmLogos, bulkReproce
 import type { AnmsmBulkResult, AnmsmLogoAlert, AnmsmLogoCandidate, AnmsmLogoFilters, AnmsmMappingResult, AnmsmSyncFailure, AnmsmSyncResult, AnmsmSyncStats } from "@/types/anmsmLogo";
 
 let candidatePageSizePreference: 20 | 50 | 100 | "all" = 20;
+// Deployment checkpoint: the first 17 candidates already exist. Resuming from
+// this cursor starts with Valmeinier without recreating the previous matches.
+const DEPLOYMENT_RESUME_CURSOR = "STATANMSM01730054";
+const DEPLOYMENT_PROCESSED_COUNT = 17;
 
 const ALERTS: Record<string, { label: string; blocking: boolean }> = {
   extreme_horizontal_ratio: { label: "Logo très horizontal", blocking: false }, extreme_vertical_ratio: { label: "Logo très vertical", blocking: false },
@@ -45,8 +49,8 @@ export default function AnmsmLogosAdmin() {
   const router = useRouter(); const [data, setData] = useState({ items: [] as AnmsmLogoCandidate[], page: 1, perPage: 12, total: 0, pages: 1 });
   const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false); const [confirmAction, setConfirmAction] = useState<"approve" | "ignore" | "sync" | null>(null);
-  const [syncing, setSyncing] = useState(false); const syncInFlight = useRef(false); const lastSuccessfulCursor = useRef<string | null>(null); const [errorDetails, setErrorDetails] = useState("");
-  const [detail, setDetail] = useState<AnmsmLogoCandidate | null>(null); const [result, setResult] = useState<AnmsmBulkResult | null>(null); const [syncResult, setSyncResult] = useState<AnmsmSyncResult | null>(null); const [syncFailures, setSyncFailures] = useState<AnmsmSyncFailure[]>([]); const [candidatePageSize, setCandidatePageSize] = useState<20 | 50 | 100 | "all">(candidatePageSizePreference); const [preparationStage, setPreparationStage] = useState(""); const [preparationFailed, setPreparationFailed] = useState(false); const processedCount = useRef(0); const syncStats = useRef<AnmsmSyncStats>({}); const syncFailureList = useRef<AnmsmSyncFailure[]>([]);
+  const [syncing, setSyncing] = useState(false); const syncInFlight = useRef(false); const lastSuccessfulCursor = useRef<string | null>(DEPLOYMENT_RESUME_CURSOR); const [errorDetails, setErrorDetails] = useState("");
+  const [detail, setDetail] = useState<AnmsmLogoCandidate | null>(null); const [result, setResult] = useState<AnmsmBulkResult | null>(null); const [syncResult, setSyncResult] = useState<AnmsmSyncResult | null>(null); const [syncFailures, setSyncFailures] = useState<AnmsmSyncFailure[]>([]); const [candidatePageSize, setCandidatePageSize] = useState<20 | 50 | 100 | "all">(candidatePageSizePreference); const [preparationStage, setPreparationStage] = useState("La préparation s’est arrêtée sur une station"); const [preparationFailed, setPreparationFailed] = useState(true); const processedCount = useRef(DEPLOYMENT_PROCESSED_COUNT); const syncStats = useRef<AnmsmSyncStats>({}); const syncFailureList = useRef<AnmsmSyncFailure[]>([]);
   const filters = useMemo<AnmsmLogoFilters>(() => ({ search: String(router.query.search || ""), status: String(router.query.status || ""), category: String(router.query.category || ""), sort: String(router.query.sort || "detected_desc"), page: Math.max(1, Number(router.query.page) || 1), per_page: candidatePageSize === "all" ? 100 : candidatePageSize }), [candidatePageSize, router.query]);
   const load = useCallback(async () => { if (!router.isReady) return; setLoading(true); setError(""); try { const first = await listAnmsmLogos({ ...filters, page: candidatePageSize === "all" ? 1 : filters.page }); let items = first.items || []; if (candidatePageSize === "all") { const byId = new Map(items.map(item => [item.id, item])); for (let page = 2; page <= first.pages; page += 1) (await listAnmsmLogos({ ...filters, page })).items.forEach(item => byId.set(item.id, item)); items = [...byId.values()]; } setData({ items, page: candidatePageSize === "all" ? 1 : first.page || filters.page || 1, perPage: first.perPage || 20, total: first.total ?? 0, pages: candidatePageSize === "all" ? 1 : Math.max(1, first.pages || Math.ceil((first.total || 0) / (first.perPage || 20))) }); } catch (e) { setError(e instanceof Error ? e.message : "Chargement impossible."); } finally { setLoading(false); } }, [candidatePageSize, filters, router.isReady]);
   useEffect(() => { void load(); }, [load]);
@@ -64,7 +68,8 @@ export default function AnmsmLogosAdmin() {
     try {
       let cursor = lastSuccessfulCursor.current; let hasMore = true;
       while (hasMore) {
-        // Awaiting here is intentional: at most one two-logo batch is ever in flight.
+        // Awaiting here is intentional: the next one-logo request only starts
+        // after the previous station completed and returned its next cursor.
         const response = await syncAnmsmLogos(cursor);
         if (!response.ok) throw new Error(response.message || "La préparation des logos a échoué.");
         const batchFailures = response.errors || response.failures || [];
@@ -78,11 +83,14 @@ export default function AnmsmLogosAdmin() {
       }
       await load(); setPreparationStage(`Préparation terminée : ${processedCount.current} logos traités`); document.getElementById("candidats")?.scrollIntoView({ behavior: "smooth" });
     } catch (e) {
-      setPreparationFailed(true); setPreparationStage(`La préparation s’est arrêtée après ${processedCount.current} logos`); setError(e instanceof Error ? e.message : "La préparation des logos a échoué.");
+      setPreparationFailed(true); setPreparationStage(e instanceof AnmsmApiError && e.status === 502 ? "La préparation s’est arrêtée sur une station" : `La préparation s’est arrêtée après ${processedCount.current} logos`); setError(e instanceof Error ? e.message : "La préparation des logos a échoué.");
       if (e instanceof AnmsmApiError && e.status === 409) setError("Une synchronisation ANMSM est déjà en cours. Aucun second traitement n’a été lancé.");
       if (process.env.NODE_ENV === "development" && e instanceof AnmsmApiError) {
         setErrorDetails(`HTTP ${e.status}\n${JSON.stringify(e.payload, (key, value) => /token|cookie|authorization|csrf|secret/i.test(key) ? "[masqué]" : value, 2)}`);
       }
+      // Successful single-station responses have already created their
+      // candidates. Refreshing only reads them; it never deletes or rematches.
+      await load();
     } finally {
       syncInFlight.current = false; setSyncing(false); setBusy(false); setConfirmAction(null);
     }
