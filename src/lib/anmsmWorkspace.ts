@@ -41,6 +41,7 @@ export function normalizeAnmsmWorkspaceRow(value: unknown, index = 0): AnmsmWork
     external_station_name: stringOrEmpty(row.external_station_name) || "Station inconnue",
     anmsm_logo_url: stringOrNull(row.anmsm_logo_url),
     anmsm_logo_checksum: stringOrNull(row.anmsm_logo_checksum),
+    preparation_required: row.preparation_required === true,
     mapping: mapping ? {
       station_id: stringOrEmpty(mapping.station_id), station_name: stringOrEmpty(mapping.station_name) || "Station inconnue",
       station_slug: stringOrNull(mapping.station_slug), current_logo_url: stringOrNull(mapping.current_logo_url), match_type: stringOrEmpty(mapping.match_type),
