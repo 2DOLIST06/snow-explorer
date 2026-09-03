@@ -9,7 +9,9 @@ export type AnmsmSelection = { candidate_ids: string[]; total: number };
 export type AnmsmActionFailure = { candidate_id: string; station_name?: string; error: string };
 export type AnmsmBulkResult = { requested: number; succeeded: number; failed: number; failures: AnmsmActionFailure[] };
 export type AnmsmSyncStats = { stations_received?: number; stations_matched?: number; stations_unmatched?: number; logos_created?: number; logos_updated?: number; logos_unchanged?: number; stations_without_logo?: number; conversions_succeeded?: number; errors?: number; duration_seconds?: number };
-export type AnmsmSyncResult = { ok: boolean; stats?: AnmsmSyncStats; already_running?: boolean };
+export type AnmsmSyncFailure = { station_id?: string | number | null; station_name?: string | null; external_station_id?: string | number | null; error?: string; message?: string };
+export type AnmsmSyncBatch = { processed: number; total: number; has_more: boolean; next_cursor: string | null };
+export type AnmsmSyncResult = { ok: boolean; message?: string; stats?: AnmsmSyncStats; batch: AnmsmSyncBatch; errors?: AnmsmSyncFailure[]; failures?: AnmsmSyncFailure[]; already_running?: boolean };
 
 export type AnmsmResort = { id: string | number; name: string; slug?: string | null; linked_anmsm_station_id?: string | number | null };
 export type ApiMappingSuggestion = { match_type: string; name: string; score: number; slug: string; station_id: string };

@@ -61,6 +61,29 @@ test("sync prevents duplicate POSTs, exposes progress, refreshes on success and 
   assert.match(page, /JSON\.stringify\(e\.payload/);
 });
 
+test("logo preparation runs sequential two-item batches and can resume its cursor", () => {
+  assert.match(api, /syncAnmsmLogos = \(cursor: string \| null\)/);
+  assert.match(api, /\{ cursor, batch_size: 2 \}/);
+  assert.match(page, /while \(hasMore\)/);
+  assert.match(page, /await syncAnmsmLogos\(cursor\)/);
+  assert.match(page, /lastSuccessfulCursor\.current = response\.batch\.next_cursor/);
+  assert.match(page, /hasMore = response\.batch\.has_more/);
+  assert.match(page, /Préparation des logos : \$\{response\.batch\.processed\} sur \$\{response\.batch\.total\}/);
+  assert.match(page, /La préparation s’est arrêtée après \$\{processedCount\.current\} logos/);
+  assert.match(page, /Reprendre la préparation/);
+  assert.match(page, /runSync\(true\)/);
+});
+
+test("batch preparation retains per-logo errors and always resets loading", () => {
+  assert.match(page, /response\.errors \|\| response\.failures/);
+  assert.match(page, /syncFailureList\.current = \[\.\.\.syncFailureList\.current, \.\.\.batchFailures\]/);
+  assert.match(page, /failure\.station_name \|\| failure\.station_id \|\| failure\.external_station_id/);
+  assert.match(page, /Détail des erreurs par logo/);
+  const sync = page.slice(page.indexOf("const runSync = async"), page.indexOf("const validateAndPrepare"));
+  assert.match(sync, /finally[\s\S]*syncInFlight\.current = false[\s\S]*setSyncing\(false\)[\s\S]*setBusy\(false\)/);
+  assert.ok(sync.indexOf("await load()") < sync.indexOf("scrollIntoView"));
+});
+
 test("mapping and candidate workflows share one screen with session page sizes", () => {
   const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
   assert.match(page, /<StationMappings/); assert.match(page, /id="candidats"/); assert.doesNotMatch(page, /setSection/);

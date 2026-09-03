@@ -67,7 +67,7 @@ export function listAnmsmLogos(filters: AnmsmLogoFilters) {
 }
 
 export const getAnmsmLogo = (id: string) => json<AnmsmLogoCandidate>(`${ROOT}/${encodeURIComponent(id)}`);
-export const syncAnmsmLogos = () => post<AnmsmSyncResult>(`${ROOT}/sync`);
+export const syncAnmsmLogos = (cursor: string | null) => post<AnmsmSyncResult>(`${ROOT}/sync`, { cursor, batch_size: 2 });
 export const bulkApproveAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-approve`, { candidate_ids });
 export const bulkIgnoreAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-ignore`, { candidate_ids });
 export const bulkReprocessAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-reprocess`, { candidate_ids });
