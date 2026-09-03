@@ -3,183 +3,88 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const page = fs.readFileSync("pages/admin/anmsm/logos.tsx", "utf8");
 const api = fs.readFileSync("src/lib/api/anmsmLogos.ts", "utf8");
-const frame = fs.readFileSync("src/components/stations/StationLogoFrame.tsx", "utf8");
-const publicPage = fs.readFileSync("pages/stations/[slug].tsx", "utf8");
+const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
 const css = fs.readFileSync("src/styles/globals.css", "utf8");
 
-test("the authenticated admin navigation exposes the ANMSM review page", () => {
-  assert.match(fs.readFileSync("src/components/admin/AdminBar.tsx", "utf8"), /href="\/admin\/anmsm\/logos">Logos ANMSM/);
-  assert.match(fs.readFileSync("pages/_app.tsx", "utf8"), /<AdminRoute>/);
+test("the workspace is loaded first and retained when a refresh fails", () => {
+  assert.match(api, /getAnmsmWorkspace.*\/workspace/);
+  assert.match(page, /const data = await getAnmsmWorkspace\(\)/);
+  assert.doesNotMatch(page, /catch \(error\) \{ setWorkspace\(null\)/);
+  assert.match(page, /API indisponible/);
 });
-test("published and candidate logos are compared and use the real public frame", () => {
-  assert.match(page, /Logo source ANMSM/); assert.match(page, /Nouveau logo optimisé/); assert.match(page, /Logo actuellement publié/);
-  assert.match(page, /src=\{item\.sourceUrl\}/); assert.match(page, /src=\{item\.optimizedUrl\}/); assert.match(page, /src=\{item\.currentLogoUrl\}/);
-  assert.match(page, /StationLogoFrame preview="desktop"/); assert.match(page, /StationLogoFrame preview="mobile"/);
-  assert.match(publicPage, /<StationLogoFrame src=\{resort\.logo_url\}/);
-  assert.match(frame, /onError=\{\(\) => setFailed\(true\)\}/);
-  assert.match(css, /station-overview-card__logo img\{width:100%;height:100%;object-fit:contain\}/);
+
+test("one compact table compares old, optimized and real-site logos", () => {
+  for (const heading of ["Logo actuellement publié", "Nouveau logo ANMSM optimisé", "Rendu réel sur le site"]) assert.match(page, new RegExp(heading));
+  assert.match(page, /current_logo_url/); assert.match(page, /candidate_preview_url/);
+  assert.match(page, /StationLogoFrame.*preview="desktop"/); assert.match(page, /StationLogoFrame.*preview="mobile"/);
+  assert.doesNotMatch(page, /anmsm-card|anmsm-tabs|<StationMappings/);
+});
+
+test("preparation is sequential, resumable, checksum-aware and bounded to three attempts", () => {
+  assert.match(page, /candidate\.checksum !== row\.anmsm_logo_checksum/);
+  assert.match(page, /for \(let index = 0; index < queue\.length; index \+= 1\)/);
+  assert.match(page, /if \(!await prepareOne\(queue\[index\]\)\)/);
+  assert.match(page, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
+  assert.match(page, /error\.status === 0 \|\| error\.status === 502/);
+  assert.match(page, /stopRequested\.current/); assert.match(page, />Arrêter</); assert.match(page, />Reprendre</);
+  assert.doesNotMatch(page, /Promise\.all/);
+});
+
+test("a failed preparation keeps candidates and processing continues", () => {
+  assert.match(page, /Préparation échouée/);
+  assert.match(page, /errors \+= 1/);
+  assert.doesNotMatch(page, /setWorkspace\(current => null/);
+});
+
+test("exact and manual mappings use real backend identifiers and stay in table flow", () => {
+  assert.match(page, /row\.mapping/); assert.match(page, /normalized_exact/);
+  assert.match(page, /external_station_id: row\.external_station_id, station_id: resort\.station_id/);
+  assert.match(api, /confirm.*\{ mappings \}/);
+  assert.match(page, /Rechercher une station Snow Explorer/);
+  assert.match(page, /value\.trim\(\)\.length < 2/);
+  assert.match(css, /anmsm-inline-picker ul\{position:static;max-height:170px;overflow:auto/);
+  assert.doesNotMatch(css, /anmsm-inline-picker ul\{position:(fixed|absolute)/);
+});
+
+test("selection uses candidate ids globally and survives workspace updates", () => {
+  assert.match(page, /useState<Set<number>>\(new Set\(\)\)/);
+  assert.match(page, /ready\.map\(row => row\.candidate!\.candidate_id\)/);
+  assert.match(page, /Tout sélectionner les logos prêts/); assert.match(page, /Tout décocher/);
+  assert.doesNotMatch(page, /setSelected\(new Set\(\)\).*prepareOne/);
+});
+
+test("bulk publishing handles complete and partial success without navigation", () => {
+  assert.match(api, /bulkApproveAnmsmLogos.*bulk-approve.*\{ candidate_ids \}/);
+  assert.match(page, /window\.confirm\(`Publier \$\{candidate_ids\.length\} logos sélectionnés \? Les anciens logos seront conservés\.`\)/);
+  assert.match(page, /result\.results\.filter\(item => item\.ok\)/);
+  assert.match(page, /status: "published"/); assert.match(page, /Publication échouée/);
+  assert.match(page, /filter\(id => !succeeded\.has\(id\)\)/);
+  assert.doesNotMatch(page, /router\.(push|replace)/);
+});
+
+test("published candidates are not selectable", () => {
+  assert.match(page, /candidate\?\.status === "ready"/);
+  assert.match(page, /candidate\?\.status === "published" \? "Déjà publié"/);
+  assert.match(page, /disabled=\{!selectable\}/);
+});
+
+test("presigned previews are used verbatim and refreshed after expiry", () => {
+  assert.match(types, /candidate_preview_url: string \| null/);
+  assert.match(page, /src=\{candidate\?\.candidate_preview_url\}/);
+  assert.match(page, /onExpired=\{\(\) => void refresh\(\)\}/);
+  assert.doesNotMatch(page + api, /optimized_s3_key|amazonaws|localStorage|sessionStorage|URLSearchParams/);
+});
+
+test("preview dimensions, containment, accessibility and mobile ordering are explicit", () => {
   assert.match(css, /station-overview-card__logo--desktop\{width:112px!important;height:112px!important/);
   assert.match(css, /station-overview-card__logo--mobile\{width:88px!important;height:88px!important/);
+  assert.match(css, /anmsm-logo-image img\{width:100%;height:100%;object-fit:contain/);
+  assert.match(page, /Sélectionner le logo de/); assert.match(page, /aria-label=\{`Préparation des logos/);
+  assert.match(css, /data-label="Station"\]\{order:1/); assert.match(css, /data-label="État"\]\{order:6/);
 });
-test("horizontal and vertical logos cannot be distorted or cropped", () => {
-  assert.match(css, /anmsm-picture img\{width:100%;height:100%;object-fit:contain;object-position:center\}/);
-  assert.match(css, /station-overview-card__logo img\{object-position:center\}/);
-});
-test("all warning labels and blocking errors are explicit", () => {
-  for (const code of ["extreme_horizontal_ratio", "extreme_vertical_ratio", "low_visual_occupancy", "large_transparent_margins", "low_source_resolution", "source_over_size_limit", "optimized_file_over_50kb", "download_failed", "unsupported_format", "conversion_failed", "transparency_lost", "station_mapping_required", "s3_upload_failed"]) assert.match(page, new RegExp(code));
-  assert.match(page, /Cette erreur empêche la validation/); assert.match(page, /disabled=\{busy \|\| blocking\(item\)\}/);
-});
-test("individual, page-wide, filtered and clear selection are available", () => {
-  assert.match(page, /Sélectionner le logo de/); assert.match(page, /Tout sélectionner sur cette page/);
-  assert.match(page, /Tout sélectionner dans les résultats/); assert.match(page, /selectAllAnmsmLogos\(filters\)/); assert.match(page, /Tout décocher/);
-});
-test("bulk approval, partial failure, ignore, reprocess and restore are backend-confirmed", () => {
-  assert.match(page, /Confirmer la validation/); assert.match(page, /result\.failed/); assert.match(page, /détail des échecs/);
-  assert.match(page, /Conserver les logos actuels/); assert.match(page, /Relancer l’optimisation/); assert.match(page, /Restaurer l’ancien logo/);
-  assert.match(api, /bulk-approve/); assert.match(api, /bulk-ignore/); assert.match(api, /bulk-reprocess/); assert.match(api, /\/restore/);
-});
-test("manual synchronization reports all counters and already-running state", () => {
-  assert.match(page, /Rechercher les nouveaux logos ANMSM/); assert.doesNotMatch(page, /Vérifier maintenant les logos ANMSM/); assert.match(api, /\/sync/);
-  for (const label of ["Stations reçues", "Stations associées", "Stations non associées", "Nouveaux logos", "Logos modifiés", "Logos inchangés", "Stations sans logo", "Conversions réussies", "Erreurs", "Durée de la synchronisation"]) assert.match(page, new RegExp(label));
-  assert.match(page, /synchronisation ANMSM est déjà en cours/);
-});
-test("every ANMSM route uses the shared authenticated cookie-session client", () => {
+
+test("only final backend routes remain in the logo workflow", () => {
+  for (const route of ["/workspace", "/prepare", "/bulk-approve"]) assert.match(api, new RegExp(route));
+  assert.doesNotMatch(api + page, /\/selection|\/sync|bulk-ignore|bulk-reprocess|\/restore/);
   assert.match(api, /adminFetch\(path, init\)/);
-  assert.doesNotMatch(api, /\bfetch\(/);
-  for (const route of ["/sync", "/bulk-approve", "/bulk-ignore", "/bulk-reprocess", "/restore"]) assert.match(api, new RegExp(route));
-  const adminClient = fs.readFileSync("src/lib/adminApi.ts", "utf8");
-  assert.match(adminClient, /credentials: "include"/);
-  assert.match(adminClient, /headers\.set\("X-CSRF-Token", csrf\)/);
-  assert.match(adminClient, /handlers\?\.onExpired\(\)/);
-});
-test("sync prevents duplicate POSTs, exposes progress, refreshes on success and distinguishes HTTP failures", () => {
-  assert.match(page, /if \(syncInFlight\.current\) return/);
-  assert.match(page, /disabled=\{busy\}/);
-  assert.match(page, /Récupération des logos ANMSM…/);
-  assert.match(page, /await load\(\)/);
-  for (const status of [401, 403, 405, 409, 422, 500, 502, 503, 504]) assert.match(api, new RegExp(`\\b${status}:`));
-  assert.match(page, /HTTP \$\{e\.status\}/);
-  assert.match(page, /JSON\.stringify\(e\.payload/);
-});
-
-test("logo preparation runs sequential one-item requests and can resume its cursor", () => {
-  assert.match(api, /syncAnmsmLogos = \(cursor: string \| null\)/);
-  assert.match(api, /\{ cursor, batch_size: 1 \}/);
-  assert.match(page, /while \(hasMore\)/);
-  assert.match(page, /await syncAnmsmLogos\(cursor\)/);
-  assert.match(page, /lastSuccessfulCursor\.current = response\.batch\.next_cursor/);
-  assert.match(page, /hasMore = response\.batch\.has_more/);
-  assert.match(page, /Préparation des logos : \$\{response\.batch\.processed\} sur \$\{response\.batch\.total\}/);
-  assert.match(page, /La préparation s’est arrêtée sur une station/);
-  assert.match(page, /Reprendre la préparation/);
-  assert.match(page, /runSync\(true\)/);
-});
-
-test("the deployed recovery resumes after the 17 existing candidates", () => {
-  assert.match(page, /DEPLOYMENT_RESUME_CURSOR = "STATANMSM01730054"/);
-  assert.match(page, /DEPLOYMENT_PROCESSED_COUNT = 17/);
-  assert.match(page, /lastSuccessfulCursor = useRef<string \| null>\(DEPLOYMENT_RESUME_CURSOR\)/);
-  assert.match(page, /useState\("La préparation s’est arrêtée sur une station"\)/);
-  assert.match(page, /useState\(true\)/);
-});
-
-test("batch preparation retains per-logo errors and always resets loading", () => {
-  assert.match(page, /response\.errors \|\| response\.failures/);
-  assert.match(page, /syncFailureList\.current = \[\.\.\.syncFailureList\.current, \.\.\.batchFailures\]/);
-  assert.match(page, /failure\.station_name \|\| failure\.station_id \|\| failure\.external_station_id/);
-  assert.match(page, /Détail des erreurs par logo/);
-  const sync = page.slice(page.indexOf("const runSync = async"), page.indexOf("const validateAndPrepare"));
-  assert.match(sync, /finally[\s\S]*syncInFlight\.current = false[\s\S]*setSyncing\(false\)[\s\S]*setBusy\(false\)/);
-  assert.ok(sync.indexOf("await load()") < sync.indexOf("scrollIntoView"));
-});
-
-test("mapping and candidate workflows share one screen with session page sizes", () => {
-  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
-  assert.match(page, /<StationMappings/); assert.match(page, /id="candidats"/); assert.doesNotMatch(page, /setSection/);
-  for (const size of [20, 50, 100]) assert.match(page + mappings, new RegExp(`>${size}<|\\[20, 50, 100\\]`));
-  assert.match(page + mappings, /value="all">Tous/); assert.match(page + mappings, /for \(let page = 2;/);
-  assert.match(mappings, /initializeItems/); assert.match(mappings, /Tout cocher dans tous les résultats/);
-  assert.match(mappings, /Valider les correspondances et préparer les logos/);
-});
-
-test("only the best credible mapping suggestion remains in table flow", () => {
-  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
-  assert.match(mappings, /bestSuggestion\(item\)/);
-  assert.match(mappings, /Aucune correspondance fiable trouvée/);
-  assert.match(mappings, /Choisir cette station/);
-  assert.match(css, /anmsm-best-suggestion\{position:static/);
-  assert.match(css, /anmsm-bulk\{position:static/);
-});
-test("filters persist in the URL and pagination is server-driven", () => {
-  assert.match(page, /router\.replace\(\{ pathname: router\.pathname, query \}/); assert.match(page, /shallow: true/);
-  assert.match(page, /Page précédente/); assert.match(page, /Page suivante/); assert.match(api, /URLSearchParams/);
-});
-test("the browser only calls the Flask API and never uploads or computes logo assets", () => {
-  assert.doesNotMatch(page + api, /aws-sdk|S3Client|PutObject|crypto\.subtle|createHash|FormData|presign/i);
-  assert.doesNotMatch(page, /fetch\(|axios|amazonaws\.com/);
-  assert.match(api, /adminFetch/); assert.match(api, /\/api\/admin\/anmsm\/logos/);
-});
-
-test("station mappings normalize the backend snake_case contract once", () => {
-  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
-  const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
-  assert.match(api, /normalizeStationMappingsResponse/);
-  for (const field of ["external_name", "external_station_id", "match_type", "station_id", "without_logo", "per_page"]) assert.match(api + types, new RegExp(field));
-  for (const field of ["externalName", "externalStationId", "matchType", "stationId", "withoutLogo", "totalPages"]) assert.match(mappings, new RegExp(field));
-  assert.match(mappings, /response\.pagination\.totalPages/);
-  assert.match(mappings, /suggestion\?\.matchType === "normalized_exact"/);
-  assert.match(api, /right\.score - left\.score/);
-  assert.match(api, /index === 0/);
-  assert.match(api, /suggestion\.score >= 70/);
-  assert.doesNotMatch(mappings, /suggestion_type|suggested_resort|anmsm_station_name|anmsm_logo_url/);
-});
-
-test("mapping confirmation uses the backend contract and gates logo synchronization", () => {
-  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
-  const confirmationApi = api.slice(api.indexOf("export function confirmAnmsmStationMappings"), api.indexOf("export const deleteAnmsmStationMapping"));
-  const submit = mappings.slice(mappings.indexOf("const submit = async"), mappings.indexOf("const remove = async"));
-
-  assert.match(submit, /external_station_id: row\.externalStationId/);
-  assert.match(submit, /station_id: row\.choice\.id/);
-  assert.doesNotMatch(submit, /anmsm_station_id|resort_id/);
-  assert.match(confirmationApi, /invalidMappings\.length > 0/);
-  assert.match(confirmationApi, /identifiant manquant/);
-  assert.match(confirmationApi, /post<AnmsmMappingResult>\(`\$\{MAPPINGS_ROOT\}\/confirm`, \{ mappings \}\)/);
-
-  assert.match(submit, /response\.ok !== true \|\| failedResults\.length > 0/);
-  assert.ok(submit.indexOf("response.ok !== true") < submit.indexOf("onValidateAndPrepare(response)"));
-  assert.match(submit, /await load\(\)[\s\S]*loadEveryMapping\(\)[\s\S]*missingAssociations[\s\S]*await onValidateAndPrepare/);
-  assert.ok(submit.indexOf("await onValidateAndPrepare(response)") < submit.indexOf("setSelected(new Set())"));
-  assert.match(mappings, /result\.results\.filter\(item => item\.ok !== true\)\.length/);
-
-  const fortyOneFailures = Array.from({ length: 41 }, () => ({ ok: false }));
-  assert.equal(fortyOneFailures.filter(result => result.ok !== true).length, 41);
-});
-
-test("the ANMSM media host is allowed without removing existing image hosts", () => {
-  const config = fs.readFileSync("next.config.js", "utf8");
-  assert.match(config, /hostname: "anmsm\.media\.tourinsoft\.eu"/);
-  assert.match(config, /pathname: "\/upload\/\*\*"/);
-  assert.match(config, /hostname: "d38x6kuhd141c9\.cloudfront\.net"/);
-  assert.match(config, /hostname: "2dolist-ski-images\.s3\.eu-west-3\.amazonaws\.com",\s+pathname: "\/station-logos\/\*\*"/);
-});
-
-test("logo candidates normalize the complete snake-case API contract once", () => {
-  const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
-  assert.match(api, /normalizeLogoCandidate/);
-  for (const field of ["external_station_id", "source_url", "optimized_url", "source_width", "optimized_width", "visual_occupancy_width", "detected_at", "checked_at"]) {
-    assert.match(api + types, new RegExp(field));
-  }
-  for (const field of ["externalStationId", "sourceUrl", "optimizedUrl", "sourceWidth", "optimizedWidth", "visualOccupancyWidth", "detectedAt", "checkedAt"]) {
-    assert.match(page, new RegExp(field));
-  }
-  assert.doesNotMatch(page, /item\.(?:source_url|optimized_url|external_station_id|source_width|optimized_width|detected_at|checked_at)/);
-  assert.match(api, /Array\.isArray\(item\.warnings\)/);
-});
-
-test("real image failures remain identifiable and actionable", () => {
-  assert.match(page, /Image \$\{label\} indisponible/);
-  assert.match(page, /NODE_ENV === "development"/);
-  assert.match(page, /Ouvrir l’image/);
-  assert.match(page, /label: "source" \| "optimisée" \| "actuelle"/);
 });
