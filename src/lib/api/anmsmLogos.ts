@@ -9,6 +9,7 @@ import type {
   AnmsmMappingList,
   ApiStationMappingsResponse,
   AnmsmMappingResult,
+  AnmsmMappingPayload,
   AnmsmResort,
 } from "@/types/anmsmLogo";
 
@@ -116,8 +117,17 @@ export function searchAnmsmResorts(query: string) {
   return json<{ items?: AnmsmResort[]; results?: AnmsmResort[] } | AnmsmResort[]>(`/api/admin/anmsm/resorts/search?q=${encodeURIComponent(query)}`);
 }
 
-export const confirmAnmsmStationMappings = (mappings: Array<{ anmsm_station_id: string | number; resort_id: string | number }>) =>
-  post<AnmsmMappingResult>(`${MAPPINGS_ROOT}/confirm`, { mappings });
+const missingMappingId = (value: string | number) => String(value).trim() === "";
+
+export function confirmAnmsmStationMappings(mappings: AnmsmMappingPayload[]) {
+  const invalidMappings = mappings.filter(mapping =>
+    missingMappingId(mapping.external_station_id) || missingMappingId(mapping.station_id)
+  );
+  if (invalidMappings.length > 0) {
+    throw new Error(`${invalidMappings.length} correspondance(s) possèdent un identifiant manquant.`);
+  }
+  return post<AnmsmMappingResult>(`${MAPPINGS_ROOT}/confirm`, { mappings });
+}
 
 // This removes only the association. Station and published-logo deletion are never requested.
 export const deleteAnmsmStationMapping = (anmsmStationId: string | number) => json<{ ok: boolean }>(`${MAPPINGS_ROOT}/${encodeURIComponent(anmsmStationId)}`, { method: "DELETE" });

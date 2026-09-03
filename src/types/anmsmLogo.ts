@@ -36,5 +36,6 @@ export type AnmsmStationMapping = {
 };
 export type AnmsmMappingStats = { matched: number; received: number; unmatched: number; withoutLogo: number };
 export type AnmsmMappingList = { ok: boolean; items: AnmsmStationMapping[]; stats: AnmsmMappingStats; pagination: { page: number; totalPages: number; perPage: number; total: number } };
-export type AnmsmMappingFailure = { anmsm_station_id: string | number; error: string };
-export type AnmsmMappingResult = { requested: number; succeeded: number; failed: number; failures?: AnmsmMappingFailure[] };
+export type AnmsmMappingPayload = { external_station_id: string | number; station_id: string | number };
+export type AnmsmMappingLineResult = { ok: boolean; external_station_id: string | number; station_id: string | number; error?: string };
+export type AnmsmMappingResult = { ok: boolean; results?: AnmsmMappingLineResult[] };

@@ -79,12 +79,41 @@ export default function StationMappings({ onValidateAndPrepare }: { onValidateAn
   const remaining = Math.max(0, allItems.length - exactReady - manuallyChosen - allItems.filter(item => mappedResort(item.mapping)).length);
   const fetchAll = async () => { const response = await loadEveryMapping(search, filter); initializeItems(response.items); return response.items; };
   const choose = (key: string, value: AnmsmResort | null) => { setChoices(previous => ({ ...previous, [key]: value })); setSelected(previous => { const next = new Set(previous); value ? next.add(key) : next.delete(key); return next; }); };
-  const submit = async () => { setBusy(true); setError(""); try { const response = await confirmAnmsmStationMappings(selectedRows.map(row => ({ anmsm_station_id: row.externalStationId, resort_id: row.choice.id }))); setResult(response); setConfirming(false); if (!response.failed) { setSelected(new Set()); await onValidateAndPrepare(response); } await load(); } catch (e) { setError(e instanceof Error ? e.message : "Validation impossible. La préparation n’a pas été lancée."); } finally { setBusy(false); } };
+  const submit = async () => {
+    setBusy(true); setError("");
+    try {
+      const mappingsPayload = selectedRows.map(row => ({
+        external_station_id: row.externalStationId,
+        station_id: row.choice.id,
+      }));
+      const response = await confirmAnmsmStationMappings(mappingsPayload);
+      setResult(response); setConfirming(false);
+
+      const failedResults = Array.isArray(response.results) ? response.results.filter(item => item.ok !== true) : [];
+      if (response.ok !== true || failedResults.length > 0) {
+        throw new Error(`${failedResults.length || 1} correspondance(s) n’ont pas été enregistrées.`);
+      }
+
+      // Reload and verify the associations before starting the logo synchronization.
+      await load();
+      const refreshed = await loadEveryMapping();
+      const mappedIds = new Set(refreshed.items.filter(item => mappedResort(item.mapping)).map(item => item.externalStationId));
+      const missingAssociations = mappingsPayload.filter(mapping => !mappedIds.has(String(mapping.external_station_id)));
+      if (missingAssociations.length > 0) {
+        throw new Error(`${missingAssociations.length} correspondance(s) enregistrée(s) ne sont pas encore associées.`);
+      }
+
+      await onValidateAndPrepare(response);
+      setSelected(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Validation impossible. La préparation n’a pas été lancée.");
+    } finally { setBusy(false); }
+  };
   const remove = async () => { if (!removing) return; setBusy(true); try { await deleteAnmsmStationMapping(removing.externalStationId); setRemoving(null); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Suppression impossible."); } finally { setBusy(false); } };
   return <section id="correspondances" className="anmsm-mappings" aria-labelledby="mapping-title">
     <header><div><h2 id="mapping-title">Correspondances des stations</h2><p>Choisissez les associations à enregistrer, puis préparez les logos sans quitter cette page.</p></div></header>
     <div className="anmsm-mapping-summary" aria-live="polite"><strong>{exactReady} correspondances exactes prêtes</strong><strong>{manuallyChosen} correspondances choisies manuellement</strong><strong>{remaining} stations restant à associer</strong></div>
-    {error && <div className="notice notice--danger" role="alert">{error}</div>}{result && <div className="anmsm-result" role="status"><strong>{result.succeeded ?? 0} correspondances enregistrées</strong><span>{result.failed ?? 0} erreur(s)</span></div>}
+    {error && <div className="notice notice--danger" role="alert">{error}</div>}{result && (() => { const savedCount = Array.isArray(result.results) ? result.results.filter(item => item.ok === true).length : 0; const errorCount = Array.isArray(result.results) ? result.results.filter(item => item.ok !== true).length : 0; const failed = result.ok !== true || errorCount > 0; return <div className={`anmsm-result ${failed ? "anmsm-result--partial" : ""}`} role="status"><strong>{savedCount} correspondance{savedCount > 1 ? "s" : ""} enregistrée{savedCount > 1 ? "s" : ""}</strong><span>{errorCount || (failed ? 1 : 0)} erreur(s)</span>{errorCount > 0 && <ul>{result.results!.filter(item => item.ok !== true).map((item, index) => <li key={`${item.external_station_id}-${index}`}>{item.external_station_id || "Station ANMSM inconnue"} : {item.error || "Enregistrement impossible"}</li>)}</ul>}</div>; })()}
     <div className="anmsm-mapping-tools"><label>Rechercher<input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></label><fieldset><legend>Filtrer</legend>{[["", "Toutes"], ["unmatched", "À associer"], ["matched", "Associées"]].map(([value, label]) => <button type="button" className={filter === value ? "active" : ""} key={value} onClick={() => { setFilter(value as typeof filter); setPage(1); }}>{label}</button>)}</fieldset><label>Résultats par page :<select value={pageSize} onChange={e => { const value = e.target.value === "all" ? "all" : Number(e.target.value) as PageSize; setPageSize(value); setPage(1); mappingPageSizePreference = value; }}>{PAGE_SIZES.map(size => <option key={size}>{size}</option>)}<option value="all">Tous</option></select></label></div>
     <div className="anmsm-selection"><button className="btn btn--secondary" onClick={() => setSelected(previous => new Set([...previous, ...data.items.filter(item => choices[item.externalStationId]).map(item => item.externalStationId)]))}>Tout cocher dans les résultats affichés</button><button className="btn btn--secondary" disabled={busy} onClick={() => void (async () => { setBusy(true); try { const items = await fetchAll(); setSelected(previous => new Set([...previous, ...items.filter(item => choices[item.externalStationId] || mappedResort(item.mapping)).map(item => item.externalStationId)])); } finally { setBusy(false); } })()}>Tout cocher dans tous les résultats</button><button className="btn btn--secondary" onClick={() => setSelected(new Set())}>Tout décocher</button><button className="btn btn--primary" disabled={!selectedRows.length || busy} onClick={() => setConfirming(true)}>Valider les correspondances et préparer les logos</button></div>
     {loading ? <div className="anmsm-loading">Chargement…</div> : <div className="anmsm-mapping-table-wrap"><table className="anmsm-mapping-table"><thead><tr><th>Sélection</th><th>Station ANMSM</th><th>Correspondance proposée</th><th>Station Snow Explorer choisie et recherche manuelle</th><th>État</th></tr></thead><tbody>{data.items.map(item => { const key = item.externalStationId; const choice = choices[key] || null; const current = mappedResort(item.mapping); const suggestion = bestSuggestion(item); const exact = isExact(suggestion); return <tr key={key}><td><input type="checkbox" checked={selected.has(key)} disabled={!choice} onChange={() => setSelected(previous => { const next = new Set(previous); next.has(key) ? next.delete(key) : next.add(key); return next; })} /></td><td><div className="anmsm-station"><div className="anmsm-mini-logo">{item.logo?.url ? <img src={item.logo.url} alt="" /> : <span>Sans logo</span>}</div><div><strong>{item.externalName}</strong><small>{key}</small></div></div></td><td>{suggestion ? <div className="anmsm-best-suggestion"><strong>{suggestion.name}</strong><span className={`anmsm-suggestion ${exact ? "anmsm-suggestion--exact" : ""}`}>{exact ? "Correspondance exacte" : "Suggestion à vérifier"}</span><small>Score : {suggestion.score}</small>{!exact && <button className="btn btn--secondary" type="button" onClick={() => choose(key, suggestionAsResort(suggestion))}>Choisir cette station</button>}</div> : <span className="anmsm-no-suggestion">Aucune correspondance fiable trouvée</span>}</td><td>{current && <p>Association actuelle : <strong>{current.name}</strong></p>}<ResortPicker item={item} value={choice} onChange={value => choose(key, value)} />{!!item.mapping && <button className="btn btn--danger" onClick={() => setRemoving(item)}>Supprimer la correspondance</button>}</td><td><span className={`anmsm-status anmsm-status--${item.mapping ? "approved" : choice ? "pending" : "ignored"}`}>{item.mapping ? "Associée" : choice ? "Prête à enregistrer" : "À associer"}</span></td></tr>; })}</tbody></table></div>}
