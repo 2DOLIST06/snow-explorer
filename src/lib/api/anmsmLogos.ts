@@ -33,7 +33,7 @@ export const getAnmsmWorkspace = async (): Promise<AnmsmWorkspace> => {
 };
 export const prepareAnmsmLogo = async (external_station_id: string) => {
   const response = await post<ApiAnmsmPrepareResult>(`${ROOT}/prepare`, { external_station_id });
-  return { ...response, item: normalizeAnmsmWorkspaceRow(response.item) };
+  return { ...response, item: normalizeAnmsmWorkspaceRow(response?.item) };
 };
 export const bulkApproveAnmsmLogos = async (candidate_ids: number[]) => {
   const response = await post<AnmsmBulkResult>(`${ROOT}/bulk-approve`, { candidate_ids });
