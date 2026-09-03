@@ -42,6 +42,24 @@ test("manual synchronization reports all counters and already-running state", ()
   for (const label of ["Stations reçues", "Stations associées", "Stations non associées", "Nouveaux logos", "Logos modifiés", "Logos inchangés", "Stations sans logo", "Conversions réussies", "Erreurs", "Durée de la synchronisation"]) assert.match(page, new RegExp(label));
   assert.match(page, /synchronisation ANMSM est déjà en cours/);
 });
+test("every ANMSM route uses the shared authenticated cookie-session client", () => {
+  assert.match(api, /adminFetch\(path, init\)/);
+  assert.doesNotMatch(api, /\bfetch\(/);
+  for (const route of ["/sync", "/bulk-approve", "/bulk-ignore", "/bulk-reprocess", "/restore"]) assert.match(api, new RegExp(route));
+  const adminClient = fs.readFileSync("src/lib/adminApi.ts", "utf8");
+  assert.match(adminClient, /credentials: "include"/);
+  assert.match(adminClient, /headers\.set\("X-CSRF-Token", csrf\)/);
+  assert.match(adminClient, /handlers\?\.onExpired\(\)/);
+});
+test("sync prevents duplicate POSTs, exposes progress, refreshes on success and distinguishes HTTP failures", () => {
+  assert.match(page, /if \(syncInFlight\.current\) return/);
+  assert.match(page, /disabled=\{busy\}/);
+  assert.match(page, /Synchronisation en cours…/);
+  assert.match(page, /else await load\(\)/);
+  for (const status of [401, 403, 405, 409, 422, 500, 502, 503, 504]) assert.match(api, new RegExp(`\\b${status}:`));
+  assert.match(page, /HTTP \$\{e\.status\}/);
+  assert.match(page, /JSON\.stringify\(e\.payload/);
+});
 test("filters persist in the URL and pagination is server-driven", () => {
   assert.match(page, /router\.replace\(\{ pathname: router\.pathname, query \}/); assert.match(page, /shallow: true/);
   assert.match(page, /Page précédente/); assert.match(page, /Page suivante/); assert.match(api, /URLSearchParams/);
