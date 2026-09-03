@@ -1,0 +1,3 @@
+import { useEffect, useState } from "react";
+type Props = { src?: string | null; stationName: string; preview?: "desktop" | "mobile"; className?: string };
+export default function StationLogoFrame({ src, stationName, preview, className = "" }: Props) { const [failed, setFailed] = useState(false); useEffect(() => setFailed(false), [src]); return <div className={`station-overview-card__logo${preview ? ` station-overview-card__logo--${preview}` : ""} ${className}`.trim()}>{src && !failed ? <img src={src} alt={`Logo ${stationName} - Snow Explorer`} onError={() => setFailed(true)} /> : <span aria-label={`Aucun logo disponible pour ${stationName}`}>{stationName.slice(0, 2).toUpperCase()}</span>}</div>; }

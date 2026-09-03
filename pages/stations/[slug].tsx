@@ -19,6 +19,7 @@ import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability
 import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import StationLogoFrame from "@/components/stations/StationLogoFrame";
 
 /* =========================
  * Types
@@ -1447,14 +1448,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
           <span aria-current="page">{resort.name}</span>
         </nav>
         <section className="station-overview-card">
-          <div className="station-overview-card__logo">
-            {resort.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resort.logo_url} alt={`Logo ${resort.name} - Snow Explorer`} />
-            ) : (
-              <span>{resort.name.slice(0, 2).toUpperCase()}</span>
-            )}
-          </div>
+          <StationLogoFrame src={resort.logo_url} stationName={resort.name} />
           <div>
             <p className="eyebrow">Résumé</p>
             <h2>{resort.name}</h2>
