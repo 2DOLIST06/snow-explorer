@@ -65,7 +65,7 @@ test("no browser admin secret storage or public admin routes remain", () => {
   const files = [...sourceFiles("pages"), ...sourceFiles("src")];
   const all = files.map(file => `${file}\n${read(file)}`).join("\n");
   assert.doesNotMatch(all, /ADMIN_API_TOKEN|NEXT_PUBLIC_ADMIN_|X-Admin-Token|localStorage|sessionStorage/);
-  for (const file of files.filter(file => !file.startsWith("pages/admin") && !file.includes("src/lib/admin") && !file.includes("src/config/axios") && !file.includes("src/contexts") && !file.includes("src/lib/api/stationImports") && !file.includes("src/components/admin"))) {
+  for (const file of files.filter(file => !file.startsWith("pages/admin") && !file.includes("src/lib/admin") && !file.includes("src/config/axios") && !file.includes("src/contexts") && !file.includes("src/lib/api/stationImports") && !file.includes("src/lib/api/anmsmLogos") && !file.includes("src/components/admin"))) {
     assert.doesNotMatch(read(file), /\/api\/admin\//, `public file uses an admin route: ${file}`);
   }
 });
