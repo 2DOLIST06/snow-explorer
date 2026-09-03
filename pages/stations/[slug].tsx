@@ -381,6 +381,12 @@ const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: 
   caption,
 }) => {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   const src = textOrEmpty(small) || textOrEmpty(large);
   const officialMapUrl = normalizeOfficialMapUrl(officialUrl);
   if (!src && !officialMapUrl) return null;
