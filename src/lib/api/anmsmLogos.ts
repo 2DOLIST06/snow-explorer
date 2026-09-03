@@ -7,6 +7,7 @@ import type {
   AnmsmSelection,
   AnmsmSyncResult,
   AnmsmMappingList,
+  ApiStationMappingsResponse,
   AnmsmMappingResult,
   AnmsmResort,
 } from "@/types/anmsmLogo";
@@ -74,8 +75,37 @@ export const restoreAnmsmLogo = (id: string) => post<AnmsmBulkResult>(`${ROOT}/$
 export function listAnmsmStationMappings(filters: { search?: string; status?: string; page?: number; per_page?: number }) {
   const query = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => value !== undefined && value !== "" && query.set(key, String(value)));
-  return json<AnmsmMappingList>(`${MAPPINGS_ROOT}?${query}`);
+  return json<ApiStationMappingsResponse>(`${MAPPINGS_ROOT}?${query}`).then(normalizeStationMappingsResponse);
 }
+
+export const normalizeStationMappingsResponse = (response: ApiStationMappingsResponse): AnmsmMappingList => ({
+  ok: response.ok,
+  items: response.items.map(item => ({
+    externalName: item.external_name,
+    externalStationId: item.external_station_id,
+    logo: item.logo ? { credit: item.logo.credit, title: item.logo.title, url: item.logo.url } : null,
+    mapping: item.mapping,
+    suggestions: item.suggestions.map(suggestion => ({
+      matchType: suggestion.match_type,
+      name: suggestion.name,
+      score: suggestion.score,
+      slug: suggestion.slug,
+      stationId: suggestion.station_id,
+    })),
+  })),
+  pagination: {
+    page: response.pagination.page,
+    totalPages: response.pagination.pages,
+    perPage: response.pagination.per_page,
+    total: response.pagination.total,
+  },
+  stats: {
+    matched: response.stats.matched,
+    received: response.stats.received,
+    unmatched: response.stats.unmatched,
+    withoutLogo: response.stats.without_logo,
+  },
+});
 
 export function searchAnmsmResorts(query: string) {
   return json<{ items?: AnmsmResort[]; results?: AnmsmResort[] } | AnmsmResort[]>(`/api/admin/anmsm/resorts/search?q=${encodeURIComponent(query)}`);
