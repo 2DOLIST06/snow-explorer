@@ -32,6 +32,7 @@ export type ApiAnmsmWorkspaceItem = {
   external_station_name: string;
   anmsm_logo_url: string | null;
   anmsm_logo_checksum: string | null;
+  preparation_required: boolean;
   mapping: ApiAnmsmMapping | null;
   suggestion: ApiAnmsmSuggestion | null;
   candidate: ApiAnmsmCandidate | null;

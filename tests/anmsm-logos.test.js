@@ -27,8 +27,8 @@ test("one compact table compares old, optimized and real-site logos", () => {
   assert.doesNotMatch(page, /anmsm-card|anmsm-tabs|<StationMappings/);
 });
 
-test("preparation is sequential, resumable, checksum-aware and bounded to three attempts", () => {
-  assert.match(page, /candidate\.checksum !== row\.anmsm_logo_checksum/);
+test("preparation is sequential, resumable, workspace-directed and bounded to three attempts", () => {
+  assert.match(page, /row\.preparation_required === true/);
   assert.match(page, /for \(let index = 0; index < queue\.length; index \+= 1\)/);
   assert.match(page, /if \(!await prepareOne\(queue\[index\]\)\)/);
   assert.match(page, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
@@ -153,13 +153,32 @@ test("the frontend contract and fetch normalization retain the real rows name", 
 });
 
 test("pagination is safe for zero results, missing rows and multiple pages", () => {
-  assert.deepEqual(paginateAnmsmRows([], 1, 25), []);
-  assert.deepEqual(paginateAnmsmRows(undefined, 1, 25), []);
+  assert.deepEqual(paginateAnmsmRows([], 1, 20), []);
+  assert.deepEqual(paginateAnmsmRows(undefined, 1, 20), []);
   const rows = normalizeAnmsmWorkspace({ rows: Array.from({ length: 52 }, (_, index) => ({ external_station_id: String(index), external_station_name: `Station ${index}` })) }).rows;
-  assert.equal(paginateAnmsmRows(rows, 1, 25).length, 25);
-  assert.equal(paginateAnmsmRows(rows, 2, 25).length, 25);
-  assert.equal(paginateAnmsmRows(rows, 3, 25).length, 2);
-  assert.equal(paginateAnmsmRows(rows, 3, 25)[0].external_station_id, "50");
-  assert.match(page, /const filteredRows = useMemo<AnmsmWorkspaceRow\[\]>/);
+  assert.equal(paginateAnmsmRows(rows, 1, 20).length, 20);
+  assert.equal(paginateAnmsmRows(rows, 2, 20).length, 20);
+  assert.equal(paginateAnmsmRows(rows, 3, 20).length, 12);
+  assert.equal(paginateAnmsmRows(rows, 3, 20)[0].external_station_id, "40");
+  assert.match(page, /const allRows = useMemo<AnmsmWorkspaceRow\[\]>/);
   assert.match(page, /paginateAnmsmRows\(filteredRows/);
+});
+
+
+test("workspace filters, required ordering and page-size controls are explicit", () => {
+  for (const label of ["Toutes", "Prêtes à publier", "À préparer", "À associer", "Déjà publiées", "Erreurs", "Sans logo source"]) assert.match(page, new RegExp(label));
+  assert.match(page, /useState<RowFilter>\("ready"\)/);
+  assert.match(page, /DEFAULT_PAGE_SIZE = 20/);
+  for (const size of [20, 50, 100]) assert.match(page, new RegExp(`<option value=\\{${size}\\}>${size}`));
+  assert.match(page, /<option value="all">Tous<\/option>/);
+  assert.match(page, /DISPLAY_ORDER[\s\S]*ready: 1[\s\S]*prepare: 2[\s\S]*"source-missing": 3[\s\S]*mapping: 4[\s\S]*error: 5[\s\S]*published: 6/);
+  assert.match(page, /filteredRows\.length} résultat\(s\)/);
+});
+
+test("preparation queue comes from fresh complete workspace rows, never visible rows", () => {
+  assert.match(page, /const data = await refresh\(\); if \(data\) await runPreparation\(data\)/);
+  assert.match(page, /const queue = data\.rows\.filter\(needsPreparation\)/);
+  assert.doesNotMatch(page, /visibleRows\.filter\(needsPreparation\)/);
+  assert.equal(normalizeAnmsmWorkspace({ rows: [{ external_station_id: "1", preparation_required: true }] }).rows[0].preparation_required, true);
+  assert.equal(normalizeAnmsmWorkspace({ rows: [{ external_station_id: "2" }] }).rows[0].preparation_required, false);
 });
