@@ -11,7 +11,7 @@ const normalizerSource = fs.readFileSync("src/lib/anmsmWorkspace.ts", "utf8");
 const compiledNormalizer = ts.transpileModule(normalizerSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const normalizerModule = new Module("anmsmWorkspace.test.js", module);
 normalizerModule._compile(compiledNormalizer, "anmsmWorkspace.test.js");
-const { EMPTY_ANMSM_STATS, normalizeAnmsmWorkspace } = normalizerModule.exports;
+const { EMPTY_ANMSM_STATS, normalizeAnmsmWorkspace, paginateAnmsmRows } = normalizerModule.exports;
 
 test("the workspace is loaded first and retained when a refresh fails", () => {
   assert.match(api, /getAnmsmWorkspace[\s\S]*\/workspace/);
@@ -99,7 +99,11 @@ test("only final backend routes remain in the logo workflow", () => {
 
 test("workspace normalization uses the backend rows property for populated and empty responses", () => {
   const row = { external_station_id: "42", external_station_name: "Alpe", candidate: null };
-  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [row] }).rows, [row]);
+  const normalized = normalizeAnmsmWorkspace({ rows: [row] }).rows[0];
+  assert.equal(normalized.external_station_id, "42");
+  assert.equal(normalized.external_station_name, "Alpe");
+  assert.equal(normalized.candidate, null);
+  assert.equal(normalized.mapping, null);
   assert.deepEqual(normalizeAnmsmWorkspace({ rows: [] }).rows, []);
 });
 
@@ -120,6 +124,18 @@ test("missing row warnings are normalized once to an empty array", () => {
   assert.doesNotThrow(() => result.rows[0].candidate.warnings.map(Boolean));
 });
 
+test("an incomplete row gets safe scalar, object and list defaults", () => {
+  const result = normalizeAnmsmWorkspace({ rows: [{ candidate: { warnings: [null, { message: "À vérifier" }] }, mapping: {} }] });
+  const row = result.rows[0];
+  assert.equal(row.external_station_id, "ligne-incomplete-1");
+  assert.equal(row.external_station_name, "Station inconnue");
+  assert.equal(row.anmsm_logo_url, null);
+  assert.equal(row.mapping.station_id, "");
+  assert.equal(row.candidate.status, "error");
+  assert.deepEqual(row.candidate.warnings.map(warning => warning.code), ["warning", "warning"]);
+  assert.doesNotThrow(() => result.rows.filter(Boolean).map(Boolean).find(Boolean));
+});
+
 test("absent and partial statistics receive every numeric default", () => {
   assert.deepEqual(normalizeAnmsmWorkspace({ rows: [] }).stats, EMPTY_ANMSM_STATS);
   assert.deepEqual(normalizeAnmsmWorkspace({ rows: [], stats: { stations_received: 12, candidates_pending: 3 } }).stats, {
@@ -134,4 +150,16 @@ test("the frontend contract and fetch normalization retain the real rows name", 
   assert.match(api, /Invalid workspace response/);
   assert.match(page, /useState<AnmsmWorkspaceRow\[\]>\(\[\]\)/);
   assert.doesNotMatch(page, /workspace\?\.items\.filter/);
+});
+
+test("pagination is safe for zero results, missing rows and multiple pages", () => {
+  assert.deepEqual(paginateAnmsmRows([], 1, 25), []);
+  assert.deepEqual(paginateAnmsmRows(undefined, 1, 25), []);
+  const rows = normalizeAnmsmWorkspace({ rows: Array.from({ length: 52 }, (_, index) => ({ external_station_id: String(index), external_station_name: `Station ${index}` })) }).rows;
+  assert.equal(paginateAnmsmRows(rows, 1, 25).length, 25);
+  assert.equal(paginateAnmsmRows(rows, 2, 25).length, 25);
+  assert.equal(paginateAnmsmRows(rows, 3, 25).length, 2);
+  assert.equal(paginateAnmsmRows(rows, 3, 25)[0].external_station_id, "50");
+  assert.match(page, /const filteredRows = useMemo<AnmsmWorkspaceRow\[\]>/);
+  assert.match(page, /paginateAnmsmRows\(filteredRows/);
 });
