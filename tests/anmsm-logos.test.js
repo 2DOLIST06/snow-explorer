@@ -5,11 +5,18 @@ const page = fs.readFileSync("pages/admin/anmsm/logos.tsx", "utf8");
 const api = fs.readFileSync("src/lib/api/anmsmLogos.ts", "utf8");
 const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
 const css = fs.readFileSync("src/styles/globals.css", "utf8");
+const ts = require("typescript");
+const Module = require("node:module");
+const normalizerSource = fs.readFileSync("src/lib/anmsmWorkspace.ts", "utf8");
+const compiledNormalizer = ts.transpileModule(normalizerSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+const normalizerModule = new Module("anmsmWorkspace.test.js", module);
+normalizerModule._compile(compiledNormalizer, "anmsmWorkspace.test.js");
+const { EMPTY_ANMSM_STATS, normalizeAnmsmWorkspace } = normalizerModule.exports;
 
 test("the workspace is loaded first and retained when a refresh fails", () => {
-  assert.match(api, /getAnmsmWorkspace.*\/workspace/);
+  assert.match(api, /getAnmsmWorkspace[\s\S]*\/workspace/);
   assert.match(page, /const data = await getAnmsmWorkspace\(\)/);
-  assert.doesNotMatch(page, /catch \(error\) \{ setWorkspace\(null\)/);
+  assert.doesNotMatch(page, /catch \(error\) \{ setRows\(\[\]\)/);
   assert.match(page, /API indisponible/);
 });
 
@@ -33,7 +40,7 @@ test("preparation is sequential, resumable, checksum-aware and bounded to three 
 test("a failed preparation keeps candidates and processing continues", () => {
   assert.match(page, /Préparation échouée/);
   assert.match(page, /errors \+= 1/);
-  assert.doesNotMatch(page, /setWorkspace\(current => null/);
+  assert.doesNotMatch(page, /setRows\(\[\]\)/);
 });
 
 test("exact and manual mappings use real backend identifiers and stay in table flow", () => {
@@ -54,7 +61,7 @@ test("selection uses candidate ids globally and survives workspace updates", () 
 });
 
 test("bulk publishing handles complete and partial success without navigation", () => {
-  assert.match(api, /bulkApproveAnmsmLogos.*bulk-approve.*\{ candidate_ids \}/);
+  assert.match(api, /bulkApproveAnmsmLogos[\s\S]*bulk-approve.*\{ candidate_ids \}/);
   assert.match(page, /window\.confirm\(`Publier \$\{candidate_ids\.length\} logos sélectionnés \? Les anciens logos seront conservés\.`\)/);
   assert.match(page, /result\.results\.filter\(item => item\.ok\)/);
   assert.match(page, /status: "published"/); assert.match(page, /Publication échouée/);
@@ -87,4 +94,44 @@ test("only final backend routes remain in the logo workflow", () => {
   for (const route of ["/workspace", "/prepare", "/bulk-approve"]) assert.match(api, new RegExp(route));
   assert.doesNotMatch(api + page, /\/selection|\/sync|bulk-ignore|bulk-reprocess|\/restore/);
   assert.match(api, /adminFetch\(path, init\)/);
+});
+
+
+test("workspace normalization uses the backend rows property for populated and empty responses", () => {
+  const row = { external_station_id: "42", external_station_name: "Alpe", candidate: null };
+  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [row] }).rows, [row]);
+  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [] }).rows, []);
+});
+
+test("a missing rows property reports the contract error and leaves a safe renderable collection", () => {
+  const result = normalizeAnmsmWorkspace({ items: [{ external_station_id: "wrong-contract" }] });
+  assert.deepEqual(result.rows, []);
+  assert.match(result.contractError, /rows.*absente/);
+  assert.doesNotThrow(() => result.rows.filter(Boolean).map(Boolean).some(Boolean));
+  assert.match(page, /setLoaded\(true\)/);
+  assert.match(page, /role="alert"/);
+  assert.match(page, /\{loaded && <>/);
+});
+
+test("missing row warnings are normalized once to an empty array", () => {
+  const row = { external_station_id: "42", external_station_name: "Alpe", candidate: { candidate_id: 7, status: "ready" } };
+  const result = normalizeAnmsmWorkspace({ rows: [row] });
+  assert.deepEqual(result.rows[0].candidate.warnings, []);
+  assert.doesNotThrow(() => result.rows[0].candidate.warnings.map(Boolean));
+});
+
+test("absent and partial statistics receive every numeric default", () => {
+  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [] }).stats, EMPTY_ANMSM_STATS);
+  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [], stats: { stations_received: 12, candidates_pending: 3 } }).stats, {
+    ...EMPTY_ANMSM_STATS, stations_received: 12, candidates_pending: 3,
+  });
+});
+
+test("the frontend contract and fetch normalization retain the real rows name", () => {
+  assert.match(types, /rows\?: ApiAnmsmWorkspaceItem\[\]/);
+  assert.doesNotMatch(types, /items: ApiAnmsmWorkspaceItem\[\]/);
+  assert.match(api, /normalizeAnmsmWorkspace\(payload\)/);
+  assert.match(api, /Invalid workspace response/);
+  assert.match(page, /useState<AnmsmWorkspaceRow\[\]>\(\[\]\)/);
+  assert.doesNotMatch(page, /workspace\?\.items\.filter/);
 });
