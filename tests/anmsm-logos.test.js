@@ -38,7 +38,7 @@ test("bulk approval, partial failure, ignore, reprocess and restore are backend-
   assert.match(api, /bulk-approve/); assert.match(api, /bulk-ignore/); assert.match(api, /bulk-reprocess/); assert.match(api, /\/restore/);
 });
 test("manual synchronization reports all counters and already-running state", () => {
-  assert.match(page, /Vérifier maintenant les logos ANMSM/); assert.match(api, /\/sync/);
+  assert.match(page, /Rechercher les nouveaux logos ANMSM/); assert.doesNotMatch(page, /Vérifier maintenant les logos ANMSM/); assert.match(api, /\/sync/);
   for (const label of ["Stations reçues", "Stations associées", "Stations non associées", "Nouveaux logos", "Logos modifiés", "Logos inchangés", "Stations sans logo", "Conversions réussies", "Erreurs", "Durée de la synchronisation"]) assert.match(page, new RegExp(label));
   assert.match(page, /synchronisation ANMSM est déjà en cours/);
 });
@@ -54,11 +54,27 @@ test("every ANMSM route uses the shared authenticated cookie-session client", ()
 test("sync prevents duplicate POSTs, exposes progress, refreshes on success and distinguishes HTTP failures", () => {
   assert.match(page, /if \(syncInFlight\.current\) return/);
   assert.match(page, /disabled=\{busy\}/);
-  assert.match(page, /Synchronisation en cours…/);
-  assert.match(page, /else await load\(\)/);
+  assert.match(page, /Récupération des logos ANMSM…/);
+  assert.match(page, /await load\(\)/);
   for (const status of [401, 403, 405, 409, 422, 500, 502, 503, 504]) assert.match(api, new RegExp(`\\b${status}:`));
   assert.match(page, /HTTP \$\{e\.status\}/);
   assert.match(page, /JSON\.stringify\(e\.payload/);
+});
+
+test("mapping and candidate workflows share one screen with session page sizes", () => {
+  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
+  assert.match(page, /<StationMappings/); assert.match(page, /id="candidats"/); assert.doesNotMatch(page, /setSection/);
+  for (const size of [20, 50, 100]) assert.match(page + mappings, new RegExp(`>${size}<|\\[20, 50, 100\\]`));
+  assert.match(page + mappings, /value="all">Tous/); assert.match(page + mappings, /for \(let page = 2;/);
+  assert.match(mappings, /Sélectionner toutes les correspondances exactes/); assert.match(mappings, /Tout cocher dans tous les résultats/);
+  assert.match(mappings, /Valider les correspondances et préparer les logos/);
+});
+
+test("mapping suggestions remain in table flow and bulk actions do not cover content", () => {
+  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
+  assert.match(mappings, /anmsm-suggestions-inline/);
+  assert.match(css, /anmsm-suggestions-inline\{position:static/);
+  assert.match(css, /anmsm-bulk\{position:static/);
 });
 test("filters persist in the URL and pagination is server-driven", () => {
   assert.match(page, /router\.replace\(\{ pathname: router\.pathname, query \}/); assert.match(page, /shallow: true/);
