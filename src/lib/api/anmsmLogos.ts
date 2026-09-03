@@ -85,13 +85,18 @@ export const normalizeStationMappingsResponse = (response: ApiStationMappingsRes
     externalStationId: item.external_station_id,
     logo: item.logo ? { credit: item.logo.credit, title: item.logo.title, url: item.logo.url } : null,
     mapping: item.mapping,
-    suggestions: item.suggestions.map(suggestion => ({
-      matchType: suggestion.match_type,
-      name: suggestion.name,
-      score: suggestion.score,
-      slug: suggestion.slug,
-      stationId: suggestion.station_id,
-    })),
+    suggestions: item.suggestions
+      .map(suggestion => ({
+        matchType: suggestion.match_type,
+        name: suggestion.name,
+        score: suggestion.score,
+        slug: suggestion.slug,
+        stationId: suggestion.station_id,
+      }))
+      .sort((left, right) => right.score - left.score)
+      .filter((suggestion, index) => index === 0 && (
+        suggestion.matchType === "normalized_exact" || suggestion.score >= 70
+      )),
   })),
   pagination: {
     page: response.pagination.page,
