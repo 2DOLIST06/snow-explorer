@@ -69,3 +69,22 @@ test("the browser only calls the Flask API and never uploads or computes logo as
   assert.doesNotMatch(page, /fetch\(|axios|amazonaws\.com/);
   assert.match(api, /adminFetch/); assert.match(api, /\/api\/admin\/anmsm\/logos/);
 });
+
+test("station mappings normalize the backend snake_case contract once", () => {
+  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
+  const types = fs.readFileSync("src/types/anmsmLogo.ts", "utf8");
+  assert.match(api, /normalizeStationMappingsResponse/);
+  for (const field of ["external_name", "external_station_id", "match_type", "station_id", "without_logo", "per_page"]) assert.match(api + types, new RegExp(field));
+  for (const field of ["externalName", "externalStationId", "matchType", "stationId", "withoutLogo", "totalPages"]) assert.match(mappings, new RegExp(field));
+  assert.match(mappings, /response\.pagination\.totalPages/);
+  assert.match(mappings, /suggestion\.matchType === "normalized_exact"/);
+  assert.match(mappings, /item\.suggestions\.map/);
+  assert.doesNotMatch(mappings, /suggestion_type|suggested_resort|anmsm_station_name|anmsm_logo_url/);
+});
+
+test("the ANMSM media host is allowed without removing existing image hosts", () => {
+  const config = fs.readFileSync("next.config.js", "utf8");
+  assert.match(config, /hostname: "anmsm\.media\.tourinsoft\.eu"/);
+  assert.match(config, /pathname: "\/upload\/\*\*"/);
+  assert.match(config, /hostname: "d38x6kuhd141c9\.cloudfront\.net"/);
+});

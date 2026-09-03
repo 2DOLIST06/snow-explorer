@@ -12,17 +12,29 @@ export type AnmsmSyncStats = { stations_received?: number; stations_matched?: nu
 export type AnmsmSyncResult = { ok: boolean; stats?: AnmsmSyncStats; already_running?: boolean };
 
 export type AnmsmResort = { id: string | number; name: string; slug?: string | null; linked_anmsm_station_id?: string | number | null };
-export type AnmsmStationMapping = {
-  anmsm_station_id: string | number;
-  anmsm_station_name: string;
-  anmsm_logo_url?: string | null;
-  resort?: AnmsmResort | null;
-  suggested_resort?: AnmsmResort | null;
-  suggestion_type?: "exact" | "approximate" | string | null;
-  suggestion_score?: number | null;
-  status?: "matched" | "unmatched" | string;
+export type ApiMappingSuggestion = { match_type: string; name: string; score: number; slug: string; station_id: string };
+export type ApiStationMappingItem = {
+  external_name: string;
+  external_station_id: string;
+  logo: { credit: string | null; title: string | null; url: string | null } | null;
+  mapping: unknown | null;
+  suggestions: ApiMappingSuggestion[];
 };
-export type AnmsmMappingStats = { stations_received: number; stations_matched: number; stations_unmatched: number; stations_without_logo: number };
-export type AnmsmMappingList = { items: AnmsmStationMapping[]; stats: AnmsmMappingStats; page: number; per_page: number; total: number; pages: number };
+export type ApiStationMappingsResponse = {
+  ok: boolean;
+  items: ApiStationMappingItem[];
+  pagination: { page: number; pages: number; per_page: number; total: number };
+  stats: { matched: number; received: number; unmatched: number; without_logo: number };
+};
+export type AnmsmMappingSuggestion = { matchType: string; name: string; score: number; slug: string; stationId: string };
+export type AnmsmStationMapping = {
+  externalName: string;
+  externalStationId: string;
+  logo: { credit: string | null; title: string | null; url: string | null } | null;
+  mapping: unknown | null;
+  suggestions: AnmsmMappingSuggestion[];
+};
+export type AnmsmMappingStats = { matched: number; received: number; unmatched: number; withoutLogo: number };
+export type AnmsmMappingList = { ok: boolean; items: AnmsmStationMapping[]; stats: AnmsmMappingStats; pagination: { page: number; totalPages: number; perPage: number; total: number } };
 export type AnmsmMappingFailure = { anmsm_station_id: string | number; error: string };
 export type AnmsmMappingResult = { requested: number; succeeded: number; failed: number; failures?: AnmsmMappingFailure[] };

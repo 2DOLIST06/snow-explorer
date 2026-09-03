@@ -23,10 +23,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "2dolist-ski-images.s3.eu-west-3.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "anmsm.media.tourinsoft.eu",
+        pathname: "/upload/**",
       }
     ],
   },
 };
 
 module.exports = nextConfig;
-
