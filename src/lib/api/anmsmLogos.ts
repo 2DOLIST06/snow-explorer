@@ -6,9 +6,13 @@ import type {
   AnmsmLogoList,
   AnmsmSelection,
   AnmsmSyncResult,
+  AnmsmMappingList,
+  AnmsmMappingResult,
+  AnmsmResort,
 } from "@/types/anmsmLogo";
 
 const ROOT = "/api/admin/anmsm/logos";
+const MAPPINGS_ROOT = "/api/admin/anmsm/station-mappings";
 
 const STATUS_MESSAGES: Record<number, string> = {
   401: "Votre session administrateur est absente ou a expiré. Reconnectez-vous.",
@@ -66,6 +70,22 @@ export const bulkApproveAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulk
 export const bulkIgnoreAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-ignore`, { candidate_ids });
 export const bulkReprocessAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-reprocess`, { candidate_ids });
 export const restoreAnmsmLogo = (id: string) => post<AnmsmBulkResult>(`${ROOT}/${encodeURIComponent(id)}/restore`);
+
+export function listAnmsmStationMappings(filters: { search?: string; status?: string; page?: number; per_page?: number }) {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => value !== undefined && value !== "" && query.set(key, String(value)));
+  return json<AnmsmMappingList>(`${MAPPINGS_ROOT}?${query}`);
+}
+
+export function searchAnmsmResorts(query: string) {
+  return json<{ items?: AnmsmResort[]; results?: AnmsmResort[] } | AnmsmResort[]>(`/api/admin/anmsm/resorts/search?q=${encodeURIComponent(query)}`);
+}
+
+export const confirmAnmsmStationMappings = (mappings: Array<{ anmsm_station_id: string | number; resort_id: string | number }>) =>
+  post<AnmsmMappingResult>(`${MAPPINGS_ROOT}/confirm`, { mappings });
+
+// This removes only the association. Station and published-logo deletion are never requested.
+export const deleteAnmsmStationMapping = (anmsmStationId: string | number) => json<{ ok: boolean }>(`${MAPPINGS_ROOT}/${encodeURIComponent(anmsmStationId)}`, { method: "DELETE" });
 
 export function selectAllAnmsmLogos(filters: AnmsmLogoFilters) {
   const query = new URLSearchParams();
