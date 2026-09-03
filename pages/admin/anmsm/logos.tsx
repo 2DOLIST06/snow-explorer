@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
 import { AnmsmApiError, bulkApproveAnmsmLogos, confirmAnmsmStationMappings, getAnmsmWorkspace, prepareAnmsmLogo, searchAnmsmResorts } from "@/lib/api/anmsmLogos";
-import { EMPTY_ANMSM_STATS, paginateAnmsmRows } from "@/lib/anmsmWorkspace";
+import { EMPTY_ANMSM_STATS, filterAnmsmRowsReadyToPublish, isAnmsmRowReadyToPublish, paginateAnmsmRows } from "@/lib/anmsmWorkspace";
 import type { AnmsmWorkspace, AnmsmWorkspaceRow, AnmsmResort } from "@/types/anmsmLogo";
 
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -12,11 +12,11 @@ const FILTERS: Array<{ value: RowFilter; label: string }> = [
   { value: "mapping", label: "À associer" }, { value: "published", label: "Déjà publiées" }, { value: "error", label: "Erreurs" },
   { value: "source-missing", label: "Sans logo source" },
 ];
-const canPublish = (row: AnmsmWorkspaceRow) => !!row.mapping && row.candidate?.status === "ready" && !row.candidate.error_message;
+const canPublish = isAnmsmRowReadyToPublish;
 const needsPreparation = (row: AnmsmWorkspaceRow) => row.preparation_required === true;
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-const rowStatus = (row: AnmsmWorkspaceRow, preparing?: boolean) => preparing ? "Préparation…" : !row.mapping ? "À associer" : !row.anmsm_logo_url ? "Sans logo source" : row.candidate?.status === "published" ? "Déjà publié" : row.candidate?.status === "error" || row.candidate?.error_message ? "Erreur" : canPublish(row) ? "Prêt à publier" : "À préparer";
-const rowCategory = (row: AnmsmWorkspaceRow): Exclude<RowFilter, "all"> => !row.mapping ? "mapping" : !row.anmsm_logo_url ? "source-missing" : row.candidate?.status === "published" ? "published" : row.candidate?.status === "error" || !!row.candidate?.error_message ? "error" : canPublish(row) ? "ready" : "prepare";
+const rowStatus = (row: AnmsmWorkspaceRow, preparing?: boolean) => preparing ? "Préparation…" : canPublish(row) ? "Prêt à publier" : row.candidate_status === "approved" ? "Déjà publié" : row.candidate_status === "error" || row.candidate?.error_message ? "Erreur" : !row.mapping ? "À associer" : !row.anmsm_logo_url ? "Sans logo source" : "À préparer";
+const rowCategory = (row: AnmsmWorkspaceRow): Exclude<RowFilter, "all"> => canPublish(row) ? "ready" : row.candidate_status === "approved" ? "published" : row.candidate_status === "error" || !!row.candidate?.error_message ? "error" : !row.mapping ? "mapping" : !row.anmsm_logo_url ? "source-missing" : "prepare";
 const DISPLAY_ORDER: Record<Exclude<RowFilter, "all">, number> = { ready: 1, prepare: 2, "source-missing": 3, mapping: 4, error: 5, published: 6 };
 
 function LogoImage({ src, alt, onExpired }: { src: string | null | undefined; alt: string; onExpired?: () => void }) {
@@ -85,7 +85,7 @@ export default function AnmsmLogosAdmin() {
     const candidate_ids = [...selected]; if (!candidate_ids.length || !window.confirm(`Publier ${candidate_ids.length} logos sélectionnés ? Les anciens logos seront conservés.`)) return;
     try {
       const result = await bulkApproveAnmsmLogos(candidate_ids); const succeeded = new Set(result.results.filter(item => item.ok).map(item => item.candidate_id));
-      setRows(current => current.map(row => row.candidate && succeeded.has(row.candidate.candidate_id) ? { ...row, mapping: row.mapping && { ...row.mapping, current_logo_url: row.candidate.candidate_preview_url }, candidate: { ...row.candidate, status: "published" } } : row));
+      setRows(current => current.map(row => row.candidate_id !== null && succeeded.has(row.candidate_id) ? { ...row, candidate_status: "approved", current_logo_url: row.candidate_preview_url, mapping: row.mapping && { ...row.mapping, current_logo_url: row.candidate_preview_url }, candidate: row.candidate && { ...row.candidate, status: "published" } } : row));
       setSelected(current => new Set([...current].filter(id => !succeeded.has(id))));
       setRowErrors(errors => ({ ...errors, ...Object.fromEntries(result.results.filter(item => !item.ok).map(item => [String(item.candidate_id), `Publication échouée : ${item.error || "Erreur inconnue"}`])) }));
       setNotice(result.failed ? `${result.succeeded} logo(s) publié(s), ${result.failed} échec(s).` : `${result.succeeded} logos ont été publiés. Les anciens logos ont été conservés.`);
@@ -96,7 +96,7 @@ export default function AnmsmLogosAdmin() {
   const effectivePageSize = pageSize === "all" ? Math.max(1, filteredRows.length) : pageSize;
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / effectivePageSize)); const currentPage = Math.min(page, pageCount);
   const visibleRows = useMemo(() => paginateAnmsmRows(filteredRows, currentPage, effectivePageSize), [filteredRows, currentPage, effectivePageSize]);
-  const ready = useMemo(() => allRows.filter(canPublish), [allRows]);
+  const ready = useMemo(() => filterAnmsmRowsReadyToPublish(allRows), [allRows]);
   const resumeRows = allRows.some(needsPreparation);
   return <main className="anmsm-admin">
     <header className="anmsm-hero"><div><p className="eyebrow">Administration</p><h1>Logos officiels ANMSM</h1></div><button className="btn btn--primary" disabled={running.current} title={running.current ? "Une préparation est déjà en cours" : undefined} onClick={() => void retrieve()}>Récupérer les logos ANMSM</button></header>

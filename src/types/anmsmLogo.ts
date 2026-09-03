@@ -33,9 +33,16 @@ export type ApiAnmsmWorkspaceItem = {
   anmsm_logo_url: string | null;
   anmsm_logo_checksum: string | null;
   preparation_required: boolean;
-  mapping: ApiAnmsmMapping | null;
-  suggestion: ApiAnmsmSuggestion | null;
-  candidate: ApiAnmsmCandidate | null;
+  mapping?: ApiAnmsmMapping | null;
+  suggestion?: ApiAnmsmSuggestion | null;
+  candidate?: ApiAnmsmCandidate | null;
+  candidate_id?: number | null;
+  candidate_status?: "pending" | "approved" | "error" | null;
+  candidate_preview_url?: string | null;
+  station_id?: string | null;
+  station_name?: string | null;
+  current_logo_url?: string | null;
+  warnings?: AnmsmLogoAlert[] | null;
 };
 
 export type ApiAnmsmWorkspace = {
@@ -43,8 +50,17 @@ export type ApiAnmsmWorkspace = {
   stats?: Partial<AnmsmWorkspaceStats> | null;
 };
 
-export type AnmsmWorkspaceRow = Omit<ApiAnmsmWorkspaceItem, "candidate"> & {
+export type AnmsmWorkspaceRow = Omit<ApiAnmsmWorkspaceItem, "candidate" | "mapping" | "suggestion"> & {
+  mapping: ApiAnmsmMapping | null;
+  suggestion: ApiAnmsmSuggestion | null;
   candidate: (Omit<ApiAnmsmCandidate, "warnings"> & { warnings: AnmsmLogoAlert[] }) | null;
+  candidate_id: number | null;
+  candidate_status: "pending" | "approved" | "error" | null;
+  candidate_preview_url: string | null;
+  station_id: string | null;
+  station_name: string | null;
+  current_logo_url: string | null;
+  warnings: AnmsmLogoAlert[];
 };
 
 export type AnmsmWorkspaceStats = {
