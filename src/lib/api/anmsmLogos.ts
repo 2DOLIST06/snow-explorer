@@ -4,6 +4,8 @@ import type {
   AnmsmLogoCandidate,
   AnmsmLogoFilters,
   AnmsmLogoList,
+  ApiLogoCandidate,
+  ApiLogoList,
   AnmsmSelection,
   AnmsmSyncResult,
   AnmsmMappingList,
@@ -63,10 +65,55 @@ export function listAnmsmLogos(filters: AnmsmLogoFilters) {
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== "") query.set(key, String(value));
   });
-  return json<AnmsmLogoList>(`${ROOT}?${query}`);
+  return json<ApiLogoList>(`${ROOT}?${query}`).then(normalizeLogoList);
 }
 
-export const getAnmsmLogo = (id: string) => json<AnmsmLogoCandidate>(`${ROOT}/${encodeURIComponent(id)}`);
+export const normalizeLogoCandidate = (item: ApiLogoCandidate): AnmsmLogoCandidate => ({
+  id: item.id,
+  stationId: item.station_id,
+  stationName: item.station_name,
+  stationSlug: item.station_slug,
+  externalStationId: item.external_station_id,
+  anmsmMediaId: item.anmsm_media_id,
+  anmsmTitle: item.anmsm_title,
+  anmsmCredit: item.anmsm_credit,
+  sourceUrl: item.source_url,
+  sourceFormat: item.source_format,
+  sourceWidth: item.source_width,
+  sourceHeight: item.source_height,
+  sourceSizeBytes: item.source_size_bytes,
+  sourceChecksum: item.source_checksum,
+  optimizedUrl: item.optimized_url,
+  optimizedS3Key: item.optimized_s3_key,
+  optimizedWidth: item.optimized_width,
+  optimizedHeight: item.optimized_height,
+  optimizedSizeBytes: item.optimized_size_bytes,
+  contentWidth: item.content_width,
+  contentHeight: item.content_height,
+  aspectRatio: item.aspect_ratio,
+  visualOccupancyWidth: item.visual_occupancy_width,
+  visualOccupancyHeight: item.visual_occupancy_height,
+  currentLogoUrl: item.current_logo_url ?? null,
+  previousLogoUrl: item.previous_logo_url ?? null,
+  detectedAt: item.detected_at,
+  checkedAt: item.checked_at,
+  status: item.status,
+  warnings: Array.isArray(item.warnings) ? item.warnings : Array.isArray(item.alerts) ? item.alerts : [],
+  errorCode: item.error_code,
+  errorMessage: item.error_message,
+  versions: item.versions?.map(version => ({ ...version, createdAt: version.created_at })),
+  canRestore: item.can_restore,
+});
+
+const normalizeLogoList = (response: ApiLogoList): AnmsmLogoList => ({
+  items: Array.isArray(response.items) ? response.items.map(normalizeLogoCandidate) : [],
+  page: response.page,
+  perPage: response.per_page,
+  total: response.total,
+  pages: response.pages,
+});
+
+export const getAnmsmLogo = (id: string) => json<ApiLogoCandidate>(`${ROOT}/${encodeURIComponent(id)}`).then(normalizeLogoCandidate);
 export const syncAnmsmLogos = (cursor: string | null) => post<AnmsmSyncResult>(`${ROOT}/sync`, { cursor, batch_size: 2 });
 export const bulkApproveAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-approve`, { candidate_ids });
 export const bulkIgnoreAnmsmLogos = (candidate_ids: string[]) => post<AnmsmBulkResult>(`${ROOT}/bulk-ignore`, { candidate_ids });
