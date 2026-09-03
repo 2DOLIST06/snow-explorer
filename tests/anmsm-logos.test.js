@@ -102,6 +102,28 @@ test("station mappings normalize the backend snake_case contract once", () => {
   assert.doesNotMatch(mappings, /suggestion_type|suggested_resort|anmsm_station_name|anmsm_logo_url/);
 });
 
+test("mapping confirmation uses the backend contract and gates logo synchronization", () => {
+  const mappings = fs.readFileSync("src/components/admin/anmsm/StationMappings.tsx", "utf8");
+  const confirmationApi = api.slice(api.indexOf("export function confirmAnmsmStationMappings"), api.indexOf("export const deleteAnmsmStationMapping"));
+  const submit = mappings.slice(mappings.indexOf("const submit = async"), mappings.indexOf("const remove = async"));
+
+  assert.match(submit, /external_station_id: row\.externalStationId/);
+  assert.match(submit, /station_id: row\.choice\.id/);
+  assert.doesNotMatch(submit, /anmsm_station_id|resort_id/);
+  assert.match(confirmationApi, /invalidMappings\.length > 0/);
+  assert.match(confirmationApi, /identifiant manquant/);
+  assert.match(confirmationApi, /post<AnmsmMappingResult>\(`\$\{MAPPINGS_ROOT\}\/confirm`, \{ mappings \}\)/);
+
+  assert.match(submit, /response\.ok !== true \|\| failedResults\.length > 0/);
+  assert.ok(submit.indexOf("response.ok !== true") < submit.indexOf("onValidateAndPrepare(response)"));
+  assert.match(submit, /await load\(\)[\s\S]*loadEveryMapping\(\)[\s\S]*missingAssociations[\s\S]*await onValidateAndPrepare/);
+  assert.ok(submit.indexOf("await onValidateAndPrepare(response)") < submit.indexOf("setSelected(new Set())"));
+  assert.match(mappings, /result\.results\.filter\(item => item\.ok !== true\)\.length/);
+
+  const fortyOneFailures = Array.from({ length: 41 }, () => ({ ok: false }));
+  assert.equal(fortyOneFailures.filter(result => result.ok !== true).length, 41);
+});
+
 test("the ANMSM media host is allowed without removing existing image hosts", () => {
   const config = fs.readFileSync("next.config.js", "utf8");
   assert.match(config, /hostname: "anmsm\.media\.tourinsoft\.eu"/);
