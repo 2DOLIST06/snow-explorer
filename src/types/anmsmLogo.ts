@@ -6,7 +6,7 @@ export type ApiAnmsmCandidate = {
   checksum: string;
   candidate_preview_url: string | null;
   optimized_size_bytes: number | null;
-  warnings: AnmsmLogoAlert[];
+  warnings?: AnmsmLogoAlert[] | null;
   status: "ready" | "published" | "error";
   error_message: string | null;
 };
@@ -38,16 +38,27 @@ export type ApiAnmsmWorkspaceItem = {
 };
 
 export type ApiAnmsmWorkspace = {
-  items: ApiAnmsmWorkspaceItem[];
-  stats: {
-    stations_received: number;
-    stations_matched: number;
-    stations_unmatched: number;
-    logos_to_review: number;
-    logos_published: number;
-    errors: number;
-  };
+  rows?: ApiAnmsmWorkspaceItem[] | null;
+  stats?: Partial<AnmsmWorkspaceStats> | null;
 };
+
+export type AnmsmWorkspaceRow = Omit<ApiAnmsmWorkspaceItem, "candidate"> & {
+  candidate: (Omit<ApiAnmsmCandidate, "warnings"> & { warnings: AnmsmLogoAlert[] }) | null;
+};
+
+export type AnmsmWorkspaceStats = {
+  stations_received: number;
+  stations_matched: number;
+  stations_unmatched: number;
+  logos_available: number;
+  logos_without_source: number;
+  candidates_pending: number;
+  candidates_approved: number;
+  candidates_in_error: number;
+  candidates_to_prepare: number;
+};
+
+export type AnmsmWorkspace = { rows: AnmsmWorkspaceRow[]; stats: AnmsmWorkspaceStats; contractError: string | null };
 
 export type ApiAnmsmPrepareResult = { item: ApiAnmsmWorkspaceItem };
 export type AnmsmMappingPayload = { external_station_id: string; station_id: string };
