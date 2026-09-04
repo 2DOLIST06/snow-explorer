@@ -1,4 +1,4 @@
-import type { PisteMapCandidate, PisteMapRow, PisteMapStats, PisteMapWarning, PisteMapWorkspace } from "@/types/anmsmPisteMap";
+import type { PisteMapCandidate, PisteMapPreparePayload, PisteMapRow, PisteMapStats, PisteMapWarning, PisteMapWorkspace } from "@/types/anmsmPisteMap";
 
 export const EMPTY_PISTE_MAP_STATS: PisteMapStats = { maps_to_review: 0, maps_to_prepare: 0, stations_to_map: 0, maps_published: 0, maps_missing: 0, errors: 0 };
 const object = (value: unknown): Record<string, any> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
@@ -7,7 +7,7 @@ const nullableText = (value: unknown) => typeof value === "string" ? value : nul
 const nullableNumber = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
 const warning = (value: unknown): PisteMapWarning => { const item = object(value); return { code: text(item.code) || "warning", message: text(item.message), blocking: item.blocking === true }; };
 
-export function normalizePisteMapRow(value: unknown, index = 0): PisteMapRow {
+export function normalizePisteMapRow(value: unknown): PisteMapRow {
   const row = object(value); const rawMapping = object(row.mapping); const rawSuggestion = object(row.suggestion); const rawCandidate = object(row.candidate);
   const candidateId = nullableNumber(row.candidate_id ?? rawCandidate.candidate_id); const rawStatus = row.candidate_status ?? rawCandidate.status;
   const status = rawStatus === "pending" || rawStatus === "ready" ? "pending" : rawStatus === "approved" || rawStatus === "published" ? "approved" : rawStatus === "error" ? "error" : null;
@@ -20,8 +20,9 @@ export function normalizePisteMapRow(value: unknown, index = 0): PisteMapRow {
     credit: nullableText(rawCandidate.credit ?? row.credit), error_message: nullableText(rawCandidate.error_message ?? row.error_message), warnings,
   } : null;
   return {
-    external_station_id: text(row.external_station_id) || `station-inconnue-${index + 1}`,
-    external_station_name: text(row.external_station_name) || "Station inconnue", external_map_id: text(row.external_map_id),
+    external_station_id: text(row.external_station_id),
+    external_station_name: text(row.external_station_name) || "Station inconnue", anmsm_media_id: text(row.anmsm_media_id),
+    mapping_status: text(row.mapping_status), station_id: stationId,
     title: text(row.title) || text(row.map_type) || "Plan des pistes", map_type: nullableText(row.map_type), source_url: nullableText(row.source_url),
     source_checksum: nullableText(row.source_checksum), preparation_required: row.preparation_required === true,
     mapping: stationId ? { station_id: stationId, station_name: text(row.station_name ?? rawMapping.station_name) || "Station inconnue", station_slug: nullableText(row.station_slug ?? rawMapping.station_slug) } : null,
@@ -31,6 +32,19 @@ export function normalizePisteMapRow(value: unknown, index = 0): PisteMapRow {
     current_map_credit: nullableText(row.current_map_credit), warnings,
   };
 }
+
+export const pisteMapNeedsPreparation = (row: PisteMapRow) =>
+  row.mapping_status === "matched" &&
+  !!row.station_id &&
+  row.preparation_required === true &&
+  !!row.external_station_id &&
+  !!row.anmsm_media_id &&
+  !!row.source_url;
+
+export const pisteMapPreparePayload = (row: PisteMapRow): PisteMapPreparePayload => ({
+  external_station_id: row.external_station_id,
+  anmsm_media_id: row.anmsm_media_id,
+});
 
 export function normalizePisteMapWorkspace(payload: unknown): PisteMapWorkspace {
   const response = object(payload); const rows = Array.isArray(response.rows) ? response.rows : []; const rawStats = object(response.stats);
