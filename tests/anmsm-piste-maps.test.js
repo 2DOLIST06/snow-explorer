@@ -13,8 +13,8 @@ const mod = new Module("pisteMaps.test.js", module); mod._compile(compiled, "pis
 const { normalizePisteMapWorkspace, paginatePisteMaps, pisteMapNeedsPreparation, pisteMapPreparePayload, pisteMapReady } = mod.exports;
 
 test("complete and empty workspaces are normalized once with safe collections", () => {
-  const full = normalizePisteMapWorkspace({ rows: [{ external_station_id: "a", anmsm_media_id: "m", candidate: { candidate_id: 2, status: "ready" } }], stats: { maps_to_review: 1 } });
-  assert.equal(full.rows.length, 1); assert.deepEqual(full.rows[0].warnings, []); assert.equal(full.stats.maps_to_review, 1);
+  const full = normalizePisteMapWorkspace({ rows: [{ external_station_id: "a", anmsm_media_id: "m", candidate: { candidate_id: 2, status: "ready" } }], stats: { plans_ready: 8, plans_to_prepare: 32, plans_approved: 0 } });
+  assert.equal(full.rows.length, 1); assert.deepEqual(full.rows[0].warnings, []); assert.equal(full.stats.plans_ready, 8); assert.equal(full.stats.plans_to_prepare, 32); assert.equal(full.stats.plans_approved, 0);
   assert.deepEqual(normalizePisteMapWorkspace({ rows: [] }).rows, []);
   const invalid = normalizePisteMapWorkspace({}); assert.deepEqual(invalid.rows, []); assert.ok(invalid.contractError);
   assert.doesNotThrow(() => invalid.rows.filter(Boolean).slice(0).map(Boolean).find(Boolean));
@@ -75,5 +75,27 @@ test("public large map is created on modal opening only and closes with Escape",
   assert.match(publicPage, /if \(!open\) return;[\s\S]*event\.key === "Escape"/);
 });
 
+test("real workspace counters and fields are consumed", () => {
+  const rows = Array.from({ length: 74 }, (_, index) => ({ ...fullRow(index + 1), station_id: index < 40 ? "42" : null }));
+  const workspace = normalizePisteMapWorkspace({ rows, stats: { plans_detected: 74, plans_ready: 8, plans_to_prepare: 32, plans_approved: 0, stations_detected: 91, stations_matched: 43, stations_unmatched: 48, errors: 0 } });
+  assert.equal(workspace.stats.plans_ready, 8);
+  assert.equal(workspace.stats.plans_to_prepare, 32);
+  assert.equal(workspace.rows.filter(row => !row.station_id).length, 34);
+  assert.match(page, /stats\.plans_ready/); assert.match(page, /stats\.plans_to_prepare/); assert.match(page, /stats\.plans_approved/);
+  assert.match(page, /safeRows\.filter\(row => !row\.station_id\)\.length/);
+});
+
+test("candidate preview and PDF-without-preview states use the real response fields", () => {
+  const preview = normalizePisteMapWorkspace({ rows: [{ ...fullRow(), candidate_preview_url: "https://cdn/preview.jpg" }] }).rows[0];
+  assert.equal(preview.candidate_preview_url, "https://cdn/preview.jpg");
+  assert.match(page, /<Preview src=\{row\.candidate_preview_url\}/);
+  assert.match(page, /PDF téléchargé — aperçu à générer/);
+  assert.match(page, /Plan à récupérer/);
+  const pdfOnly = normalizePisteMapWorkspace({ rows: [{ ...fullRow(), candidate_original_url: "https://cdn/map.pdf", candidate_preview_url: null }] }).rows[0];
+  assert.equal(pisteMapReady(pdfOnly), false);
+  assert.equal(pisteMapReady({ ...preview, station_id: null }), false);
+  assert.equal(pisteMapReady({ ...preview, preparation_required: true }), false);
+});
+
 function eligibleRow() { return { external_station_id: "station", external_station_name: "Station", anmsm_media_id: "media-1", mapping_status: "matched", station_id: "42", preparation_required: true, source_url: "https://source/map.jpg" }; }
-function fullRow(id = 1) { return { ...eligibleRow(), anmsm_media_id: `media-${id}`, mapping: { station_id: "42", station_name: "Snow", station_slug: "snow" }, candidate_id: id, candidate_status: "pending", candidate: { candidate_id: id, status: "ready", warnings: [], display_url: `https://signed/${id}` } }; }
+function fullRow(id = 1) { return { ...eligibleRow(), preparation_required: false, anmsm_station_name: "Station ANMSM", anmsm_title: "Plan alpin", candidate_preview_url: `https://signed/${id}`, anmsm_media_id: `media-${id}`, mapping: { station_id: "42", station_name: "Snow", station_slug: "snow" }, candidate_id: id, candidate_status: "pending", candidate: { candidate_id: id, status: "ready", warnings: [], display_url: `https://signed/${id}` } }; }
