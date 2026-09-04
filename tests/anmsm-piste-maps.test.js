@@ -10,10 +10,10 @@ const publicPage = fs.readFileSync("pages/stations/[slug].tsx", "utf8");
 const source = fs.readFileSync("src/lib/anmsmPisteMaps.ts", "utf8");
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const mod = new Module("pisteMaps.test.js", module); mod._compile(compiled, "pisteMaps.test.js");
-const { normalizePisteMapWorkspace, paginatePisteMaps, pisteMapReady } = mod.exports;
+const { normalizePisteMapWorkspace, paginatePisteMaps, pisteMapNeedsPreparation, pisteMapPreparePayload, pisteMapReady } = mod.exports;
 
 test("complete and empty workspaces are normalized once with safe collections", () => {
-  const full = normalizePisteMapWorkspace({ rows: [{ external_station_id: "a", external_map_id: "m", candidate: { candidate_id: 2, status: "ready" } }], stats: { maps_to_review: 1 } });
+  const full = normalizePisteMapWorkspace({ rows: [{ external_station_id: "a", anmsm_media_id: "m", candidate: { candidate_id: 2, status: "ready" } }], stats: { maps_to_review: 1 } });
   assert.equal(full.rows.length, 1); assert.deepEqual(full.rows[0].warnings, []); assert.equal(full.stats.maps_to_review, 1);
   assert.deepEqual(normalizePisteMapWorkspace({ rows: [] }).rows, []);
   const invalid = normalizePisteMapWorkspace({}); assert.deepEqual(invalid.rows, []); assert.ok(invalid.contractError);
@@ -24,6 +24,26 @@ test("the real routes and sequential fresh-workspace preparation are used", () =
   for (const route of ["/workspace", "/prepare", "/bulk-approve", "/station-mappings/confirm"]) assert.match(api, new RegExp(route));
   assert.match(api, /\{ candidate_ids \}/); assert.match(page, /const freshWorkspace = await refresh/);
   assert.match(page, /const queue = workspace\.rows\.filter/); assert.match(page, /await prepareOne\(queue\[index\]\)/); assert.doesNotMatch(page, /Promise\.all/);
+  assert.match(page, /await refresh\(\); runningRef/);
+});
+
+test("prepare uses the exact ANMSM media payload", () => {
+  const row = normalizePisteMapWorkspace({ rows: [eligibleRow()] }).rows[0];
+  assert.deepEqual(pisteMapPreparePayload(row), { external_station_id: "station", anmsm_media_id: "media-1" });
+  assert.doesNotMatch(api, /external_map_id/);
+  assert.match(api, /pisteMapPreparePayload\(row\)/);
+});
+
+test("only complete matched rows enter the preparation queue", () => {
+  const matched = normalizePisteMapWorkspace({ rows: [eligibleRow()] }).rows[0];
+  const unmatched = normalizePisteMapWorkspace({ rows: [{ ...eligibleRow(), mapping_status: "unmatched", station_id: null }] }).rows[0];
+  assert.equal(pisteMapNeedsPreparation(matched), true);
+  assert.equal(pisteMapNeedsPreparation(unmatched), false);
+  for (const missing of ["external_station_id", "anmsm_media_id", "source_url", "station_id"]) {
+    assert.equal(pisteMapNeedsPreparation(normalizePisteMapWorkspace({ rows: [{ ...eligibleRow(), [missing]: null }] }).rows[0]), false);
+  }
+  assert.match(page, /const freshWorkspace = await refresh\(\); if \(freshWorkspace\) await prepareAll\(freshWorkspace\)/);
+  assert.match(page, /workspace\.rows\.filter\(pisteMapNeedsPreparation\)/);
 });
 
 test("mapping, comparison, filtering, pagination and global exclusive selection remain on one page", () => {
@@ -55,4 +75,5 @@ test("public large map is created on modal opening only and closes with Escape",
   assert.match(publicPage, /if \(!open\) return;[\s\S]*event\.key === "Escape"/);
 });
 
-function fullRow(id = 1) { return { external_station_id: "station", external_station_name: "Station", external_map_id: `map-${id}`, mapping: { station_id: "42", station_name: "Snow", station_slug: "snow" }, candidate_id: id, candidate_status: "pending", candidate: { candidate_id: id, status: "ready", warnings: [], display_url: `https://signed/${id}` } }; }
+function eligibleRow() { return { external_station_id: "station", external_station_name: "Station", anmsm_media_id: "media-1", mapping_status: "matched", station_id: "42", preparation_required: true, source_url: "https://source/map.jpg" }; }
+function fullRow(id = 1) { return { ...eligibleRow(), anmsm_media_id: `media-${id}`, mapping: { station_id: "42", station_name: "Snow", station_slug: "snow" }, candidate_id: id, candidate_status: "pending", candidate: { candidate_id: id, status: "ready", warnings: [], display_url: `https://signed/${id}` } }; }
