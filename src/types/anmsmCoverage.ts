@@ -25,7 +25,4 @@ export interface AnmsmCoverageResponse {
   snow_explorer_stations: SnowExplorerCoverageStation[]; anmsm_only_stations: AnmsmOnlyCoverageStation[];
   stats: Record<string, number>; snow_explorer_pagination: CoveragePagination; anmsm_only_pagination: CoveragePagination;
 }
-export type CoverageTab = "snow_explorer" | "anmsm_only";
-export type CoverageFilter = "all" | "needs_contact" | "availability_control" | "unmatched" | "missing_logo" | "missing_piste_map" | "available_anmsm" | "to_prepare" | "ready_to_review" | "published" | "error" | "active" | "inactive";
-export type CoverageSort = "business" | "name_asc" | "name_desc" | "missing_resources" | "coverage_status";
-export interface CoverageQuery { tab: CoverageTab; search: string; filter: CoverageFilter; sort: CoverageSort; page: number; page_size: number }
+export type CoverageView = "todo" | "all" | "unmatched" | "availability_control" | "contact" | "logo_available" | "map_available" | "logo_prepare" | "map_prepare" | "logo_review" | "map_review" | "logo_published" | "map_published" | "errors" | "anmsm_only";
