@@ -472,9 +472,13 @@ const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: 
           height: PANEL_HEIGHT,
           display: "flex",
           flexDirection: "column",
+          padding: 12,
         }}
       >
-        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes de ${name}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1 }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>
+          Plan des pistes
+        </h2>
+        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes de ${name}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt={`Plan des pistes de ${name}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
         </button>
