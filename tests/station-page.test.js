@@ -152,6 +152,15 @@ test("station detail region and ski pass preserve functional content and SEO", (
   assert.match(stationPage, /application\/ld\+json/);
 });
 
+test("a recorded piste-map image is labelled like the webcam and weather cards", () => {
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+
+  assert.match(
+    stationPage,
+    /if \(!src\) \{[\s\S]*?return \([\s\S]*?<h2[^>]*>\s*Plan des pistes\s*<\/h2>[\s\S]*?<img src=\{src\}/,
+  );
+});
+
 test("station 404 handling remains authoritative when widgets fail", async () => {
   const { stationResponse, widgets } = await loadStationPageSources("missing", {
     apiBase: "https://backend.example.com",
