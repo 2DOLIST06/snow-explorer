@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, Map, MapPin, Search } from "lucide-react";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import { getOfficialMapPresentation } from "@/lib/officialMap";
 import type { Resort } from "@/lib/api/resorts";
 import { getDirectoryPistes, getPistes, type PublicPisteMap } from "@/lib/publicPisteMap";
@@ -22,8 +23,8 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
   const contentRef = useRef<HTMLElement>(null);
 
   const filteredStations = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("fr");
-    return initialStations.filter((station) => !needle || `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle));
+    const needle = normalizeSearchText(query);
+    return initialStations.filter((station) => !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle));
   }, [initialStations, query]);
 
   async function selectStation(station: Resort) {

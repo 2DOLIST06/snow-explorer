@@ -7,6 +7,7 @@ import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import type { StationWidgetsConfig } from "@/types/station";
 import type { SkiPassSeason } from "@/types/skiPass";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeLegacyStationForfaits, normalizeStationSkiPass } from "@/lib/stationForfaits";
 
@@ -73,8 +74,8 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   }
 
   const filteredStations = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("fr");
-    return stations.filter((station) => !needle || `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle));
+    const needle = normalizeSearchText(query);
+    return stations.filter((station) => !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle));
   }, [query, stations]);
 
   const visibility = getSkiPassBlocksVisibility(

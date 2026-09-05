@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { regionHref } from "@/lib/regions";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string }; department?: { name?: string } };
 
@@ -13,9 +14,9 @@ type Props = { initialStations: Resort[] };
 const StationsList: NextPage<Props> = ({ initialStations }) => {
   const [q, setQ] = useState("");
   const data = useMemo(() => {
-    const needle = q.trim().toLocaleLowerCase("fr");
+    const needle = normalizeSearchText(q);
     return needle
-      ? initialStations.filter((station) => `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle))
+      ? initialStations.filter((station) => matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle))
       : initialStations;
   }, [initialStations, q]);
 
