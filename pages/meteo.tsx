@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin } from "lucide-react";
 import SkiWeatherWidget from "@/components/SkiWeatherWidget";
 import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 
 type StationWidgets = { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null }; widgets?: { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null } } };
 
@@ -37,8 +38,8 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
   };
 
   const filteredStations = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return needle ? initialStations.filter((station) => `${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`.toLowerCase().includes(needle)) : initialStations;
+    const needle = normalizeSearchText(q);
+    return needle ? initialStations.filter((station) => matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle)) : initialStations;
   }, [q, initialStations]);
 
   useEffect(() => {

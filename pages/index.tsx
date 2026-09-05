@@ -13,6 +13,7 @@ import {
   parseResortsPayload,
   type Resort,
 } from "@/lib/api/resorts";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 
 type HomeProps = {
   featuredResorts: Resort[];
@@ -55,9 +56,9 @@ const Home: NextPage<HomeProps> = ({ featuredResorts, stationDirectory }) => {
   );
 
   const items = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("fr");
+    const needle = normalizeSearchText(query);
     return needle
-      ? stationDirectory.filter((resort) => `${resort.name} ${resort.region?.name || ""} ${resort.department?.name || ""}`.toLocaleLowerCase("fr").includes(needle))
+      ? stationDirectory.filter((resort) => matchesSearch(`${resort.name} ${resort.region?.name || ""} ${resort.department?.name || ""}`, needle))
       : stationDirectory;
   }, [query, stationDirectory]);
 

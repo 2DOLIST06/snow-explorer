@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Loader2, MapPin, Menu, Search, UserRound, X } from "lucide-react";
+import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 
 type Resort = {
   id?: string;
@@ -120,16 +121,16 @@ export default function ProHeader({ initialStations }: Props) {
   }, [mobileOpen, router.events]);
 
   const filteredResults = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = normalizeSearchText(query);
     const matches = needle
-      ? stations.filter((station) => `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle))
+      ? stations.filter((station) => matchesSearch(`${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`, needle))
       : stations;
     return matches.slice(0, 8);
   }, [query, stations]);
 
   const stationsByLetter = useMemo(() => {
-    const needle = stationsFilter.trim().toLowerCase();
-    const filtered = stations.filter((station) => !needle || `${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`.toLowerCase().includes(needle)).sort((a, b) => (a?.name || "").localeCompare(b?.name || "", "fr"));
+    const needle = normalizeSearchText(stationsFilter);
+    const filtered = stations.filter((station) => !needle || matchesSearch(`${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`, needle)).sort((a, b) => (a?.name || "").localeCompare(b?.name || "", "fr"));
     const map = new Map<string, Resort[]>();
     filtered.forEach((station) => {
       const first = (station?.name || "").trim().charAt(0).toUpperCase();
