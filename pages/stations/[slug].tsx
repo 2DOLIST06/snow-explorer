@@ -13,6 +13,7 @@ import { getStationApiBase, isResortInactive, loadStationPageSources, resolveRes
 import { StationWidgetsConfig } from "@/types/station";
 import type { SkiPassSeason } from "@/types/skiPass";
 import { regionHref } from "@/lib/regions";
+import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 
 import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
@@ -1302,24 +1303,12 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
   const canonicalUrl = `https://www.snow-explorer.com/stations/${resort.slug}`;
   const resortRegionHref = regionHref(resort.region);
 
-  // URLs plan (ordre de priorité : cfg.pistes → resort.* à plat)
-  const pistesCfg = cfg?.pistes || null;
-
-  const mapSmall: string = (
-    pistesCfg?.smallMapUrl?.trim() ||
-    (resort as any)?.pistes_small_map_url?.trim() ||
-    (resort as any)?.pistes_large_map_url?.trim() ||
-    ""
-  ) as string;
-
-  const mapLarge: string = (
-    pistesCfg?.largeMapUrl?.trim() ||
-    (resort as any)?.pistes_large_map_url?.trim() ||
-    ""
-  ) as string;
-
-  const mapCaption: string | null = pistesCfg?.caption ?? (resort as any)?.pistes_caption ?? null;
-  const officialMapUrl = normalizeOfficialMapUrl(pistesCfg?.officialMapUrl);
+  const resolvedPistes = resolveStationPisteMap(resort, cfg?.pistes || {});
+  // A large published image also serves as the thumbnail; a small image is optional.
+  const mapSmall = resolvedPistes.smallMapUrl || resolvedPistes.largeMapUrl;
+  const mapLarge = resolvedPistes.largeMapUrl;
+  const mapCaption = resolvedPistes.caption;
+  const officialMapUrl = normalizeOfficialMapUrl(resolvedPistes.officialMapUrl);
 
   const description = resort.description_md || cfg?.description?.html || "";
   const descriptionParagraphs = description
@@ -1642,14 +1631,15 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     };
   }
 
+  const resolvedPistes = resolveStationPisteMap(resort, cfg?.pistes || {});
   const cleanCfg: StationWidgetsConfig | null = cfg ? {
     stationSlug: resort.slug,
     pistes: {
-      enabled: Boolean(cfg.pistes?.enabled),
-      smallMapUrl: cfg.pistes?.smallMapUrl || null,
-      largeMapUrl: cfg.pistes?.largeMapUrl || null,
-      officialMapUrl: cfg.pistes?.officialMapUrl || null,
-      caption: cfg.pistes?.caption || null,
+      enabled: resolvedPistes.enabled,
+      smallMapUrl: resolvedPistes.smallMapUrl,
+      largeMapUrl: resolvedPistes.largeMapUrl,
+      officialMapUrl: resolvedPistes.officialMapUrl,
+      caption: resolvedPistes.caption,
       ...(SHOW_PISTE_COLOR_DETAILS && cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
     },
     meteo: { enabled: Boolean(cfg.meteo?.enabled), iframeUrl: cfg.meteo?.iframeUrl || null },

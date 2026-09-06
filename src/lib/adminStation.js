@@ -1,4 +1,5 @@
 const firstDefined = (...values) => values.find((value) => value !== null && value !== undefined);
+const { nonEmptyString, resolveStationPisteMap } = require("./stationPisteMap");
 
 const sumDefinedNumbers = (values) => {
   const present = values.filter((value) => value !== null && value !== undefined && value !== "");
@@ -44,17 +45,26 @@ function normalizeAdminStation(resort = {}, widgets = {}) {
       sumDefinedNumbers([lifts.tireFesses, lifts.telesieges, lifts.telepheriques]),
       null
     ),
-    pistes_small_map_url: firstDefined(resort.pistes_small_map_url, widgets?.pistes?.smallMapUrl, null),
-    pistes_large_map_url: firstDefined(resort.pistes_large_map_url, widgets?.pistes?.largeMapUrl, null),
+    pistes_small_map_url: nonEmptyString(resort.pistes_small_map_url) || nonEmptyString(widgets?.pistes?.smallMapUrl),
+    pistes_large_map_url: nonEmptyString(resort.pistes_large_map_url) || nonEmptyString(widgets?.pistes?.largeMapUrl),
+    pistes_caption: nonEmptyString(resort.pistes_caption) || nonEmptyString(widgets?.pistes?.caption),
   };
 }
 
 function normalizeAdminWidgets(rawWidgets = {}, resort = {}) {
   const widgets = { ...rawWidgets };
+  const pistes = resolveStationPisteMap(resort, widgets.pistes || {});
   widgets.pistes = {
     ...(widgets.pistes || {}),
-    smallMapUrl: firstDefined(widgets?.pistes?.smallMapUrl, resort.pistes_small_map_url, null),
-    largeMapUrl: firstDefined(widgets?.pistes?.largeMapUrl, resort.pistes_large_map_url, null),
+    enabled: pistes.enabled,
+    smallMapUrl: pistes.smallMapUrl,
+    largeMapUrl: pistes.largeMapUrl,
+    // Keep editing the legacy fallback even while a published image makes it
+    // irrelevant to the public rendering.
+    officialMapUrl:
+      nonEmptyString(widgets?.pistes?.officialMapUrl) ||
+      nonEmptyString(widgets?.pistes?.official_map_url),
+    caption: pistes.caption,
   };
   return widgets;
 }

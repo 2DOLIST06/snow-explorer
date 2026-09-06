@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 
 const { normalizeAdminStation, normalizeAdminWidgets } = require("../src/lib/adminStation");
 
@@ -47,4 +48,41 @@ test("admin widgets use piste maps returned on the resort record", () => {
 
   assert.equal(widgets.pistes.smallMapUrl, "small.webp");
   assert.equal(widgets.pistes.largeMapUrl, "large.webp");
+});
+
+test("published piste map fields override an empty disabled legacy widget without writing", () => {
+  const station = {
+    pistes_large_map_url: "https://example.com/display.webp",
+    pistes_small_map_url: "",
+    pistes_caption: null,
+  };
+  const rawWidgets = {
+    pistes: {
+      is_active: false,
+      large_map_url: null,
+      largeMapUrl: null,
+      small_map_url: null,
+      smallMapUrl: null,
+      official_map_url: "https://example.com/ancien-plan.jpg",
+    },
+  };
+
+  const widgets = normalizeAdminWidgets(rawWidgets, station);
+
+  assert.equal(widgets.pistes.largeMapUrl, "https://example.com/display.webp");
+  assert.equal(widgets.pistes.smallMapUrl, null);
+  assert.equal(widgets.pistes.officialMapUrl, "https://example.com/ancien-plan.jpg");
+  assert.equal(widgets.pistes.enabled, true);
+  assert.deepEqual(station, {
+    pistes_large_map_url: "https://example.com/display.webp",
+    pistes_small_map_url: "",
+    pistes_caption: null,
+  });
+});
+
+test("opening the admin form only reads data and never persists normalized availability", () => {
+  const page = fs.readFileSync("pages/admin/stations/[slug].tsx", "utf8");
+  const loadFunction = page.slice(page.indexOf("const load = async"), page.indexOf("const saveAll = async"));
+
+  assert.doesNotMatch(loadFunction, /method:\s*["'](?:PATCH|POST|PUT|DELETE)["']/);
 });
