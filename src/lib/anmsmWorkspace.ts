@@ -47,7 +47,12 @@ export function normalizeAnmsmWorkspaceRow(value: unknown, index = 0): AnmsmWork
 
   return {
     external_station_id: externalStationId,
-    external_station_name: stringOrEmpty(row.external_station_name) || "Station inconnue",
+    external_station_name: stringOrEmpty(row.external_station_name ?? row.anmsm_station_name) || "Station inconnue",
+    anmsm_station_name: stringOrNull(row.anmsm_station_name),
+    anmsm_title: stringOrNull(row.anmsm_title),
+    source_has_logo: row.source_has_logo === true,
+    source_logo_url: stringOrNull(row.source_logo_url),
+    source_url: stringOrNull(row.source_url),
     anmsm_logo_url: stringOrNull(row.anmsm_logo_url),
     anmsm_logo_checksum: stringOrNull(row.anmsm_logo_checksum),
     preparation_required: row.preparation_required === true,
@@ -57,6 +62,8 @@ export function normalizeAnmsmWorkspaceRow(value: unknown, index = 0): AnmsmWork
     station_id: stationId,
     station_name: stationName,
     current_logo_url: currentLogoUrl,
+    mapping_status: stringOrNull(row.mapping_status),
+    preparation_error: stringOrNull(row.preparation_error),
     warnings,
     mapping: mapping || stationId ? {
       station_id: stationId || "", station_name: stationName || "Station inconnue",
@@ -76,7 +83,12 @@ export function normalizeAnmsmWorkspaceRow(value: unknown, index = 0): AnmsmWork
   };
 }
 
-export const isAnmsmRowReadyToPublish = (row: AnmsmWorkspaceRow) => row.candidate_id !== null && row.candidate_status === "pending";
+export const isAnmsmRowReadyToPublish = (row: AnmsmWorkspaceRow) => row.station_id !== null
+  && row.candidate_id !== null
+  && row.candidate_status === "pending"
+  && typeof row.candidate_preview_url === "string"
+  && row.candidate_preview_url.trim().length > 0
+  && row.preparation_required === false;
 
 export function filterAnmsmRowsReadyToPublish(rows: AnmsmWorkspaceRow[]): AnmsmWorkspaceRow[] {
   return rows.filter(isAnmsmRowReadyToPublish);
