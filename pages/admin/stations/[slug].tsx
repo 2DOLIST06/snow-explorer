@@ -39,6 +39,7 @@ type ResortType = {
 
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
+  pistes_caption?: string | null;
 };
 
 type ForfaitColumn = {
