@@ -20,10 +20,12 @@ test("the workspace is loaded first and retained when a refresh fails", () => {
   assert.match(page, /API indisponible/);
 });
 
-test("one compact table compares old, optimized and real-site logos", () => {
-  for (const heading of ["Logo actuellement publié", "Nouveau logo ANMSM optimisé", "Rendu réel sur le site"]) assert.match(page, new RegExp(heading));
-  assert.match(page, /current_logo_url/); assert.match(page, /candidate_preview_url/);
-  assert.match(page, /StationLogoFrame.*preview="desktop"/); assert.match(page, /StationLogoFrame.*preview="mobile"/);
+test("one compact table keeps source, published and optimized logos distinct", () => {
+  for (const heading of ["Logo disponible chez ANMSM", "Logo actuellement publié", "Nouveau logo optimisé"]) assert.match(page, new RegExp(heading));
+  assert.match(page, /src=\{row\.source_has_logo === true \? sourceUrl : null\}/);
+  assert.match(page, /src=\{row\.current_logo_url\}/);
+  assert.match(page, /src=\{row\.candidate_preview_url\}/);
+  assert.doesNotMatch(page, /StationLogoFrame/);
   assert.doesNotMatch(page, /anmsm-card|anmsm-tabs|<StationMappings/);
 });
 
@@ -43,8 +45,9 @@ test("a failed preparation keeps candidates and processing continues", () => {
   assert.doesNotMatch(page, /setRows\(\[\]\)/);
 });
 
-test("exact and manual mappings use real backend identifiers and stay in table flow", () => {
-  assert.match(page, /row\.mapping/); assert.match(page, /normalized_exact/);
+test("associations use flat backend identifiers while suggestions remain explicit", () => {
+  assert.match(page, /row\.station_id !== null/); assert.match(page, /row\.station_name/); assert.match(page, /row\.mapping_status/);
+  assert.match(page, /Aucune station Snow Explorer associée/); assert.match(page, /Suggestion à vérifier/);
   assert.match(page, /external_station_id: row\.external_station_id, station_id: resort\.station_id/);
   assert.match(api, /confirm.*\{ mappings \}/);
   assert.match(page, /Rechercher une station Snow Explorer/);
@@ -70,8 +73,8 @@ test("bulk publishing handles complete and partial success without navigation", 
 });
 
 test("published candidates are not selectable", () => {
-  assert.match(normalizerSource, /row\.candidate_id !== null && row\.candidate_status === "pending"/);
-  assert.match(page, /row\.candidate_status === "approved" \? "Déjà publié"/);
+  assert.match(normalizerSource, /row\.candidate_id !== null[\s\S]*row\.candidate_status === "pending"/);
+  assert.match(page, /row\.candidate_status === "approved" && nonEmptyUrl\(row\.current_logo_url\) !== null/);
   assert.match(page, /disabled=\{!selectable\}/);
 });
 
@@ -94,7 +97,7 @@ test("all 32 pending candidates are ready before pagination even without prepara
 
 test("presigned previews are used verbatim and refreshed after expiry", () => {
   assert.match(types, /candidate_preview_url: string \| null/);
-  assert.match(page, /src=\{candidate\?\.candidate_preview_url\}/);
+  assert.match(page, /src=\{row\.candidate_preview_url\}/);
   assert.match(page, /onExpired=\{\(\) => void refresh\(\)\}/);
   assert.doesNotMatch(page + api, /optimized_s3_key|amazonaws|localStorage|sessionStorage|URLSearchParams/);
 });
@@ -183,13 +186,40 @@ test("pagination is safe for zero results, missing rows and multiple pages", () 
 
 
 test("workspace filters, required ordering and page-size controls are explicit", () => {
-  for (const label of ["Toutes", "Prêtes à publier", "À préparer", "À associer", "Déjà publiées", "Erreurs", "Sans logo source"]) assert.match(page, new RegExp(label));
-  assert.match(page, /useState<RowFilter>\("ready"\)/);
+  for (const label of ["Tous", "Prêts à publier", "À préparer", "À associer", "Déjà publiés", "Erreurs", "Sans logo source"]) assert.match(page, new RegExp(label));
+  assert.match(page, /useState<RowFilter>\("all"\)/);
   assert.match(page, /DEFAULT_PAGE_SIZE = 20/);
   for (const size of [20, 50, 100]) assert.match(page, new RegExp(`<option value=\\{${size}\\}>${size}`));
   assert.match(page, /<option value="all">Tous<\/option>/);
   assert.match(page, /DISPLAY_ORDER[\s\S]*ready: 1[\s\S]*prepare: 2[\s\S]*"source-missing": 3[\s\S]*mapping: 4[\s\S]*error: 5[\s\S]*published: 6/);
   assert.match(page, /filteredRows\.length} résultat\(s\)/);
+});
+
+test("the confirmed MONTS JURA row retains its ANMSM identity and source image", () => {
+  const source = "https://anmsm.media.tourinsoft.eu/upload/Logo-Basse-Definition-2.png";
+  const row = normalizeAnmsmWorkspace({ rows: [{
+    external_station_id: "STATANMSM01010012", anmsm_station_name: "MONTS JURA",
+    source_has_logo: true, source_logo_url: source, station_id: null, station_name: null,
+    mapping_status: "unmatched", current_logo_url: null, candidate_preview_url: null,
+  }] }).rows[0];
+  assert.equal(row.anmsm_station_name, "MONTS JURA");
+  assert.equal(row.external_station_id, "STATANMSM01010012");
+  assert.equal(row.source_logo_url, source);
+  assert.equal(row.station_id, null);
+  assert.match(page, /row\.anmsm_station_name\?\.trim\(\) \|\| "Station inconnue"/);
+  assert.match(page, /Logo disponible chez ANMSM/);
+  assert.doesNotMatch(page, />ST</);
+});
+
+test("backend statistics are displayed directly and pagination reaches every workspace row", () => {
+  const stats = { stations_received: 91, stations_matched: 45, stations_unmatched: 46, logos_available: 86,
+    logos_without_source: 5, candidates_approved: 40, candidates_pending: 0, candidates_to_prepare: 3, candidates_in_error: 1 };
+  assert.deepEqual(normalizeAnmsmWorkspace({ rows: [], stats }).stats, stats);
+  for (const field of Object.keys(stats)) assert.match(page, new RegExp(`stats\\.${field}`));
+  const rows = normalizeAnmsmWorkspace({ rows: Array.from({ length: 91 }, (_, index) => ({ external_station_id: String(index) })) }).rows;
+  assert.equal([1, 2, 3, 4, 5].flatMap(current => paginateAnmsmRows(rows, current, 20)).length, 91);
+  assert.match(page, />Précédent</); assert.match(page, /Page \{currentPage\} sur \{pageCount\}/); assert.match(page, />Suivant</);
+  assert.match(page, /setFilter\(item\.value\); setPage\(1\)/);
 });
 
 test("preparation queue comes from fresh complete workspace rows, never visible rows", () => {

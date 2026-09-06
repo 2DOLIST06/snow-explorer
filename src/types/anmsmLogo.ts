@@ -29,8 +29,13 @@ export type ApiAnmsmSuggestion = {
 
 export type ApiAnmsmWorkspaceItem = {
   external_station_id: string;
-  external_station_name: string;
-  anmsm_logo_url: string | null;
+  external_station_name?: string;
+  anmsm_station_name?: string | null;
+  anmsm_title?: string | null;
+  source_has_logo?: boolean;
+  source_logo_url?: string | null;
+  source_url?: string | null;
+  anmsm_logo_url?: string | null;
   anmsm_logo_checksum: string | null;
   preparation_required: boolean;
   mapping?: ApiAnmsmMapping | null;
@@ -42,6 +47,8 @@ export type ApiAnmsmWorkspaceItem = {
   station_id?: string | null;
   station_name?: string | null;
   current_logo_url?: string | null;
+  mapping_status?: string | null;
+  preparation_error?: string | null;
   warnings?: AnmsmLogoAlert[] | null;
 };
 
@@ -60,6 +67,13 @@ export type AnmsmWorkspaceRow = Omit<ApiAnmsmWorkspaceItem, "candidate" | "mappi
   station_id: string | null;
   station_name: string | null;
   current_logo_url: string | null;
+  anmsm_station_name: string | null;
+  anmsm_title: string | null;
+  source_has_logo: boolean;
+  source_logo_url: string | null;
+  source_url: string | null;
+  mapping_status: string | null;
+  preparation_error: string | null;
   warnings: AnmsmLogoAlert[];
 };
 
