@@ -8,6 +8,7 @@ import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/statio
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
 import { normalizeAdminStation, normalizeAdminWidgets } from "@/lib/adminStation";
+import StationSkiAreas from "@/components/admin/StationSkiAreas";
 
 
 type RegionRow = { id: string; name: string; country_code?: string };
@@ -2299,6 +2300,7 @@ const removeForfaitRow = (rowIdx: number) => {
 >
   <SkiPassEditor stationSlug={slug} />
 </SectionCard>
+<StationSkiAreas stationId={String(resort.id || slug)} />
           </div>
         </div>
       </div>

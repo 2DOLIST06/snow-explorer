@@ -3,7 +3,7 @@ import Link from "next/link";
 
 const groups = [
   // TODO: ajouter les URL absentes lorsque les pages correspondantes existeront.
-  { title: "Découvrir", links: [{ label: "Stations", href: "/stations" }] },
+  { title: "Découvrir", links: [{ label: "Stations", href: "/stations" }, { label: "Domaines skiables", href: "/domaines-skiables" }] },
   { title: "Météo & neige", links: [{ label: "Météo des stations", href: "/meteo" }] },
   { title: "Pratique", links: [{ label: "Forfaits", href: "/forfaits" }, { label: "Contact", href: "/contact" }] },
   { title: "Snow Explorer", links: [{ label: "CGU", href: "/conditions-utilisation" }, { label: "Mentions légales", href: "/mentions-legales" }, { label: "Confidentialité", href: "/confidentialite" }, { label: "Cookies", href: "/cookies" }] },

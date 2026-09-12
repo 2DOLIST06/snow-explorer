@@ -21,6 +21,8 @@ import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
+import SkiAreaPublicCard from "@/components/stations/SkiAreaPublicCard";
+import type { SkiAreaPublic } from "@/types/skiArea";
 
 /* =========================
  * Types
@@ -53,6 +55,7 @@ type Resort = {
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
   ski_pass?: SkiPassSeason | null;
+  ski_areas?: SkiAreaPublic[];
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -1510,6 +1513,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
     season={cfg?.normalizedForfaits?.season}
     source_url={cfg?.normalizedForfaits?.source_url}
         /></div> : null}
+        {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
       </main>
 
       <style jsx global>{`
@@ -1707,6 +1711,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     pistes_large_map_url: resort.pistes_large_map_url ?? null,
     pistes_caption: resort.pistes_caption ?? null,
     ski_pass: resort.ski_pass ?? null,
+    ski_areas: Array.isArray(resort.ski_areas) ? resort.ski_areas.filter(area => area?.status === "published") : [],
   };
 
   return { props: { resort: stationForPage, cfg: cleanCfg } };

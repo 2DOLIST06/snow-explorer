@@ -1,8 +1,9 @@
 import type { Resort } from "@/lib/api/resorts";
 import { regionSlug, type RegionSummary } from "@/lib/regions";
+import type { SkiAreaPublic } from "@/types/skiArea";
 
 const SITE_ORIGIN = "https://www.snow-explorer.com";
-const STATIC_PATHS = ["/", "/stations", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
+const STATIC_PATHS = ["/", "/stations", "/domaines-skiables", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
 
 export type SitemapEntry = {
   url: string;
@@ -30,7 +31,7 @@ function canonicalPart(value: unknown): string | null {
 }
 
 /** Deduplicate canonical URLs, preferring trustworthy API modification dates. */
-export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[]): SitemapEntry[] {
+export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[], skiAreas: SkiAreaPublic[] = []): SitemapEntry[] {
   const entries: SitemapEntry[] = STATIC_PATHS.map((path) => ({ url: `${SITE_ORIGIN}${path}` }));
 
   for (const resort of resorts) {
@@ -43,6 +44,12 @@ export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[]): 
       url: `${SITE_ORIGIN}/stations/${encodeURIComponent(slug)}`,
       ...(lastModified ? { lastModified } : {}),
     });
+  }
+  for (const area of skiAreas) {
+    const slug = canonicalPart(area?.slug);
+    if (area?.status !== "published" || !slug) continue;
+    const lastModified = parseLastModified(area.updated_at);
+    entries.push({ url: `${SITE_ORIGIN}/domaines-skiables/${encodeURIComponent(slug)}`, ...(lastModified ? { lastModified } : {}) });
   }
 
   // Resort responses already contain the region used by the public page. Keep
@@ -72,8 +79,8 @@ export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[]): 
   return [...unique.values()];
 }
 
-export function createSitemapXml(resorts: Resort[], regions: RegionSummary[]): string {
-  const entries = getSitemapEntries(resorts, regions)
+export function createSitemapXml(resorts: Resort[], regions: RegionSummary[], skiAreas: SkiAreaPublic[] = []): string {
+  const entries = getSitemapEntries(resorts, regions, skiAreas)
     .map(({ url, lastModified }) => {
       const lastmod = lastModified ? `\n    <lastmod>${lastModified.toISOString()}</lastmod>` : "";
       return `  <url>\n    <loc>${escapeXml(url)}</loc>${lastmod}\n  </url>`;

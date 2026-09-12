@@ -1,0 +1,8 @@
+import type { GetServerSideProps } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import { fetchAllPublicSkiAreas } from "@/lib/api/skiAreas";
+import type { SkiAreaPublic } from "@/types/skiArea";
+export default function SkiAreasDirectory({ areas, apiError }: { areas: SkiAreaPublic[]; apiError: boolean }) { return <><Head><title>Domaines skiables en France | Snow Explorer</title><meta name="description" content="Découvrez les domaines skiables publiés et les stations qui leur sont rattachées." /><link rel="canonical" href="https://www.snow-explorer.com/domaines-skiables" /></Head><main className="ski-areas-page"><header className="ski-areas-hero"><p className="eyebrow">Explorer la montagne</p><h1>Domaines skiables</h1><p>Consultez leurs caractéristiques et découvrez les stations reliées.</p></header>{areas.length > 0 && <section className="ski-areas-directory">{areas.map(area => <article key={area.id}>{area.cover_image_url && <img src={area.cover_image_url} alt={`Domaine skiable ${area.name}`} />}<div><h2>{area.name}</h2>{area.description && <p>{area.description}</p>}<Link href={`/domaines-skiables/${area.slug}`}>Découvrir le domaine</Link></div></article>)}</section>}{apiError ? <p className="notice notice--warning" role="alert">Les domaines skiables sont temporairement indisponibles. Réessayez ultérieurement.</p> : areas.length === 0 && <p className="empty-state">Aucun domaine skiable publié actuellement.</p>}</main></>; }
+export const getServerSideProps: GetServerSideProps = async () => { try { return { props: { areas: await fetchAllPublicSkiAreas(), apiError: false } }; } catch (error) { console.error("[ski-areas] list unavailable", error); return { props: { areas: [], apiError: true } }; } };
+

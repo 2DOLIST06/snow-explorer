@@ -39,6 +39,7 @@ function fetchFallbackStations(): Promise<Resort[]> {
 
 const navItems = [
   { label: "Stations", href: "/stations", kind: "stations" },
+  { label: "Domaines skiables", href: "/domaines-skiables" },
   { label: "Météo", href: "/meteo" },
   { label: "Forfaits", href: "/forfaits" },
   { label: "Plan des pistes", href: "/plan-des-pistes" },

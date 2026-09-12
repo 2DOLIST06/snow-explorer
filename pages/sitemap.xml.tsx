@@ -3,14 +3,18 @@ import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 import { fetchRegionsServer } from "@/lib/api/regions";
 import { createSitemapXml } from "@/lib/sitemap";
 import type { RegionSummary } from "@/lib/regions";
+import { fetchAllPublicSkiAreas } from "@/lib/api/skiAreas";
+import type { SkiAreaPublic } from "@/types/skiArea";
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   let resorts: Resort[] = [];
   let regions: RegionSummary[] = [];
+  let skiAreas: SkiAreaPublic[] = [];
 
-  const [resortsResult, regionsResult] = await Promise.allSettled([
+  const [resortsResult, regionsResult, skiAreasResult] = await Promise.allSettled([
     fetchActiveResortsServer(),
     fetchRegionsServer(),
+    fetchAllPublicSkiAreas(),
   ]);
 
   if (resortsResult.status === "fulfilled") resorts = resortsResult.value;
@@ -27,11 +31,13 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
       regionsResult.reason instanceof Error ? regionsResult.reason.message : "unknown_error",
     );
   }
+  if (skiAreasResult.status === "fulfilled") skiAreas = skiAreasResult.value;
+  else console.error("[sitemap] Unable to fetch ski areas; continuing without ski-area URLs");
 
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
-  res.write(createSitemapXml(resorts, regions));
+  res.write(createSitemapXml(resorts, regions, skiAreas));
   res.end();
 
   return { props: {} };
