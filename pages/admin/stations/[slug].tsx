@@ -268,7 +268,6 @@ function buildSmallFilename(original: string, preferJpeg = true): string {
 // =========================
 const styles = {
   page: {
-    minHeight: "100vh",
     background: "#f5f7fb",
     color: "#111827",
   } as React.CSSProperties,
@@ -277,7 +276,7 @@ const styles = {
     maxWidth: 1320,
     margin: "0 auto",
     padding: "24px 16px 24px",
-    height: "calc(100vh - 88px)",
+    height: "calc(100dvh - 88px)",
     overflow: "hidden",
   } as React.CSSProperties,
 
