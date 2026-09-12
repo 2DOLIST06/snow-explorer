@@ -1,11 +1,25 @@
 // src/pages/admin/stations/new.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminFetch } from "@/lib/adminApi";
+import { useRouter } from "next/router";
+import { getCatalogExpectation, getStationExpectationCandidates } from "@/lib/adminSkiAreaCatalogApi";
+import type { CatalogExpectation } from "@/types/skiAreaCatalog";
 
 export default function NewResort() {
+  const router = useRouter();
   const [msg, setMsg] = useState<React.ReactNode>(null);
+  const [expectation, setExpectation] = useState<CatalogExpectation | null>(null);
+  const [prefillError, setPrefillError] = useState("");
+  const [candidates, setCandidates] = useState<CatalogExpectation[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady || !router.query.expectation_id) return;
+    const id = Number(router.query.expectation_id);
+    if (!Number.isInteger(id)) { setPrefillError("Identifiant d’attente invalide."); return; }
+    void getCatalogExpectation(id).then(setExpectation).catch(error => setPrefillError(error.message));
+  }, [router.isReady, router.query.expectation_id]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,6 +42,9 @@ export default function NewResort() {
         region_id: data.region_id,
         region_name: data.region_name,
         country_code: (data.country_code as string || "FR").toUpperCase(),
+        department: data.department || undefined,
+        is_active: false,
+        ...(expectation ? { station_ref: expectation.station_ref } : {}),
         altitude_base_m: Number(data.altitude_base_m || 0) || null,
         altitude_top_m: Number(data.altitude_top_m || 0) || null,
         ski_area_km: Number(data.ski_area_km || 0) || null,
@@ -45,13 +62,11 @@ export default function NewResort() {
     const json = await r.json().catch(() => ({}));
 
     if (r.ok) {
-      setMsg(
-        <div>
-          ✅ Station créée: <b>{json.resort_id}</b>.{" "}
-          <Link href={`/stations/${String(data.slug)}`}>Aller à la fiche →</Link>
-        </div>
-      );
-      form.reset();
+      const resortId = String(json.resort?.id || json.resort_id || "");
+      setMsg(<div>✅ Station créée sans activation.{expectation && <> Ses domaines confirmés ont été rattachés. <Link href="/admin/domaines-skiables/attentes">Retour aux attentes →</Link></>}</div>);
+      if (!expectation && resortId) {
+        getStationExpectationCandidates(resortId).then(result => setCandidates(result.items.map(item => item.expectation))).catch(() => undefined);
+      }
     } else {
       setMsg(`❌ ${json.error || "Erreur"}`);
     }
@@ -70,12 +85,15 @@ export default function NewResort() {
     <main style={{ maxWidth: 900, margin: "24px auto", padding: "0 16px" }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Nouvelle station</h1>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
-        {input("name", "Nom *", { required: true, placeholder: "Val Thorens" })}
+      {prefillError && <p className="admin-form-error" role="alert">{prefillError}</p>}
+      {expectation && <aside className="catalog-callout"><strong>Création depuis l’attente {expectation.station_ref}</strong><p>La fiche restera inactive. Après enregistrement, les domaines confirmés seront rattachés : {expectation.expected_memberships.map(item => item.area_name).join(", ")}.</p></aside>}
+      <form key={expectation?.id || "usual"} onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
+        {input("name", "Nom *", { required: true, placeholder: "Val Thorens", defaultValue: expectation?.name })}
         {input("slug", "Slug *", { required: true, placeholder: "val-thorens" })}
         {input("region_id", "ID région *", { required: true, placeholder: "auvergne-rhone-alpes" })}
         {input("region_name", "Nom région *", { required: true, placeholder: "Auvergne-Rhône-Alpes" })}
-        {input("country_code", "Pays *", { required: true, defaultValue: "FR" })}
+        {input("country_code", "Pays *", { required: true, defaultValue: expectation?.country_code || "FR" })}
+        {input("department", "Département", { defaultValue: expectation?.department || "" })}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {input("altitude_base_m", "Altitude base (m)", { type: "number" })}
@@ -117,6 +135,7 @@ export default function NewResort() {
         </button>
 
         {msg && <div style={{ marginTop: 8 }}>{msg}</div>}
+        {candidates.length > 0 && <section className="catalog-callout"><strong>Correspondances éventuelles à confirmer</strong><p>Aucune association n’a été faite automatiquement.</p>{candidates.map(item => <Link key={item.id} href={`/admin/domaines-skiables/attentes?q=${encodeURIComponent(item.station_ref)}`}>{item.name} ({item.station_ref})</Link>)}</section>}
       </form>
     </main>
   );

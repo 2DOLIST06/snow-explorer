@@ -6,6 +6,7 @@ export type StationOption = {
   slug: string;
   cover_image_url: string | null;
   logo_url: string | null;
+  is_active?: boolean;
 };
 
 export type SkiAreaPublic = {
@@ -65,4 +66,3 @@ export type SkiAreaWrite = {
   verified_at: string | null;
   station_ids: string[];
 };
-

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 import StationMultiSelect from "@/components/admin/StationMultiSelect";
+import SkiAreaExpectations from "@/components/admin/catalog/SkiAreaExpectations";
 import { getAdminSkiArea, saveAdminSkiArea } from "@/lib/adminSkiAreasApi";
 import type { SkiAreaStatus, SkiAreaWrite, StationOption } from "@/types/skiArea";
 
@@ -31,9 +32,9 @@ export default function SkiAreaEditor({ id }: { id: number | null }) {
       <section><h2>Caractéristiques</h2><div className="admin-form-grid">{numeric.map(key => <label key={key}>{({ altitude_min_m: "Altitude basse (m)", altitude_max_m: "Altitude haute (m)", ski_area_km: "Kilomètres de pistes", pistes_count: "Nombre total de pistes", green_pistes_count: "Pistes vertes", blue_pistes_count: "Pistes bleues", red_pistes_count: "Pistes rouges", black_pistes_count: "Pistes noires", lifts_count: "Remontées mécaniques" } as Record<string,string>)[key]}<input type="number" min="0" step="1" value={form[key]} onChange={e => set(key, e.target.value)} /></label>)}</div></section>
       <section><h2>Ouverture prévisionnelle</h2><div className="admin-form-grid"><label>Date d’ouverture<input type="date" value={form.forecast_open_date} onChange={e => set("forecast_open_date", e.target.value)} /></label><label>Date de fermeture<input type="date" value={form.forecast_close_date} onChange={e => set("forecast_close_date", e.target.value)} /></label><label>Saison<input value={form.season} onChange={e => set("season", e.target.value)} placeholder="2026-2027" /></label></div></section>
       <section><h2>Suivi interne</h2><div className="admin-form-grid"><label>Source<input value={form.source} onChange={e => set("source", e.target.value)} /></label><label>Date de vérification<input type="datetime-local" value={form.verified_at.slice(0,16)} onChange={e => set("verified_at", e.target.value)} /></label></div></section>
-      <StationMultiSelect value={stations} onChange={setStations} />
+      <section><h2>Stations effectivement rattachées</h2><p>Seules ces relations réelles peuvent être utilisées sur le site public. Le statut actif ou inactif est affiché dans le sélecteur.</p><StationMultiSelect value={stations} onChange={setStations} /></section>
+      {id !== null && <SkiAreaExpectations skiAreaId={id} />}
       <div className="admin-form-actions"><button className="btn btn--primary" disabled={saving}>{saving ? "Enregistrement…" : "Enregistrer le domaine"}</button></div>
     </form>
   </main>;
 }
-
