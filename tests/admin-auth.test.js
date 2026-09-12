@@ -23,10 +23,10 @@ test("session guard prevents admin content flash and preserves only safe next pa
   assert.match(redirect, /startsWith\("\/admin\/"\)/); assert.match(redirect, /startsWith\("\/\/"\)/);
 });
 
-test("admin pages do not render the public footer", () => {
+test("admin pages retain the public footer", () => {
   const app = read("pages/_app.tsx");
 
-  assert.match(app, /const showFooter = !router\.pathname\.startsWith\("\/admin"\) && !router\.pathname\.startsWith\("\/api"\)/);
+  assert.match(app, /const showFooter = !router\.pathname\.startsWith\("\/api"\)/);
   assert.match(app, /\{showFooter && <Footer \/>\}/);
 });
 

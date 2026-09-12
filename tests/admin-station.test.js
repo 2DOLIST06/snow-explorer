@@ -86,3 +86,11 @@ test("opening the admin form only reads data and never persists normalized avail
 
   assert.doesNotMatch(loadFunction, /method:\s*["'](?:PATCH|POST|PUT|DELETE)["']/);
 });
+
+test("station editor does not reserve an extra viewport around the footer", () => {
+  const page = fs.readFileSync("pages/admin/stations/[slug].tsx", "utf8");
+  const styles = page.slice(page.indexOf("const styles ="), page.indexOf("topBar:"));
+
+  assert.doesNotMatch(styles, /page:\s*\{[\s\S]*?minHeight:\s*["']100vh["']/);
+  assert.match(styles, /height:\s*["']calc\(100dvh - 88px\)["']/);
+});
