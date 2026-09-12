@@ -21,12 +21,11 @@ export default function StationMultiSelect({ value, onChange }: { value: Station
   return <section className="admin-relation-picker">
     <h2>Stations rattachées</h2>
     <p>Les sélections sont conservées pendant la recherche et la pagination.</p>
-    {value.length > 0 && <div className="admin-selected-chips">{value.map(item => <button type="button" key={item.id} onClick={() => toggle(item)}>{item.name} <span aria-hidden>×</span><span className="sr-only">Retirer</span></button>)}</div>}
+    {value.length > 0 && <div className="admin-selected-chips">{value.map(item => <button type="button" key={item.id} onClick={() => toggle(item)}>{item.name} ({item.is_active === false ? "inactive" : "active"}) <span aria-hidden>×</span><span className="sr-only">Retirer</span></button>)}</div>}
     <label>Rechercher une station<input value={q} onChange={event => { setQ(event.target.value); setPage(1); }} placeholder="Nom ou slug" /></label>
     {loading && <p aria-live="polite">Chargement des stations…</p>}
     {error && <p className="admin-form-error" role="alert">{error}</p>}
-    {!loading && <div className="admin-option-list">{items.map(item => <label key={item.id}><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item)} /><span><strong>{item.name}</strong><small>{item.slug}</small></span></label>)}</div>}
+    {!loading && <div className="admin-option-list">{items.map(item => <label key={item.id}><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item)} /><span><strong>{item.name}</strong><small>{item.slug} · {item.is_active === false ? "inactive" : "active"}</small></span></label>)}</div>}
     <div className="admin-pagination"><button type="button" disabled={page <= 1} onClick={() => setPage(v => v - 1)}>Précédent</button><span>Page {page}{pages ? ` sur ${pages}` : ""}</span><button type="button" disabled={!pages || page >= pages} onClick={() => setPage(v => v + 1)}>Suivant</button></div>
   </section>;
 }
-
