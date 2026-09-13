@@ -23,14 +23,6 @@ export async function getAdminSkiArea(id: number) {
   return json<{ ski_area: SkiAreaAdmin }>(await adminFetch(`/api/admin/ski-areas/${id}`));
 }
 
-export async function listActiveResorts() {
-  const payload = await json<StationOption[] | { results?: StationOption[]; data?: StationOption[]; items?: StationOption[] }>(
-    await adminFetch("/api/resorts/?active=true"),
-  );
-  if (Array.isArray(payload)) return payload;
-  return payload.results || payload.data || payload.items || [];
-}
-
 export async function saveAdminSkiArea(id: number | null, payload: SkiAreaWrite) {
   const path = id === null ? "/api/admin/ski-areas" : `/api/admin/ski-areas/${id}`;
   return json<{ ski_area: SkiAreaAdmin }>(await requireAdminResponse(path, {
@@ -59,3 +51,4 @@ export async function replaceStationSkiAreas(stationId: string, ids: number[]) {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ski_area_ids: ids }),
   }));
 }
+
