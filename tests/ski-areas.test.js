@@ -43,3 +43,19 @@ test('sitemap fetches all public ski-area pages at the API maximum', () => {
   assert.match(api, /first\.pagination\.pages - 1/);
   assert.match(page, /fetchAllPublicSkiAreas\(\)/);
 });
+
+test('ski-area facts group piste counts and station links use descriptive SEO text', () => {
+  const card = read('src/components/stations/SkiAreaPublicCard.tsx');
+  assert.match(card, /ski-area-facts__pistes/);
+  assert.match(card, /Pistes de ski/);
+  assert.match(card, /Découvrir \{station\.name\}/);
+  assert.doesNotMatch(card, />Voir la station<\/Link>/);
+});
+
+test('ski-area admin inventory retains every catalog station state', () => {
+  const expectations = read('src/components/admin/catalog/SkiAreaExpectations.tsx');
+  assert.match(expectations, /Composition complète attendue/);
+  assert.match(expectations, /items\.map\(item/);
+  assert.match(expectations, /linked:"Rattachée"/);
+  assert.match(expectations, /ignored:"Ignorée"/);
+});
