@@ -2,11 +2,9 @@ import type { GetServerSideProps } from "next";
 import { useMemo, useState } from "react";
 import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 import { fetchRegionsServer } from "@/lib/api/regions";
-import { fetchAllPublicSkiAreas } from "@/lib/api/skiAreas";
 import { adminFetch } from "@/lib/adminApi";
 import { getSitemapEntries } from "@/lib/sitemap";
 import type { RegionSummary } from "@/lib/regions";
-import type { SkiAreaPublic } from "@/types/skiArea";
 
 type Row = { url: string; lastModified: string | null };
 type Props = { rows: Row[]; loadWarning: boolean };
@@ -24,23 +22,19 @@ function indexNowErrorMessage(status: number, result: IndexNowResponse): string 
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
-  const [resortsResult, regionsResult, skiAreasResult] = await Promise.allSettled([
+  const [resortsResult, regionsResult] = await Promise.allSettled([
     fetchActiveResortsServer(),
     fetchRegionsServer(),
-    fetchAllPublicSkiAreas(),
   ]);
   const resorts: Resort[] = resortsResult.status === "fulfilled" ? resortsResult.value : [];
   const regions: RegionSummary[] = regionsResult.status === "fulfilled" ? regionsResult.value : [];
-  const skiAreas: SkiAreaPublic[] = skiAreasResult.status === "fulfilled" ? skiAreasResult.value : [];
   return {
     props: {
-      rows: getSitemapEntries(resorts, regions, skiAreas).map(({ url, lastModified }) => ({
+      rows: getSitemapEntries(resorts, regions).map(({ url, lastModified }) => ({
         url,
         lastModified: lastModified?.toISOString() || null,
       })),
-      loadWarning: resortsResult.status === "rejected"
-        || regionsResult.status === "rejected"
-        || skiAreasResult.status === "rejected",
+      loadWarning: resortsResult.status === "rejected" || regionsResult.status === "rejected",
     },
   };
 };

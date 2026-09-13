@@ -26,11 +26,3 @@ test("IndexNow submission uses the shared authenticated admin API helper", () =>
   assert.match(page, /csrf_validation_failed/);
   assert.equal(fs.existsSync(path.join(root, "pages/api/admin/indexnow.ts")), false);
 });
-
-test("IndexNow lists published ski areas together with their updated stations", () => {
-  const page = read("pages/admin/indexnow.tsx");
-  assert.match(page, /import \{ fetchAllPublicSkiAreas \} from "@\/lib\/api\/skiAreas"/);
-  assert.match(page, /fetchAllPublicSkiAreas\(\)/);
-  assert.match(page, /getSitemapEntries\(resorts, regions, skiAreas\)/);
-  assert.match(page, /skiAreasResult\.status === "rejected"/);
-});
