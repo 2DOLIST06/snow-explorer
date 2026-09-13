@@ -59,3 +59,16 @@ test('ski-area admin inventory retains every catalog station state', () => {
   assert.match(expectations, /linked:"Rattachée"/);
   assert.match(expectations, /ignored:"Ignorée"/);
 });
+
+test('ski-area admin list highlights domains whose expected stations are valid and attached', () => {
+  const page = read('pages/admin/domaines-skiables/index.tsx');
+  const styles = read('src/styles/globals.css');
+  assert.match(page, /listCatalogExpectations/);
+  assert.match(page, /expectation\.resolution_state === "linked"/);
+  assert.match(page, /attachedIds\.has/);
+  assert.match(page, /is_active === true/);
+  assert.match(page, /✓ Prêt à publier/);
+  assert.match(page, /admin-publish-ready/);
+  assert.match(styles, /\.admin-readiness/);
+  assert.match(styles, /button\.admin-publish-ready/);
+});
