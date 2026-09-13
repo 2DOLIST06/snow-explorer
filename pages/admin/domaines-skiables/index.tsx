@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { listCatalogExpectations } from "@/lib/adminSkiAreaCatalogApi";
-import { getAdminSkiArea, listAdminSkiAreas, setAdminSkiAreaPublication } from "@/lib/adminSkiAreasApi";
+import { getAdminSkiArea, listActiveResorts, listAdminSkiAreas, setAdminSkiAreaPublication } from "@/lib/adminSkiAreasApi";
 import type { Pagination, SkiAreaAdmin } from "@/types/skiArea";
 import type { CatalogExpectation } from "@/types/skiAreaCatalog";
 
@@ -39,8 +39,12 @@ export default function AdminSkiAreas() {
         } while (expectationPage <= pages);
         return expectations;
       })();
-      const [details, expectationsResult] = await Promise.all([detailsPromise, Promise.allSettled([expectationsPromise])]);
-      const expectations = expectationsResult[0].status === "fulfilled" ? expectationsResult[0].value : [];
+      const [details, resources] = await Promise.all([
+        detailsPromise,
+        Promise.allSettled([expectationsPromise, listActiveResorts()]),
+      ]);
+      const expectations = resources[0].status === "fulfilled" ? resources[0].value : [];
+      const activeResortIds = new Set(resources[1].status === "fulfilled" ? resources[1].value.map(station => station.id) : []);
       const next: Record<number, StationReadiness> = {};
 
       data.items.forEach((item, index) => {
@@ -52,14 +56,15 @@ export default function AdminSkiAreas() {
           expectation.resolution_state === "linked"
           && Boolean(expectation.resort_id)
           && attachedIds.has(expectation.resort_id as string)
-          && stations.find(station => station.id === expectation.resort_id)?.is_active === true,
+          && activeResortIds.has(expectation.resort_id as string),
         );
         next[item.id] = {
           attached: stations.length,
           valid: validStations.length,
           expected: expected.length,
           ready: detail.status === "fulfilled"
-            && expectationsResult[0].status === "fulfilled"
+            && resources[0].status === "fulfilled"
+            && resources[1].status === "fulfilled"
             && expected.length > 0
             && validStations.length === expected.length,
         };

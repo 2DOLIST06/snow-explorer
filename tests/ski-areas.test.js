@@ -8,6 +8,7 @@ test('ski-area admin uses the exact backend routes and CSRF-aware client', () =>
   assert.match(api, /\/api\/admin\/ski-areas\?/);
   assert.match(api, /\/api\/admin\/ski-areas\/\$\{id\}\/\$\{published \? "publish" : "unpublish"\}/);
   assert.match(api, /\/api\/admin\/ski-areas\/station-options\?/);
+  assert.match(api, /adminFetch\("\/api\/resorts\/\?active=true"\)/);
   assert.match(api, /\/api\/admin\/stations\/\$\{encodeURIComponent\(stationId\)\}\/ski-areas/);
   assert.match(api, /method: "PUT"/);
   assert.match(api, /requireAdminResponse/);
@@ -66,7 +67,8 @@ test('ski-area admin list highlights domains whose expected stations are valid a
   assert.match(page, /listCatalogExpectations/);
   assert.match(page, /expectation\.resolution_state === "linked"/);
   assert.match(page, /attachedIds\.has/);
-  assert.match(page, /is_active === true/);
+  assert.match(page, /listActiveResorts/);
+  assert.match(page, /activeResortIds\.has/);
   assert.match(page, /validStations\.length === expected\.length/);
   assert.match(page, /`\$\{stationState\.valid\} sur \$\{stationState\.expected\}`/);
   assert.match(page, /✓ Prêt à publier/);
