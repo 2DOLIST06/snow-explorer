@@ -6,7 +6,7 @@ import type { Pagination, SkiAreaAdmin } from "@/types/skiArea";
 import type { CatalogExpectation } from "@/types/skiAreaCatalog";
 
 const initialPagination: Pagination = { page: 1, per_page: 20, total: 0, pages: 0 };
-type StationReadiness = { attached: number; valid: number; expected: number; ready: boolean };
+type StationReadiness = { attached: number; expected: number; ready: boolean };
 
 export default function AdminSkiAreas() {
   const [items, setItems] = useState<SkiAreaAdmin[]>([]);
@@ -48,7 +48,7 @@ export default function AdminSkiAreas() {
         const stations = detail.status === "fulfilled" ? detail.value.ski_area.stations || [] : [];
         const expected = expectations.filter(expectation => expectation.expected_memberships.some(membership => membership.ski_area_id === item.id));
         const attachedIds = new Set(stations.map(station => station.id));
-        const validStations = expected.filter(expectation =>
+        const allExpectedStationsAreValid = expected.length > 0 && expected.every(expectation =>
           expectation.resolution_state === "linked"
           && Boolean(expectation.resort_id)
           && attachedIds.has(expectation.resort_id as string)
@@ -56,12 +56,8 @@ export default function AdminSkiAreas() {
         );
         next[item.id] = {
           attached: stations.length,
-          valid: validStations.length,
           expected: expected.length,
-          ready: detail.status === "fulfilled"
-            && expectationsResult[0].status === "fulfilled"
-            && expected.length > 0
-            && validStations.length === expected.length,
+          ready: detail.status === "fulfilled" && expectationsResult[0].status === "fulfilled" && allExpectedStationsAreValid,
         };
       });
       setReadiness(next);
@@ -95,7 +91,7 @@ export default function AdminSkiAreas() {
     {error && <p className="admin-form-error" role="alert">{error}</p>}{notice && <p className="admin-form-success" role="status">{notice}</p>}
     {loading ? <p>Chargement des domaines…</p> : <div className="admin-table-wrap"><table className="admin-data-table"><thead><tr><th>Nom</th><th>Statut</th><th>Stations</th><th>Actions</th></tr></thead><tbody>{items.map(item => {
       const stationState = readiness[item.id];
-      return <tr key={item.id}><td><strong>{item.name}</strong><small>{item.slug}</small></td><td><span className={`admin-status admin-status--${item.status}`}>{item.status === "published" ? "Publié" : "Brouillon"}</span></td><td><span className={stationState?.ready ? "admin-station-count--ready" : undefined}>{stationState ? (stationState.expected > 0 ? `${stationState.valid} sur ${stationState.expected}` : stationState.attached) : "…"}</span>{stationState?.ready && <span className="admin-readiness" title="Toutes les stations attendues sont rattachées et actives">✓ Prêt à publier</span>}</td><td><div className="admin-row-actions"><Link href={`/admin/domaines-skiables/${item.id}`}>Modifier</Link>{item.status === "published" && <Link href={`/domaines-skiables/${item.slug}`}>Voir</Link>}<button className={item.status !== "published" && stationState?.ready ? "admin-publish-ready" : undefined} type="button" onClick={() => void publish(item)}>{item.status === "published" ? "Dépublier" : "Publier"}</button></div></td></tr>;
+      return <tr key={item.id}><td><strong>{item.name}</strong><small>{item.slug}</small></td><td><span className={`admin-status admin-status--${item.status}`}>{item.status === "published" ? "Publié" : "Brouillon"}</span></td><td><span>{stationState?.attached ?? "…"}{stationState?.expected ? ` / ${stationState.expected}` : ""}</span>{stationState?.ready && <span className="admin-readiness" title="Toutes les stations attendues sont rattachées et actives">✓ Prêt à publier</span>}</td><td><div className="admin-row-actions"><Link href={`/admin/domaines-skiables/${item.id}`}>Modifier</Link>{item.status === "published" && <Link href={`/domaines-skiables/${item.slug}`}>Voir</Link>}<button className={item.status !== "published" && stationState?.ready ? "admin-publish-ready" : undefined} type="button" onClick={() => void publish(item)}>{item.status === "published" ? "Dépublier" : "Publier"}</button></div></td></tr>;
     })}</tbody></table>{items.length === 0 && <p className="empty-state">Aucun domaine trouvé.</p>}</div>}
     <div className="admin-pagination"><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Précédent</button><span>Page {pagination.page}{pagination.pages ? ` sur ${pagination.pages}` : ""}</span><button disabled={!pagination.pages || page >= pagination.pages} onClick={() => setPage(value => value + 1)}>Suivant</button></div>
   </main>;
