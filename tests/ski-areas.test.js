@@ -67,8 +67,12 @@ test('ski-area admin list highlights domains whose expected stations are valid a
   assert.match(page, /expectation\.resolution_state === "linked"/);
   assert.match(page, /attachedIds\.has/);
   assert.match(page, /is_active === true/);
+  assert.match(page, /validStations\.length === expected\.length/);
+  assert.match(page, /`\$\{stationState\.valid\} sur \$\{stationState\.expected\}`/);
   assert.match(page, /✓ Prêt à publier/);
+  assert.match(page, /admin-station-count--ready/);
   assert.match(page, /admin-publish-ready/);
+  assert.match(styles, /\.admin-station-count--ready/);
   assert.match(styles, /\.admin-readiness/);
   assert.match(styles, /button\.admin-publish-ready/);
 });
