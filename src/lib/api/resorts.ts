@@ -35,9 +35,36 @@ export type Resort = {
   };
   logo_url?: string | null;
   logoUrl?: string | null;
+  cover_image_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
+
+type DepartmentRef = Resort["department"] | string | null | undefined;
+
+function departmentKeys(department: DepartmentRef): string[] {
+  if (typeof department === "string") return [department.trim().toLocaleLowerCase("fr")].filter(Boolean);
+  if (!department) return [];
+  return [department.id, department.slug, department.name]
+    .map((value) => String(value || "").trim().toLocaleLowerCase("fr"))
+    .filter(Boolean);
+}
+
+/** Select active linkable stations from the same department, excluding the current page. */
+export function getDepartmentResorts(
+  resorts: Resort[],
+  department: DepartmentRef,
+  currentSlug: string,
+): Resort[] {
+  const expectedDepartments = departmentKeys(department);
+  if (!expectedDepartments.length) return [];
+
+  return getValidActiveResorts(resorts).filter(
+    (resort) =>
+      resort.slug !== currentSlug &&
+      departmentKeys(resort.department).some((value) => expectedDepartments.includes(value)),
+  );
+}
 
 const RESORTS_PATH = "/api/resorts/";
 const BROWSER_RESORTS_PATH = "/api/ski/resorts/";

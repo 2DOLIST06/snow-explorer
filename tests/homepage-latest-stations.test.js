@@ -73,3 +73,19 @@ test("stations without a valid modification date keep their API order as a fallb
     ["first", "second"],
   );
 });
+
+test("department links contain only other active stations from the same department", () => {
+  const { getDepartmentResorts } = loadResortsApi();
+  const resorts = [
+    { id: "current", name: "Auron", slug: "auron", is_active: true, department: { id: "06", name: "Alpes-Maritimes" } },
+    { id: "same", name: "Isola 2000", slug: "isola-2000", is_active: true, department: { id: "06", name: "Alpes-Maritimes" } },
+    { id: "inactive", name: "Inactive", slug: "inactive", is_active: false, department: { id: "06", name: "Alpes-Maritimes" } },
+    { id: "other", name: "Les Orres", slug: "les-orres", is_active: true, department: { id: "05", name: "Hautes-Alpes" } },
+  ];
+
+  assert.deepEqual(
+    getDepartmentResorts(resorts, { id: "06", name: "Alpes-Maritimes" }, "auron").map((resort) => resort.slug),
+    ["isola-2000"],
+  );
+  assert.deepEqual(getDepartmentResorts(resorts, null, "auron"), []);
+});

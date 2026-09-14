@@ -21,13 +21,15 @@ import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
-import SkiAreaPublicCard from "@/components/stations/SkiAreaPublicCard";
+import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
+import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
 
 /* =========================
  * Types
  * =======================*/
 type Resort = {
+  id?: string;
   name: string;
   slug: string;
   is_active?: boolean;
@@ -37,6 +39,7 @@ type Resort = {
   region_id?: string | null;
   region_name?: string | null;
   region_label?: string | null;
+  department?: { id?: string; name?: string; slug?: string } | string | null;
   altitude_base_m?: number | null;
   altitude_top_m?: number | null;
   ski_area_km?: number | null;
@@ -67,6 +70,7 @@ type Resort = {
 interface Props {
   resort: Resort;
   cfg: StationWidgetsConfig | null;
+  departmentStations: import("@/types/skiArea").StationOption[];
 }
 
 /* =========================
@@ -1290,7 +1294,7 @@ const StationExtraPanels: React.FC<{
 /* =========================
  * Page
  * =======================*/
-const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
+const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const router = useRouter();
   const adminAuth = useAdminAuth();
 
@@ -1514,6 +1518,15 @@ const ResortPage: NextPage<Props> = ({ resort, cfg }) => {
     source_url={cfg?.normalizedForfaits?.source_url}
         /></div> : null}
         {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
+        {!resort.ski_areas?.length && departmentStations.length > 0 ? (
+          <section className="ski-area-public-card">
+            <header>
+              <p className="eyebrow">À proximité</p>
+              <h2>Autres stations du même département</h2>
+            </header>
+            <StationCards stations={departmentStations} />
+          </section>
+        ) : null}
       </main>
 
       <style jsx global>{`
@@ -1604,6 +1617,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // Le détail accepte déjà la région imbriquée et les champs plats historiques.
   // Le backend peut donc ajouter `{ id, name, slug }` sans modifier le contrat.
   const resort = resolveResortRegion(loadedResort) as Resort;
+
+  const publishedSkiAreas = Array.isArray(resort.ski_areas)
+    ? resort.ski_areas.filter((area) => area?.status === "published")
+    : [];
+  let departmentStations: import("@/types/skiArea").StationOption[] = [];
+  if (publishedSkiAreas.length === 0 && resort.department) {
+    try {
+      const activeResorts = await fetchActiveResortsServer();
+      departmentStations = getDepartmentResorts(activeResorts, resort.department, resort.slug).map((station) => ({
+        id: station.id,
+        name: station.name,
+        slug: station.slug,
+        cover_image_url: station.cover_image_url || null,
+        logo_url: station.logo_url || station.logoUrl || null,
+        is_active: station.is_active,
+      }));
+    } catch (error) {
+      console.error(`[stations/[slug]] department stations request failed for ${slug}`, error instanceof Error ? error.message : "unknown_error");
+    }
+  }
 
   // 2) Widgets config
   let cfg: StationWidgetsConfig | null = widgets.config;
@@ -1711,10 +1744,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     pistes_large_map_url: resort.pistes_large_map_url ?? null,
     pistes_caption: resort.pistes_caption ?? null,
     ski_pass: resort.ski_pass ?? null,
-    ski_areas: Array.isArray(resort.ski_areas) ? resort.ski_areas.filter(area => area?.status === "published") : [],
+    ski_areas: publishedSkiAreas,
   };
 
-  return { props: { resort: stationForPage, cfg: cleanCfg } };
+  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations } };
 };
 
 export default ResortPage;

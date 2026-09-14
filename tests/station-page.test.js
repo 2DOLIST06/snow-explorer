@@ -152,6 +152,16 @@ test("station detail region and ski pass preserve functional content and SEO", (
   assert.match(stationPage, /application\/ld\+json/);
 });
 
+test("stations without a published ski area link to active stations in their department", () => {
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+
+  assert.match(stationPage, /publishedSkiAreas\.length === 0 && resort\.department/);
+  assert.match(stationPage, /getDepartmentResorts\(activeResorts, resort\.department, resort\.slug\)/);
+  assert.match(stationPage, /!resort\.ski_areas\?\.length && departmentStations\.length > 0/);
+  assert.match(stationPage, /Autres stations du même département/);
+  assert.match(stationPage, /<StationCards stations=\{departmentStations\}/);
+});
+
 test("a recorded piste-map image is labelled like the webcam and weather cards", () => {
   const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
 
