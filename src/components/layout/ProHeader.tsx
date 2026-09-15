@@ -60,6 +60,7 @@ export default function ProHeader({ initialStations }: Props) {
   const [loadingSearch, setLoadingSearch] = useState(!initialStations);
   const [scrolled, setScrolled] = useState(false);
   const [desktopHeaderMode, setDesktopHeaderMode] = useState<DesktopHeaderMode>("full");
+  const [headerBarHeight, setHeaderBarHeight] = useState(0);
 
   const headerRef = useRef<HTMLElement | null>(null);
   const headerBarRef = useRef<HTMLDivElement | null>(null);
@@ -67,6 +68,20 @@ export default function ProHeader({ initialStations }: Props) {
   const accountRef = useRef<HTMLDivElement | null>(null);
   const stationsRef = useRef<HTMLDivElement | null>(null);
   const mobileCloseRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const headerBar = headerBarRef.current;
+    if (!headerBar) return;
+
+    function measureHeaderBar() {
+      setHeaderBarHeight(headerBar?.getBoundingClientRect().height ?? 0);
+    }
+
+    measureHeaderBar();
+    const observer = new ResizeObserver(measureHeaderBar);
+    observer.observe(headerBar);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,13 +111,6 @@ export default function ProHeader({ initialStations }: Props) {
     let accumulatedDelta = 0;
     let lastDirection = 0;
     let frame = 0;
-
-    function measureHeaderTiers() {
-      const primaryHeight = headerBarRef.current?.offsetHeight;
-      if (primaryHeight) {
-        headerRef.current?.style.setProperty("--header-primary-offset", `-${primaryHeight}px`);
-      }
-    }
 
     function updateHeader() {
       frame = 0;
@@ -148,7 +156,6 @@ export default function ProHeader({ initialStations }: Props) {
     function onBreakpointChange() {
       lastScrollY = window.scrollY;
       accumulatedDelta = 0;
-      measureHeaderTiers();
       updateHeader();
     }
     function onDocClick(event: MouseEvent) {
@@ -157,16 +164,13 @@ export default function ProHeader({ initialStations }: Props) {
       if (accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false);
       if (stationsRef.current && !stationsRef.current.contains(target)) setStationsOpen(false);
     }
-    measureHeaderTiers();
     updateHeader();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", measureHeaderTiers);
     desktopQuery.addEventListener("change", onBreakpointChange);
     document.addEventListener("mousedown", onDocClick);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", measureHeaderTiers);
       desktopQuery.removeEventListener("change", onBreakpointChange);
       document.removeEventListener("mousedown", onDocClick);
     };
@@ -228,8 +232,18 @@ export default function ProHeader({ initialStations }: Props) {
     else if (event.key === "Escape") { setSearchOpen(false); setCursor(-1); }
   }
 
+  const headerTransform = desktopHeaderMode === "hidden"
+    ? "translateY(-100%)"
+    : desktopHeaderMode === "navigation"
+      ? `translateY(-${headerBarHeight}px)`
+      : "translateY(0)";
+
   return (
-    <header ref={headerRef} className={`site-header ${scrolled ? "site-header--compact" : ""} site-header--${desktopHeaderMode}`}>
+    <header
+      ref={headerRef}
+      className={`site-header ${scrolled ? "site-header--compact" : ""} site-header--${desktopHeaderMode}`}
+      style={{ transform: headerTransform }}
+    >
       <div ref={headerBarRef} className="site-header__bar">
         <Link href="/" className="brand" aria-label="Accueil Snow Explorer">
           <Image src="/logo.png" alt="Snow Explorer" width={48} height={48} priority />
