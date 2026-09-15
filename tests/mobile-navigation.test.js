@@ -23,8 +23,11 @@ test("the two-tier desktop header follows the scroll direction without changing 
   assert.match(header, /setDesktopHeaderMode\("hidden"\)/);
   assert.match(header, /setDesktopHeaderMode\("navigation"\)/);
   assert.match(header, /scrollY <= 12/);
-  assert.match(header, /headerBarRef\.current\?\.offsetHeight/);
+  assert.match(header, /new ResizeObserver\(measureHeaderBar\)/);
+  assert.match(header, /getBoundingClientRect\(\)\.height/);
+  assert.match(header, /style=\{\{ transform: headerTransform \}\}/);
+  assert.match(header, /`translateY\(-\$\{headerBarHeight\}px\)`/);
   assert.match(header, /direction < 0 \? 2 : 8/);
-  assert.match(styles, /@media \(min-width:981px\).*\.site-header--hidden\{transform:translateY\(-100%\)\}.*\.site-header--navigation/s);
+  assert.doesNotMatch(styles, /\.site-header--(?:hidden|navigation)\{transform:/);
   assert.match(styles, /@media \(max-width:980px\)\{\.site-header__bar/);
 });
