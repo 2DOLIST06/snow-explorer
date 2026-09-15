@@ -62,6 +62,7 @@ export default function ProHeader({ initialStations }: Props) {
   const [desktopHeaderMode, setDesktopHeaderMode] = useState<DesktopHeaderMode>("full");
 
   const headerRef = useRef<HTMLElement | null>(null);
+  const headerBarRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLDivElement | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
   const stationsRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +97,13 @@ export default function ProHeader({ initialStations }: Props) {
     let lastDirection = 0;
     let frame = 0;
 
+    function measureHeaderTiers() {
+      const primaryHeight = headerBarRef.current?.offsetHeight;
+      if (primaryHeight) {
+        headerRef.current?.style.setProperty("--header-primary-offset", `-${primaryHeight}px`);
+      }
+    }
+
     function updateHeader() {
       frame = 0;
       const scrollY = Math.max(window.scrollY, 0);
@@ -123,8 +131,9 @@ export default function ProHeader({ initialStations }: Props) {
         lastDirection = direction;
       }
 
-      // A small travel threshold prevents touchpads from making the header flicker.
-      if (accumulatedDelta >= 8) {
+      // Reveal the useful tier almost immediately; require a little more intent to hide it.
+      const directionThreshold = direction < 0 ? 2 : 8;
+      if (accumulatedDelta >= directionThreshold) {
         const focusIsInHeader = headerRef.current?.contains(document.activeElement);
         if (direction > 0 && !focusIsInHeader) setDesktopHeaderMode("hidden");
         if (direction < 0) setDesktopHeaderMode("navigation");
@@ -139,6 +148,7 @@ export default function ProHeader({ initialStations }: Props) {
     function onBreakpointChange() {
       lastScrollY = window.scrollY;
       accumulatedDelta = 0;
+      measureHeaderTiers();
       updateHeader();
     }
     function onDocClick(event: MouseEvent) {
@@ -147,13 +157,16 @@ export default function ProHeader({ initialStations }: Props) {
       if (accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false);
       if (stationsRef.current && !stationsRef.current.contains(target)) setStationsOpen(false);
     }
+    measureHeaderTiers();
     updateHeader();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", measureHeaderTiers);
     desktopQuery.addEventListener("change", onBreakpointChange);
     document.addEventListener("mousedown", onDocClick);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", measureHeaderTiers);
       desktopQuery.removeEventListener("change", onBreakpointChange);
       document.removeEventListener("mousedown", onDocClick);
     };
@@ -217,7 +230,7 @@ export default function ProHeader({ initialStations }: Props) {
 
   return (
     <header ref={headerRef} className={`site-header ${scrolled ? "site-header--compact" : ""} site-header--${desktopHeaderMode}`}>
-      <div className="site-header__bar">
+      <div ref={headerBarRef} className="site-header__bar">
         <Link href="/" className="brand" aria-label="Accueil Snow Explorer">
           <Image src="/logo.png" alt="Snow Explorer" width={48} height={48} priority />
           <span><strong>Snow Explorer</strong><small>Stations, neige et météo</small></span>
