@@ -16,6 +16,7 @@ type Resort = {
 };
 
 type Props = { initialStations?: Resort[] };
+type DesktopHeaderMode = "full" | "navigation" | "hidden";
 
 let fallbackStationsPromise: Promise<Resort[]> | null = null;
 
@@ -58,7 +59,10 @@ export default function ProHeader({ initialStations }: Props) {
   const [cursor, setCursor] = useState(-1);
   const [loadingSearch, setLoadingSearch] = useState(!initialStations);
   const [scrolled, setScrolled] = useState(false);
+  const [desktopHeaderMode, setDesktopHeaderMode] = useState<DesktopHeaderMode>("full");
 
+  const headerRef = useRef<HTMLElement | null>(null);
+  const headerBarRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLDivElement | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
   const stationsRef = useRef<HTMLDivElement | null>(null);
@@ -87,17 +91,85 @@ export default function ProHeader({ initialStations }: Props) {
   }, [initialStations, stations.length]);
 
   useEffect(() => {
-    function onScroll() { setScrolled(window.scrollY > 12); }
+    const desktopQuery = window.matchMedia("(min-width: 981px)");
+    let lastScrollY = window.scrollY;
+    let accumulatedDelta = 0;
+    let lastDirection = 0;
+    let frame = 0;
+
+    function measureHeaderTiers() {
+      const primaryHeight = headerBarRef.current?.offsetHeight;
+      if (primaryHeight) {
+        headerRef.current?.style.setProperty("--header-primary-offset", `-${primaryHeight}px`);
+      }
+    }
+
+    function updateHeader() {
+      frame = 0;
+      const scrollY = Math.max(window.scrollY, 0);
+      setScrolled(scrollY > 12);
+
+      if (!desktopQuery.matches) {
+        setDesktopHeaderMode("full");
+        lastScrollY = scrollY;
+        accumulatedDelta = 0;
+        return;
+      }
+
+      if (scrollY <= 12) {
+        setDesktopHeaderMode("full");
+        lastScrollY = scrollY;
+        accumulatedDelta = 0;
+        return;
+      }
+
+      const delta = scrollY - lastScrollY;
+      const direction = Math.sign(delta);
+      if (direction && direction !== lastDirection) accumulatedDelta = 0;
+      if (direction) {
+        accumulatedDelta += Math.abs(delta);
+        lastDirection = direction;
+      }
+
+      // Reveal the useful tier almost immediately; require a little more intent to hide it.
+      const directionThreshold = direction < 0 ? 2 : 8;
+      if (accumulatedDelta >= directionThreshold) {
+        const focusIsInHeader = headerRef.current?.contains(document.activeElement);
+        if (direction > 0 && !focusIsInHeader) setDesktopHeaderMode("hidden");
+        if (direction < 0) setDesktopHeaderMode("navigation");
+        accumulatedDelta = 0;
+      }
+      lastScrollY = scrollY;
+    }
+
+    function onScroll() {
+      if (!frame) frame = window.requestAnimationFrame(updateHeader);
+    }
+    function onBreakpointChange() {
+      lastScrollY = window.scrollY;
+      accumulatedDelta = 0;
+      measureHeaderTiers();
+      updateHeader();
+    }
     function onDocClick(event: MouseEvent) {
       const target = event.target as Node;
       if (searchRef.current && !searchRef.current.contains(target)) setSearchOpen(false);
       if (accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false);
       if (stationsRef.current && !stationsRef.current.contains(target)) setStationsOpen(false);
     }
-    onScroll();
+    measureHeaderTiers();
+    updateHeader();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", measureHeaderTiers);
+    desktopQuery.addEventListener("change", onBreakpointChange);
     document.addEventListener("mousedown", onDocClick);
-    return () => { window.removeEventListener("scroll", onScroll); document.removeEventListener("mousedown", onDocClick); };
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", measureHeaderTiers);
+      desktopQuery.removeEventListener("change", onBreakpointChange);
+      document.removeEventListener("mousedown", onDocClick);
+    };
   }, []);
 
   useEffect(() => {
@@ -157,8 +229,8 @@ export default function ProHeader({ initialStations }: Props) {
   }
 
   return (
-    <header className={`site-header ${scrolled ? "site-header--compact" : ""}`}>
-      <div className="site-header__bar">
+    <header ref={headerRef} className={`site-header ${scrolled ? "site-header--compact" : ""} site-header--${desktopHeaderMode}`}>
+      <div ref={headerBarRef} className="site-header__bar">
         <Link href="/" className="brand" aria-label="Accueil Snow Explorer">
           <Image src="/logo.png" alt="Snow Explorer" width={48} height={48} priority />
           <span><strong>Snow Explorer</strong><small>Stations, neige et météo</small></span>
