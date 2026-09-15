@@ -17,3 +17,12 @@ test("the mobile navigation opens as an accessible viewport drawer", () => {
   assert.match(styles, /\.mobile-menu__panel\{position:absolute/);
   assert.match(styles, /\.mobile-menu \.mobile-nav\{display:grid/);
 });
+
+test("the two-tier desktop header follows the scroll direction without changing mobile", () => {
+  assert.match(header, /window\.matchMedia\("\(min-width: 981px\)"\)/);
+  assert.match(header, /setDesktopHeaderMode\("hidden"\)/);
+  assert.match(header, /setDesktopHeaderMode\("navigation"\)/);
+  assert.match(header, /scrollY <= 12/);
+  assert.match(styles, /@media \(min-width:981px\).*\.site-header--hidden\{transform:translateY\(-100%\)\}.*\.site-header--navigation/s);
+  assert.match(styles, /@media \(max-width:980px\)\{\.site-header__bar/);
+});
