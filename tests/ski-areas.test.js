@@ -92,3 +92,14 @@ test('ski-area admin list highlights domains whose expected stations are valid a
   assert.match(styles, /\.admin-readiness/);
   assert.match(styles, /button\.admin-publish-ready/);
 });
+
+test('ski-area piste maps use the station-style Calameo viewer and generic button', () => {
+  const page = read('pages/domaines-skiables/[slug].tsx');
+  const map = read('src/components/skiAreas/SkiAreaPisteMap.tsx');
+  assert.match(page, /<SkiAreaPisteMap name=\{area\.name\} url=\{area\.piste_map_url\}/);
+  assert.match(map, /getOfficialMapPresentation\(url\)/);
+  assert.match(map, /isCalameo \? \(/);
+  assert.match(map, /<iframe \{\.\.\.iframeProps\} loading="lazy"/);
+  assert.match(map, /Voir le plan des pistes/);
+  assert.match(map, /allowFullScreen: isCalameo/);
+});
