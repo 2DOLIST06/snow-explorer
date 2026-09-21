@@ -1137,45 +1137,48 @@ const StationExtraPanels: React.FC<{
   cfg: StationWidgetsConfig | null;
   computedPistesCount: number | null;
   computedLiftsCount: number | null;
+  selectedSkiArea: SkiAreaPublic | null;
 }> = ({
   resort,
   cfg,
   computedPistesCount,
   computedLiftsCount,
+  selectedSkiArea,
 }) => {
   const router = useRouter();
 
   // Altitudes
-  const altMin = (resort as any)?.altitude_min_m ?? resort.altitude_base_m ?? null;
-  const altMax = (resort as any)?.altitude_max_m ?? resort.altitude_top_m ?? null;
+  const altMin = selectedSkiArea
+    ? selectedSkiArea.altitude_min_m
+    : (resort as any)?.altitude_min_m ?? resort.altitude_base_m ?? null;
+  const altMax = selectedSkiArea
+    ? selectedSkiArea.altitude_max_m
+    : (resort as any)?.altitude_max_m ?? resort.altitude_top_m ?? null;
   const drop =
     Number.isFinite(altMin as any) && Number.isFinite(altMax as any)
       ? Math.max(0, Number(altMax) - Number(altMin))
       : null;
 
   // Saison
-  const openRaw =
-    (resort as any)?.season_open_date ??
-    cfg?.snow?.season?.openingDate ??
-    cfg?.snow?.openingDate ??
-    null;
-  const closeRaw =
-    (resort as any)?.season_close_date ??
-    cfg?.snow?.season?.closingDate ??
-    cfg?.snow?.closingDate ??
-    null;
+  const openRaw = selectedSkiArea
+    ? selectedSkiArea.forecast_open_date
+    : (resort as any)?.season_open_date ?? cfg?.snow?.season?.openingDate ?? cfg?.snow?.openingDate ?? null;
+  const closeRaw = selectedSkiArea
+    ? selectedSkiArea.forecast_close_date
+    : (resort as any)?.season_close_date ?? cfg?.snow?.season?.closingDate ?? cfg?.snow?.closingDate ?? null;
   // Domaine / pistes
-  const km = Number.isFinite(resort.ski_area_km as any) ? `${formatBig(resort.ski_area_km)} km` : "—";
-  const pistesTotal = formatBig(computedPistesCount);
+  const skiAreaKm = selectedSkiArea ? selectedSkiArea.ski_area_km : resort.ski_area_km;
+  const km = Number.isFinite(skiAreaKm as any) ? `${formatBig(skiAreaKm)} km` : "—";
+  const pistesTotal = formatBig(selectedSkiArea ? selectedSkiArea.pistes_count : computedPistesCount);
 
   // Snowparks
   const snowparksCountRaw = resort.snowparks_count;
-  const snowparksLabel = formatBig(snowparksCountRaw);
-  const snowparksClickable = typeof snowparksCountRaw === "number" && snowparksCountRaw > 0;
+  const snowparksLabel = selectedSkiArea ? "—" : formatBig(snowparksCountRaw);
+  const snowparksClickable = !selectedSkiArea && typeof snowparksCountRaw === "number" && snowparksCountRaw > 0;
   const onSnowparkClick = () => router.push(`/stations/${resort.slug}/snowpark`);
 
   // Seul le total des remontées est affiché.
-  const liftsTotal = formatBig(computedLiftsCount);
+  const liftsTotal = formatBig(selectedSkiArea ? selectedSkiArea.lifts_count : computedLiftsCount);
   const openingYear = dateYear(openRaw);
   const closingYear = dateYear(closeRaw);
   const seasonTitle = openingYear && closingYear
@@ -1297,6 +1300,11 @@ const StationExtraPanels: React.FC<{
 const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const router = useRouter();
   const adminAuth = useAdminAuth();
+  const [selectedScope, setSelectedScope] = useState<"station" | number>("station");
+  const skiAreas = resort.ski_areas || [];
+  const selectedSkiArea = typeof selectedScope === "number"
+    ? skiAreas.find((area) => area.id === selectedScope) || null
+    : null;
 
   const seoTitle =
     textOrEmpty(resort.meta_title) || textOrEmpty(cfg?.description?.metaTitle) ||
@@ -1316,6 +1324,14 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const mapLarge = resolvedPistes.largeMapUrl;
   const mapCaption = resolvedPistes.caption;
   const officialMapUrl = normalizeOfficialMapUrl(resolvedPistes.officialMapUrl);
+  const selectedMapSmall = selectedSkiArea?.piste_map_url || (selectedSkiArea ? null : mapSmall);
+  const selectedMapLarge = selectedSkiArea?.piste_map_url || (selectedSkiArea ? null : mapLarge);
+  const selectedOfficialMapUrl = selectedSkiArea ? null : officialMapUrl;
+  const selectedMapCaption = selectedSkiArea ? `Plan des pistes du domaine ${selectedSkiArea.name}` : mapCaption;
+  const selectedMapName = selectedSkiArea?.name || resort.name;
+  const selectedForfaits = selectedSkiArea
+    ? normalizeStationSkiPass(selectedSkiArea.ski_pass)
+    : cfg?.normalizedForfaits;
 
   const description = resort.description_md || cfg?.description?.html || "";
   const descriptionParagraphs = description
@@ -1468,8 +1484,24 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
           </div>
         </section>
 
-        {/* Tuiles info */}
-        <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} />
+        {skiAreas.length > 0 ? (
+          <div className="station-stats-scope" aria-label="Contenu affiché">
+            <span>Afficher les informations de</span>
+            <div className="station-stats-scope__options" role="group" aria-label="Périmètre de la fiche">
+              <button type="button" className={selectedScope === "station" ? "is-active" : undefined} aria-pressed={selectedScope === "station"} onClick={() => setSelectedScope("station")}>
+                La station
+              </button>
+              {skiAreas.map((area) => (
+                <button type="button" key={area.id} className={selectedScope === area.id ? "is-active" : undefined} aria-pressed={selectedScope === area.id} onClick={() => setSelectedScope(area.id)}>
+                  Domaine {area.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Le périmètre sélectionné pilote tous les contenus qui existent aussi au niveau domaine. */}
+        <StationExtraPanels resort={resort} cfg={cfg} computedPistesCount={computedPistesCount} computedLiftsCount={computedLiftsCount} selectedSkiArea={selectedSkiArea} />
 
         {resort.website_url ? (
           <div className="station-official-site">
@@ -1480,9 +1512,9 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
         ) : null}
 
         {/* Ligne A : plan + widgets droite */}
-        {(mapSmall || mapLarge || officialMapUrl || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
-          {(mapSmall || mapLarge || officialMapUrl) ? <div>
-            <PlanPistesFigure name={resort.name} small={mapSmall} large={mapLarge} officialUrl={officialMapUrl} caption={mapCaption} />
+        {(selectedMapSmall || selectedMapLarge || selectedOfficialMapUrl || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
+          {(selectedMapSmall || selectedMapLarge || selectedOfficialMapUrl) ? <div>
+            <PlanPistesFigure name={selectedMapName} small={selectedMapSmall} large={selectedMapLarge} officialUrl={selectedOfficialMapUrl} caption={selectedMapCaption} />
           </div> : null}
 
           {hasConditionsAside ? <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1503,8 +1535,8 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
         </section> : null}
 
         {/* Forfaits */}
-        {forfaitsVisibility(cfg).any ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
-    enabled={forfaitsVisibility(cfg).legacy}
+        {(selectedSkiArea ? Boolean(selectedForfaits?.enabled) : forfaitsVisibility(cfg).any) ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
+    enabled={!selectedSkiArea && forfaitsVisibility(cfg).legacy}
     columns={cfg?.forfaits?.columns || []}
     items={cfg?.forfaits?.items || []}
     periods={cfg?.forfaits?.periods || []}
@@ -1512,10 +1544,10 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
     source_url={cfg?.forfaits?.source_url}
     sourceUrl={cfg?.forfaits?.sourceUrl}
         /><StationForfaitsBlock
-    enabled={forfaitsVisibility(cfg).normalized}
-    periods={cfg?.normalizedForfaits?.periods || []}
-    season={cfg?.normalizedForfaits?.season}
-    source_url={cfg?.normalizedForfaits?.source_url}
+    enabled={Boolean(selectedForfaits?.enabled)}
+    periods={selectedForfaits?.periods || []}
+    season={selectedForfaits?.season}
+    source_url={selectedForfaits?.source_url}
         /></div> : null}
         {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
         {!resort.ski_areas?.length && departmentStations.length > 0 ? (
