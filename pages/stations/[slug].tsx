@@ -21,7 +21,7 @@ import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
-import { StationCards } from "@/components/stations/SkiAreaPublicCard";
+import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
 
@@ -1554,6 +1554,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
     season={cfg?.normalizedForfaits?.season}
     source_url={cfg?.normalizedForfaits?.source_url}
         /></div> : null}
+        {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
         {!resort.ski_areas?.length && departmentStations.length > 0 ? (
           <section className="ski-area-public-card">
             <header>
