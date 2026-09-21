@@ -52,19 +52,23 @@ test('ski-area facts group piste counts and station links use descriptive SEO te
   assert.doesNotMatch(card, />Voir la station<\/Link>/);
 });
 
-test('station content can switch from the station to each published ski area', () => {
+test('station statistics can switch from the station to each published ski area', () => {
   const station = read('pages/stations/[slug].tsx');
   const styles = read('src/styles/globals.css');
   assert.match(station, /useState<"station" \| number>\("station"\)/);
   assert.match(station, /skiAreas\.map\(\(area\) =>/);
   assert.match(station, /aria-pressed=\{selectedScope === area\.id\}/);
-  assert.match(station, /selectedSkiArea \? selectedSkiArea\.ski_area_km : resort\.ski_area_km/);
-  assert.match(station, /selectedSkiArea \? selectedSkiArea\.pistes_count : computedPistesCount/);
-  assert.match(station, /selectedSkiArea \? selectedSkiArea\.lifts_count : computedLiftsCount/);
-  assert.match(station, /selectedSkiArea\?\.piste_map_url/);
-  assert.match(station, /normalizeStationSkiPass\(selectedSkiArea\.ski_pass\)/);
-  assert.match(station, /name=\{selectedMapName\} small=\{selectedMapSmall\}/);
-  assert.match(station, /periods=\{selectedForfaits\?\.periods \|\| \[\]\}/);
+  assert.match(station, /const activeStats = selectedSkiArea/);
+  assert.match(station, /skiAreaKm: selectedSkiArea\.ski_area_km/);
+  assert.match(station, /pistesCount: selectedSkiArea\.pistes_count/);
+  assert.match(station, /liftsCount: selectedSkiArea\.lifts_count/);
+  assert.match(station, /snowparksCount: selectedSkiArea\.snowparks_count \?\? null/);
+  assert.match(station, /openDate: selectedSkiArea\.forecast_open_date/);
+  assert.match(station, /closeDate: selectedSkiArea\.forecast_close_date/);
+  assert.match(station, /Number\(altMax\) - Number\(altMin\)/);
+  assert.match(station, /<PlanPistesFigure name=\{resort\.name\} small=\{mapSmall\}/);
+  assert.match(station, /periods=\{cfg\?\.normalizedForfaits\?\.periods \|\| \[\]\}/);
+  assert.doesNotMatch(station, /selectedMapSmall|selectedForfaits/);
   assert.match(styles, /\.station-stats-scope button\.is-active/);
 });
 
