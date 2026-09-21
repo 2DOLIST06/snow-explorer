@@ -9,6 +9,8 @@ export type StationOption = {
   is_active?: boolean;
 };
 
+import type { SkiPassSeason } from "@/types/skiPass";
+
 export type SkiAreaPublic = {
   id: number;
   name: string;
@@ -29,6 +31,7 @@ export type SkiAreaPublic = {
   forecast_open_date: string | null;
   forecast_close_date: string | null;
   season: string | null;
+  ski_pass?: SkiPassSeason | null;
   updated_at: string;
   stations?: StationOption[];
 };
