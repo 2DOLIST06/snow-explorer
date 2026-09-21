@@ -29,7 +29,7 @@ test('public pages, reciprocal links, drafts, navigation and sitemap are wired',
   assert.match(api, /area\.status === "published"/);
   assert.match(card, /Autres stations du même domaine/);
   assert.match(card, /\/stations\/\$\{station\.slug\}/);
-  assert.doesNotMatch(station, /<SkiAreaPublicCard/);
+  assert.match(station, /resort\.ski_areas\?\.map/);
   assert.match(station, /area\?\.status === "published"/);
   assert.match(sitemap, /\/domaines-skiables\/\$\{encodeURIComponent\(slug\)\}/);
   assert.match(read('src/components/layout/ProHeader.tsx'), /Domaines skiables/);
