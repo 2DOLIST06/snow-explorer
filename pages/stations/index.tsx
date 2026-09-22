@@ -2,17 +2,21 @@ import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Map, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { regionHref } from "@/lib/regions";
 import { fetchActiveResortsServer } from "@/lib/api/resorts";
 import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
+import StationMap from "@/components/maps/StationMapDynamic";
+import { fetchStationMapServer } from "@/lib/api/stationMap";
+import type { StationMapItem } from "@/types/stationMap";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string }; department?: { name?: string } };
 
-type Props = { initialStations: Resort[] };
+type Props = { initialStations: Resort[]; mapStations: StationMapItem[] };
 
-const StationsList: NextPage<Props> = ({ initialStations }) => {
+const StationsList: NextPage<Props> = ({ initialStations, mapStations }) => {
   const [q, setQ] = useState("");
+  const [showMap, setShowMap] = useState(false);
   const data = useMemo(() => {
     const needle = normalizeSearchText(q);
     return needle
@@ -50,6 +54,15 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
         <button type="button" className="btn btn--secondary"><SlidersHorizontal size={18} /> Filtres</button>
       </section>
 
+      <div className="station-map-toggle">
+        <button type="button" className="btn btn--secondary" aria-expanded={showMap} aria-controls="stations-overview-map" onClick={() => setShowMap((visible) => !visible)}>
+          <Map size={18} aria-hidden="true" /> {showMap ? "Masquer la carte" : "Voir les stations sur la carte"}
+        </button>
+      </div>
+      {showMap ? <section id="stations-overview-map" className="stations-overview-map" aria-label="Carte des stations">
+        {mapStations.length ? <StationMap stations={mapStations} mode="overview" /> : <div className="empty-state"><strong>Aucune station géolocalisée</strong></div>}
+      </section> : null}
+
       <section className="station-results-grid" aria-label="Résultats stations">
         {data.map((r) => (
           <article key={r.id} className="station-result-card">
@@ -70,8 +83,8 @@ const StationsList: NextPage<Props> = ({ initialStations }) => {
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
-  const initialStations = await fetchActiveResortsServer();
-  return { props: { initialStations } };
+  const [initialStations, mapStations] = await Promise.all([fetchActiveResortsServer(), fetchStationMapServer()]);
+  return { props: { initialStations, mapStations } };
 };
 
 export default StationsList;

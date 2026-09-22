@@ -12,19 +12,29 @@ test("the map uses Advanced Markers, one InfoWindow, clustering and the configur
   assert.match(source, /new MarkerClusterer\(\{ map, markers \}\)/);
   assert.match(source, /const infoWindow = new maps\.InfoWindow\(\)/);
   assert.match(source, /NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID/);
+  assert.match(source, /addEventListener\("gmp-click"/);
+  assert.doesNotMatch(source, /marker\.addListener/);
   assert.doesNotMatch(source, /new google\.maps\.Marker/);
 });
 
-test("station maps are rendered only when both published coordinates exist", () => {
+test("station cards use published coordinates and expose a safe missing-coordinate state", () => {
   const source = read("pages/stations/[slug].tsx");
-  assert.match(source, /hasValidCoordinates \? \(/);
-  assert.match(source, /mode="station"/);
+  assert.match(source, /latitude: hasValidCoordinates \?/);
+  assert.match(source, /<StationMapCard/);
   assert.doesNotMatch(source, /nominatim\.openstreetmap/);
-  assert.match(source, /noopener noreferrer/);
+  const card = read("src/components/maps/StationMapCard.tsx");
+  assert.match(card, /mode="preview"/);
+  assert.match(card, /mode="modal"/);
+  assert.match(card, /Coordonnées indisponibles/);
+  assert.match(card, /noopener noreferrer/);
 });
 
-test("the overview page loads its stations server-side from the dedicated endpoint", () => {
-  assert.match(read("pages/carte-stations-ski.tsx"), /fetchStationMapServer/);
+test("the stations directory toggles an overview loaded from the dedicated endpoint", () => {
+  const directory = read("pages/stations/index.tsx");
+  assert.match(directory, /fetchStationMapServer/);
+  assert.match(directory, /Voir les stations sur la carte/);
+  assert.match(directory, /Masquer la carte/);
+  assert.equal(fs.existsSync(path.join(root, "pages/carte-stations-ski.tsx")), false);
   assert.match(read("src/lib/api/stationMap.ts"), /\/api\/stations\/map/);
 });
 
