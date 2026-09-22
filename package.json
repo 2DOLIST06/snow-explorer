@@ -16,7 +16,8 @@
     "axios": "^1.7.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.441.0",
-    "@googlemaps/markerclusterer": "^2.6.2"
+    "@googlemaps/markerclusterer": "^2.6.2",
+    "fast-equals": "^5.0.1"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

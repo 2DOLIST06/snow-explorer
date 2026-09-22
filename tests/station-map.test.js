@@ -33,3 +33,15 @@ test("the environment template never contains a Google Maps secret", () => {
   assert.match(env, /^NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$/m);
   assert.match(env, /^NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=$/m);
 });
+
+test("the marker clusterer runtime dependency is installed explicitly", () => {
+  const packageJson = JSON.parse(read("package.json"));
+  const packageLock = JSON.parse(read("package-lock.json"));
+  assert.match(packageJson.dependencies["@googlemaps/markerclusterer"], /^\^2\.6\.2$/);
+  assert.match(packageJson.dependencies["fast-equals"], /^\^5\.0\.1$/);
+  assert.equal(
+    packageLock.packages["node_modules/@googlemaps/markerclusterer"].dependencies["fast-equals"],
+    "^5.0.1",
+  );
+  assert.equal(packageLock.packages["node_modules/fast-equals"].version, "5.2.2");
+});
