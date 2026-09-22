@@ -21,6 +21,7 @@ import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
+import StationMap from "@/components/maps/StationMapDynamic";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
@@ -1344,41 +1345,9 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const descriptionParagraphs = description
     ? description.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean)
     : [];
-  // Coords
-  const [geoLat, setGeoLat] = useState<number | null>(resort.latitude ?? null);
-  const [geoLon, setGeoLon] = useState<number | null>(resort.longitude ?? null);
-
-  useEffect(() => {
-    const hasDbCoords =
-      typeof resort.latitude === "number" &&
-      !Number.isNaN(resort.latitude) &&
-      typeof resort.longitude === "number" &&
-      !Number.isNaN(resort.longitude);
-
-    if (hasDbCoords) {
-      setGeoLat(resort.latitude as number);
-      setGeoLon(resort.longitude as number);
-      return;
-    }
-
-    let aborted = false;
-    (async () => {
-      try {
-        const g = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(resort.name)}`
-        );
-        const gj = await g.json();
-        if (!aborted && Array.isArray(gj) && gj.length) {
-          setGeoLat(parseFloat(gj[0].lat));
-          setGeoLon(parseFloat(gj[0].lon));
-        }
-      } catch {}
-    })();
-    return () => {
-      aborted = true;
-    };
-  }, [resort.name, resort.latitude, resort.longitude]);
-
+  // Les cartes et widgets utilisent uniquement les coordonnées publiées par la station.
+  const geoLat = resort.latitude ?? null;
+  const geoLon = resort.longitude ?? null;
 
   // Snowpark (config)
   const snowparkEnabled = isSnowparkEnabled(cfg);
@@ -1540,6 +1509,25 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
             /> : null}
           </aside> : null}
         </section> : null}
+
+        {hasValidCoordinates ? (
+          <section className="station-location-block" aria-labelledby="station-location-title">
+            <h2 id="station-location-title">Localisation de {resort.name}</h2>
+            <StationMap
+              mode="station"
+              stations={[{
+                id: resort.id || resort.slug,
+                name: resort.name,
+                slug: resort.slug,
+                latitude: Number(geoLat),
+                longitude: Number(geoLon),
+                logo: resort.logo_url || null,
+                department: typeof resort.department === "string" ? resort.department : resort.department?.name || null,
+                region: resort.region?.name || null,
+              }]}
+            />
+          </section>
+        ) : null}
 
         {/* Forfaits */}
         {forfaitsVisibility(cfg).any ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
@@ -1761,6 +1749,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     name: resort.name,
     slug: resort.slug,
     ...(resort.region ? { region: resort.region } : {}),
+    ...(resort.department ? { department: resort.department } : {}),
     altitude_base_m: resort.altitude_base_m ?? null,
     altitude_top_m: resort.altitude_top_m ?? null,
     altitude_min_m: resort.altitude_min_m ?? null,
