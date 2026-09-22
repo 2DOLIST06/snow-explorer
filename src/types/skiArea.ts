@@ -7,6 +7,7 @@ export type StationOption = {
   cover_image_url: string | null;
   logo_url: string | null;
   is_active?: boolean;
+  snowparks_count?: number | null;
 };
 
 import type { SkiPassSeason } from "@/types/skiPass";

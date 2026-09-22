@@ -22,6 +22,19 @@ test('optional ski-area fields clear with null while zero remains numeric', () =
   assert.match(editor, /snowparks_count/);
 });
 
+test('ski-area snowpark count is prefilled from every linked station and stays editable', () => {
+  const editor = read('src/components/admin/SkiAreaEditor.tsx');
+  const types = read('src/types/skiArea.ts');
+  assert.match(types, /snowparks_count\?: number \| null/);
+  assert.match(editor, /sumStationSnowparks/);
+  assert.match(editor, /station\.snowparks_count/);
+  assert.match(editor, /area\.snowparks_count == null/);
+  assert.match(editor, /onChange=\{setLinkedStations\}/);
+  assert.match(editor, /set\("snowparks_count", String\(sumStationSnowparks\(nextStations\)\)\)/);
+  assert.match(editor, /Pré-rempli à partir des stations rattachées, puis modifiable/);
+  assert.match(editor, /onChange=\{e => set\(key, e\.target\.value\)\}/);
+});
+
 test('public pages, reciprocal links, drafts, navigation and sitemap are wired', () => {
   const api = read('src/lib/api/skiAreas.ts');
   const card = read('src/components/stations/SkiAreaPublicCard.tsx');
