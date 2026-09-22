@@ -18,6 +18,8 @@ test('optional ski-area fields clear with null while zero remains numeric', () =
   assert.match(editor, /payload\[key\] = form\[key\]\.trim\(\) \|\| null/);
   assert.match(editor, /payload\[key\] = form\[key\] === "" \? null : Number\(form\[key\]\)/);
   assert.match(editor, /station_ids: stations\.map/);
+  assert.match(editor, /snowpark_name/);
+  assert.match(editor, /snowparks_count/);
 });
 
 test('public pages, reciprocal links, drafts, navigation and sitemap are wired', () => {
@@ -68,6 +70,7 @@ test('station statistics can switch from the station to each published ski area'
   assert.match(station, /pistesCount: selectedSkiArea\.pistes_count/);
   assert.match(station, /liftsCount: selectedSkiArea\.lifts_count/);
   assert.match(station, /snowparksCount: selectedSkiArea\.snowparks_count \?\? null/);
+  assert.match(station, /snowparkName=\{selectedSkiArea\?\.snowpark_name\}/);
   assert.match(station, /openDate: selectedSkiArea\.forecast_open_date/);
   assert.match(station, /closeDate: selectedSkiArea\.forecast_close_date/);
   assert.match(station, /Number\(altMax\) - Number\(altMin\)/);
@@ -75,6 +78,12 @@ test('station statistics can switch from the station to each published ski area'
   assert.match(station, /periods=\{cfg\?\.normalizedForfaits\?\.periods \|\| \[\]\}/);
   assert.doesNotMatch(station, /selectedMapSmall|selectedForfaits/);
   assert.match(styles, /\.station-stats-scope button\.is-active/);
+});
+
+test('ski-area snowpark name is shown in public domain facts', () => {
+  const card = read('src/components/stations/SkiAreaPublicCard.tsx');
+  assert.match(card, /area\.snowpark_name \|\| "Snowparks"/);
+  assert.match(card, /area\.snowparks_count/);
 });
 
 test('ski-area admin inventory retains every catalog station state', () => {
