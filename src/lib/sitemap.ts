@@ -3,7 +3,7 @@ import { regionSlug, type RegionSummary } from "@/lib/regions";
 import type { SkiAreaPublic } from "@/types/skiArea";
 
 const SITE_ORIGIN = "https://www.snow-explorer.com";
-const STATIC_PATHS = ["/", "/stations", "/carte-stations-ski", "/domaines-skiables", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
+const STATIC_PATHS = ["/", "/stations", "/domaines-skiables", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
 
 export type SitemapEntry = {
   url: string;

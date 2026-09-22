@@ -5,7 +5,7 @@ import { hasStationCoordinates } from "@/types/stationMap";
 
 type Props = {
   stations: StationMapItem[];
-  mode: "overview" | "station";
+  mode: "overview" | "preview" | "modal";
   ariaLabel?: string;
 };
 
@@ -81,12 +81,12 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
 
     loadGoogleMaps(apiKey).then((maps) => {
       if (disposed || !containerRef.current) return;
-      const initial = mode === "station"
+      const initial = mode !== "overview"
         ? { lat: validStations[0].latitude, lng: validStations[0].longitude }
         : { lat: 46.603354, lng: 1.888334 };
       const map = new maps.Map(containerRef.current, {
         center: initial,
-        zoom: mode === "station" ? 12 : 6,
+        zoom: mode === "preview" ? 12 : mode === "modal" ? 13 : 6,
         mapId,
         mapTypeControl: false,
         streetViewControl: false,
@@ -101,14 +101,22 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
           background: "#0b3d66",
           borderColor: "#ffffff",
           glyphColor: "#ffffff",
-          scale: mode === "station" ? 1.15 : 1,
+          scale: mode === "overview" ? 1 : 1.15,
         });
-        const marker = new maps.marker.AdvancedMarkerElement({ map: mode === "station" ? map : null, position, title: station.name, content: pin.element });
-        marker.addListener("click", () => {
-          infoWindow.close();
-          infoWindow.setContent(infoWindowHtml(station));
-          infoWindow.open({ map, anchor: marker });
+        const marker = new maps.marker.AdvancedMarkerElement({
+          map: mode === "overview" ? null : map,
+          position,
+          title: station.name,
+          content: pin.element,
+          gmpClickable: mode === "overview",
         });
+        if (mode === "overview") {
+          marker.addEventListener("gmp-click", () => {
+            infoWindow.close();
+            infoWindow.setContent(infoWindowHtml(station));
+            infoWindow.open({ map, anchor: marker });
+          });
+        }
         markers.push(marker);
         bounds.extend(position);
       });
@@ -128,7 +136,7 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
     };
   }, [apiKey, mapId, mode, validStations]);
 
-  const label = ariaLabel || (mode === "station" && validStations[0] ? `Carte de localisation de ${validStations[0].name}` : "Carte des stations de ski en France");
+  const label = ariaLabel || (mode !== "overview" && validStations[0] ? `Carte de localisation de ${validStations[0].name}` : "Carte des stations de ski en France");
   return (
     <div className={`station-map station-map--${mode}`} aria-labelledby={labelId}>
       <span id={labelId} className="sr-only">{label}</span>
@@ -136,10 +144,6 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
         {status === "loading" ? "Chargement de la carte…" : status === "missing-key" ? "La carte est temporairement indisponible (configuration manquante)." : "Impossible de charger la carte pour le moment."}
       </div> : null}
       <div ref={containerRef} className="station-map__canvas" aria-label={label} />
-      {mode === "station" && validStations[0] ? <div className="station-map__details">
-        <div><strong>{validStations[0].name}</strong>{validStations[0].department ? <span>{validStations[0].department}</span> : null}{validStations[0].region ? <span>{validStations[0].region}</span> : null}</div>
-        <a className="btn btn--secondary" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${validStations[0].latitude},${validStations[0].longitude}`)}`} target="_blank" rel="noopener noreferrer">Voir sur Google Maps</a>
-      </div> : null}
     </div>
   );
 }

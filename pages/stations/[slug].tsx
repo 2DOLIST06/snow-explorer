@@ -21,7 +21,7 @@ import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
-import StationMap from "@/components/maps/StationMapDynamic";
+import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
@@ -1362,10 +1362,6 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const hasValidCoordinates =
     Number.isFinite(Number(geoLat)) &&
     Number.isFinite(Number(geoLon));
-  const hasConditionsAside = Boolean(
-    hasValidCoordinates ||
-    snowparkUrl
-  );
 
   const pisteColors = SHOW_PISTE_COLOR_DETAILS ? cfg?.pistes?.colors : undefined;
   const computedPistesCount = resort.pistes_count ?? (SHOW_PISTE_COLOR_DETAILS ? sumAvailable(
@@ -1487,47 +1483,29 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
           </div>
         ) : null}
 
-        {/* Ligne A : plan + widgets droite */}
-        {(mapSmall || mapLarge || officialMapUrl || hasConditionsAside) ? <section id="station-conditions" className="stations-layout">
+        {/* Les quatre outils principaux partagent une grille 2 × 2 sur desktop. */}
+        <section id="station-conditions" className="stations-layout">
           {(mapSmall || mapLarge || officialMapUrl) ? <div>
             <PlanPistesFigure name={resort.name} small={mapSmall} large={mapLarge} officialUrl={officialMapUrl} caption={mapCaption} />
           </div> : null}
-
-          {hasConditionsAside ? <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {hasValidCoordinates ? (
-              <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} />
-            ) : null}
-            {hasValidCoordinates ? (
-              <MeteoblueSkiWidget lat={geoLat} lon={geoLon} />
-            ) : null}
-            {snowparkEnabled ? <SnowparkCard
+          {hasValidCoordinates ? <WebcamsAuto name={resort.name} lat={geoLat} lon={geoLon} /> : null}
+          {hasValidCoordinates ? <MeteoblueSkiWidget lat={geoLat} lon={geoLon} /> : null}
+          <StationMapCard station={{
+            id: resort.id || resort.slug, name: resort.name, slug: resort.slug,
+            latitude: hasValidCoordinates ? Number(geoLat) : undefined,
+            longitude: hasValidCoordinates ? Number(geoLon) : undefined,
+            logo: resort.logo_url || null,
+            department: typeof resort.department === "string" ? resort.department : resort.department?.name || null,
+            region: resort.region?.name || null,
+          }} />
+          {snowparkEnabled ? <SnowparkCard
               name={resort.name}
               url={snowparkUrl}
               caption={snowparkCaption || undefined}
               clickable={snowparksCountForCard > 0}
               onClick={snowparksCountForCard > 0 ? goSnowpark : undefined}
             /> : null}
-          </aside> : null}
-        </section> : null}
-
-        {hasValidCoordinates ? (
-          <section className="station-location-block" aria-labelledby="station-location-title">
-            <h2 id="station-location-title">Localisation de {resort.name}</h2>
-            <StationMap
-              mode="station"
-              stations={[{
-                id: resort.id || resort.slug,
-                name: resort.name,
-                slug: resort.slug,
-                latitude: Number(geoLat),
-                longitude: Number(geoLon),
-                logo: resort.logo_url || null,
-                department: typeof resort.department === "string" ? resort.department : resort.department?.name || null,
-                region: resort.region?.name || null,
-              }]}
-            />
-          </section>
-        ) : null}
+        </section>
 
         {/* Forfaits */}
         {forfaitsVisibility(cfg).any ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
@@ -1559,9 +1537,9 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
       <style jsx global>{`
         .stations-layout {
           display: grid;
-          grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.4fr);
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
-          align-items: flex-start;
+          align-items: stretch;
           margin-top: 16px;
         }
 
@@ -1580,7 +1558,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
         /* Tablette / petit desktop : 2 colonnes de tuiles, layout simplifié */
         @media (max-width: 1024px) and (min-width: 769px) {
           .stations-layout {
-            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .stations-panels-grid {
