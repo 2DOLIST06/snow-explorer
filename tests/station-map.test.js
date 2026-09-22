@@ -39,9 +39,14 @@ test("the marker clusterer runtime dependency is installed explicitly", () => {
   const packageLock = JSON.parse(read("package-lock.json"));
   assert.match(packageJson.dependencies["@googlemaps/markerclusterer"], /^\^2\.6\.2$/);
   assert.match(packageJson.dependencies["fast-equals"], /^\^5\.0\.1$/);
-  assert.equal(
-    packageLock.packages["node_modules/@googlemaps/markerclusterer"].dependencies["fast-equals"],
-    "^5.0.1",
+  assert.match(packageJson.dependencies.supercluster, /^\^8\.0\.1$/);
+  assert.match(packageJson.dependencies.kdbush, /^\^4\.0\.2$/);
+  assert.deepEqual(
+    packageLock.packages["node_modules/@googlemaps/markerclusterer"].dependencies,
+    { "fast-equals": "^5.0.1", supercluster: "^8.0.1" },
   );
   assert.equal(packageLock.packages["node_modules/fast-equals"].version, "5.2.2");
+  assert.equal(packageLock.packages["node_modules/supercluster"].version, "8.0.1");
+  assert.equal(packageLock.packages["node_modules/supercluster"].dependencies.kdbush, "^4.0.2");
+  assert.equal(packageLock.packages["node_modules/kdbush"].version, "4.0.2");
 });
