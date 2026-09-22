@@ -263,14 +263,15 @@ const PistesTile: React.FC<{
   total: string;
   km: string;
   snowparks: string;
+  snowparkName?: string | null;
   lifts: string;
   snowparksClickable?: boolean;
   onSnowparkClick?: () => void;
   colors?: StationWidgetsConfig["pistes"]["colors"];
-}> = ({ total, km, snowparks, lifts, snowparksClickable, onSnowparkClick, colors }) => {
+}> = ({ total, km, snowparks, snowparkName, lifts, snowparksClickable, onSnowparkClick, colors }) => {
   const metricStyle: React.CSSProperties = { fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 };
   const labelStyle: React.CSSProperties = { marginTop: 4, fontSize: 11, letterSpacing: 0.6, color: "#4b5563", textTransform: "uppercase" };
-  const snowparkMetric = <><div style={metricStyle}>{snowparks}</div><div style={labelStyle}>Snowparks</div></>;
+  const snowparkMetric = <><div style={metricStyle}>{snowparks}</div><div style={labelStyle}>{snowparkName || "Snowparks"}</div></>;
 
   return (
     <div style={{ background: "#eef2f7", border: "1px solid #d1d9e6", borderRadius: 16, padding: 16 }}>
@@ -1294,6 +1295,7 @@ const StationExtraPanels: React.FC<{
           total={`${pistesTotal}`}
           km={`${km}`}
           snowparks={`${snowparksLabel}`}
+          snowparkName={selectedSkiArea?.snowpark_name}
           lifts={`${liftsTotal}`}
           snowparksClickable={snowparksClickable}
           onSnowparkClick={snowparksClickable ? onSnowparkClick : undefined}

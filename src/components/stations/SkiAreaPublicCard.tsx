@@ -6,7 +6,7 @@ const formattedNumber = (value: unknown) => Number(value).toLocaleString("fr-FR"
 const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 export function SkiAreaFacts({ area }: { area: SkiAreaPublic }) {
-  const overview = [["Altitude basse", area.altitude_min_m, "m"], ["Altitude haute", area.altitude_max_m, "m"], ["Domaine skiable", area.ski_area_km, "km"], ["Remontées mécaniques", area.lifts_count, ""]].filter(([, value]) => present(value));
+  const overview = [["Altitude basse", area.altitude_min_m, "m"], ["Altitude haute", area.altitude_max_m, "m"], ["Domaine skiable", area.ski_area_km, "km"], [area.snowpark_name || "Snowparks", area.snowparks_count, ""], ["Remontées mécaniques", area.lifts_count, ""]].filter(([, value]) => present(value));
   const pisteColours = [["Vertes", area.green_pistes_count, "green"], ["Bleues", area.blue_pistes_count, "blue"], ["Rouges", area.red_pistes_count, "red"], ["Noires", area.black_pistes_count, "black"]].filter(([, value]) => present(value));
   const hasPistes = present(area.pistes_count) || pisteColours.length > 0;
   if (!overview.length && !hasPistes) return null;

@@ -23,6 +23,7 @@ export type SkiAreaPublic = {
   altitude_max_m: number | null;
   ski_area_km: number | null;
   pistes_count: number | null;
+  snowpark_name?: string | null;
   snowparks_count?: number | null;
   green_pistes_count: number | null;
   blue_pistes_count: number | null;
@@ -58,6 +59,8 @@ export type SkiAreaWrite = {
   altitude_max_m: number | null;
   ski_area_km: number | null;
   pistes_count: number | null;
+  snowpark_name: string | null;
+  snowparks_count: number | null;
   green_pistes_count: number | null;
   blue_pistes_count: number | null;
   red_pistes_count: number | null;
