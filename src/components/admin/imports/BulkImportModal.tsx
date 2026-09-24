@@ -2,6 +2,7 @@ import { useState } from "react";
 import AccessibleModal from "./AccessibleModal";
 import { ChangeList, FilePicker, ImportRules, MessageList, validateJsonFile } from "./ImportUi";
 import { confirmBulkStationImport, previewBulkStationImport, readStationImportDocument } from "@/lib/api/stationImports";
+import { getBulkImportBlockReason } from "@/lib/bulkImportConfirmation";
 import type { BulkImportOptions, BulkImportPreview, BulkImportResult, ImportMessage, StationImportPreviewItem } from "@/types/stationImport";
 
 type Filter = "all" | "update" | "create" | "unchanged" | "error";
@@ -19,8 +20,19 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
     : [];
   const total = preview?.summary?.total ?? previewStations.length;
   const invalidPreview = Boolean(preview) && (!preview?.summary || !Array.isArray(preview?.stations) || typeof preview?.valid !== "boolean");
-  const blocked = invalidPreview || !preview?.valid || !preview?.preview_token || !previewStations.some(item => Array.isArray(item.changes) && item.changes.some(change => change.action !== "unchanged")) || (previewStations.some(item => item.status === "create") && !options.create_missing);
-  const confirm = async () => { if (!file || document === undefined || !preview?.preview_token || blocked) return; setBusy(true); setError(""); try { setResult(await confirmBulkStationImport(document, preview.preview_token, options)); await onImported(); } catch (e) { setError(e instanceof Error ? e.message : "Import impossible."); } finally { setBusy(false); } };
+  const blockReason = getBulkImportBlockReason({ document, options, preview });
+  const confirm = async () => {
+    // Keep this guard even though the button is disabled: keyboard/programmatic
+    // activation must also explain why no request was sent.
+    if (blockReason || !preview?.preview_token) {
+      setError(blockReason || "Le jeton de prévisualisation est absent. Relancez l’analyse du fichier.");
+      return;
+    }
+    setBusy(true); setError("");
+    try { setResult(await confirmBulkStationImport(document, preview.preview_token, options)); await onImported(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Import impossible."); }
+    finally { setBusy(false); }
+  };
   const rows = previewStations.filter(item => filter === "all" || item.status === filter);
   const messages = (values: unknown[] | undefined): ImportMessage[] => Array.isArray(values) ? values.map((value, index) => {
     if (value && typeof value === "object") {
@@ -67,7 +79,8 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
           const changes = Array.isArray(detail.changes) ? detail.changes : [];
           return <section className="import-detail"><button className="import-link" onClick={() => setDetail(null)}>Fermer le détail</button><h3>{stationName} — {detail.status}</h3><p>Slug : {detail.slug || "—"}</p><p>Identifiant : {detail.id ?? "—"}</p><MessageList title="Erreurs" messages={messages(detail.errors)} /><MessageList title="Avertissements" messages={messages(detail.warnings)} warning /><ChangeList changes={changes} /></section>;
         })()}
-        <div className="import-actions"><button className="btn btn--secondary" disabled={busy} onClick={() => setPreview(null)}>Modifier les options</button><button className="btn btn--primary" disabled={blocked || busy} onClick={confirm}>{busy ? "Confirmation…" : "Confirmer l’import"}</button></div>
+        {blockReason && <div className="import-alert import-alert--warning" role="status">{blockReason}</div>}
+        <div className="import-actions"><button type="button" className="btn btn--secondary" disabled={busy} onClick={() => setPreview(null)}>Modifier les options</button><button type="button" className="btn btn--primary" disabled={Boolean(blockReason) || busy} onClick={() => void confirm()}>{busy ? "Confirmation…" : "Confirmer l’import"}</button></div>
       </>}
       {result && <div className="import-result" role={result.success ? "status" : "alert"}><h3>{result.success ? "Rapport d’import" : "Import partiel ou en erreur"}</h3><p>{result.message || (result.success ? "Import terminé." : "Certaines stations n’ont pas été importées.")}</p><div className="import-summary">{Object.entries(result.summary || {}).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div><MessageList title="Erreurs" messages={messages(result.errors)} /><MessageList title="Avertissements" messages={messages(result.warnings)} warning />{Array.isArray(result.stations) && result.stations.map((station, index) => <section className="import-detail" key={station.id ?? station.slug ?? `result-${index}`}><h3>{station.name || station.slug || "Station non identifiée"} — {station.status}</h3>{station.message && <p>{station.message}</p>}<MessageList title="Erreurs" messages={messages(station.errors)} /><MessageList title="Avertissements" messages={messages(station.warnings)} warning /></section>)}<div className="import-actions">{!result.success && <button className="btn btn--secondary" onClick={() => { setResult(null); setPreview(null); setDetail(null); }}>Corriger et réessayer</button>}<button className="btn btn--primary" onClick={close}>Fermer</button></div></div>}
     </div>
