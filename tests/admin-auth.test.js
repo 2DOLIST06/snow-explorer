@@ -59,7 +59,8 @@ test("station imports transmit file content instead of serializing a File object
   assert.match(imports, /JSON\.parse\(await file\.text\(\)\)/);
   assert.match(imports, /file: document/);
   assert.match(imports, /all_or_nothing: options\.transaction === "atomic"/);
-  assert.match(imports, /previewBulkStationImport[\s\S]*await bulkDocument\(file, options\)/);
+  assert.match(imports, /readStationImportDocument[\s\S]*JSON\.parse\(await file\.text\(\)\)/);
+  assert.match(imports, /previewBulkStationImport[\s\S]*bulkDocument\(document, options\)/);
   assert.doesNotMatch(imports, /JSON\.stringify\(\{\s*file\s*\}\)/);
 });
 

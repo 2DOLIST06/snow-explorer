@@ -1,15 +1,16 @@
 import { useState } from "react";
 import AccessibleModal from "./AccessibleModal";
 import { ChangeList, FilePicker, ImportRules, MessageList, validateJsonFile } from "./ImportUi";
-import { confirmBulkStationImport, previewBulkStationImport } from "@/lib/api/stationImports";
+import { confirmBulkStationImport, previewBulkStationImport, readStationImportDocument } from "@/lib/api/stationImports";
 import type { BulkImportOptions, BulkImportPreview, BulkImportResult, ImportMessage, StationImportPreviewItem } from "@/types/stationImport";
 
 type Filter = "all" | "update" | "create" | "unchanged" | "error";
 export default function BulkImportModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void | Promise<void> }) {
-  const [file, setFile] = useState<File | null>(null), [fileError, setFileError] = useState(""); const [options, setOptions] = useState<BulkImportOptions>({ create_missing: false, transaction: "atomic" }); const [preview, setPreview] = useState<BulkImportPreview | null>(null), [result, setResult] = useState<BulkImportResult | null>(null); const [detail, setDetail] = useState<StationImportPreviewItem | null>(null), [filter, setFilter] = useState<Filter>("all"), [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const reset = () => { setFile(null); setFileError(""); setOptions({ create_missing: false, transaction: "atomic" }); setPreview(null); setResult(null); setDetail(null); setFilter("all"); setError(""); };
-  const close = () => { if (!busy) { reset(); onClose(); } }; const select = (f: File | null) => { setFile(f); setFileError(f ? validateJsonFile(f) || "" : ""); setPreview(null); setResult(null); };
-  const analyze = async () => { if (!file) return; setBusy(true); setError(""); try { setPreview(await previewBulkStationImport(file, options)); } catch (e) { setError(e instanceof Error ? e.message : "Analyse impossible."); } finally { setBusy(false); } };
+  const [file, setFile] = useState<File | null>(null), [document, setDocument] = useState<unknown>(); const [fileError, setFileError] = useState(""); const [options, setOptions] = useState<BulkImportOptions>({ create_missing: false, transaction: "atomic" }); const [preview, setPreview] = useState<BulkImportPreview | null>(null), [result, setResult] = useState<BulkImportResult | null>(null); const [detail, setDetail] = useState<StationImportPreviewItem | null>(null), [filter, setFilter] = useState<Filter>("all"), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const reset = () => { setFile(null); setDocument(undefined); setFileError(""); setOptions({ create_missing: false, transaction: "atomic" }); setPreview(null); setResult(null); setDetail(null); setFilter("all"); setError(""); };
+  const invalidatePreview = () => { setPreview(null); setResult(null); setDetail(null); setDocument(undefined); };
+  const close = () => { if (!busy) { reset(); onClose(); } }; const select = (f: File | null) => { setFile(f); setFileError(f ? validateJsonFile(f) || "" : ""); invalidatePreview(); setError(""); };
+  const analyze = async () => { if (!file) return; setBusy(true); setError(""); try { const parsed = await readStationImportDocument(file); const value = await previewBulkStationImport(parsed, options); setDocument(parsed); setPreview(value); } catch (e) { setDocument(undefined); setError(e instanceof Error ? e.message : "Analyse impossible."); } finally { setBusy(false); } };
   const previewStations = Array.isArray(preview?.stations)
     ? preview.stations.filter(
         (item): item is StationImportPreviewItem =>
@@ -19,7 +20,7 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
   const total = preview?.summary?.total ?? previewStations.length;
   const invalidPreview = Boolean(preview) && (!preview?.summary || !Array.isArray(preview?.stations) || typeof preview?.valid !== "boolean");
   const blocked = invalidPreview || !preview?.valid || !preview?.preview_token || !previewStations.some(item => Array.isArray(item.changes) && item.changes.some(change => change.action !== "unchanged")) || (previewStations.some(item => item.status === "create") && !options.create_missing);
-  const confirm = async () => { if (!file || !preview?.preview_token || blocked) return; setBusy(true); try { setResult(await confirmBulkStationImport(file, preview.preview_token, options)); await onImported(); } catch (e) { setError(e instanceof Error ? e.message : "Import impossible."); } finally { setBusy(false); } };
+  const confirm = async () => { if (!file || document === undefined || !preview?.preview_token || blocked) return; setBusy(true); setError(""); try { setResult(await confirmBulkStationImport(document, preview.preview_token, options)); await onImported(); } catch (e) { setError(e instanceof Error ? e.message : "Import impossible."); } finally { setBusy(false); } };
   const rows = previewStations.filter(item => filter === "all" || item.status === filter);
   const messages = (values: unknown[] | undefined): ImportMessage[] => Array.isArray(values) ? values.map((value, index) => {
     if (value && typeof value === "object") {
@@ -35,10 +36,10 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
         <FilePicker file={file} onChange={select} error={fileError} />
         <fieldset className="import-options">
           <legend>Options</legend>
-          <label><input type="checkbox" checked={options.create_missing} onChange={event => { setOptions(current => ({ ...current, create_missing: event.target.checked })); setPreview(null); }} /> Créer les stations absentes</label>
+          <label><input type="checkbox" checked={options.create_missing} onChange={event => { setOptions(current => ({ ...current, create_missing: event.target.checked })); invalidatePreview(); }} /> Créer les stations absentes</label>
           {options.create_missing && <p className="import-alert import-alert--warning">Les stations absentes du site pourront être créées lors de la confirmation.</p>}
-          <label><input type="radio" name="transaction" checked={options.transaction === "atomic"} onChange={() => setOptions(current => ({ ...current, transaction: "atomic" }))} /> Annuler tout l’import si une erreur survient</label>
-          <label><input type="radio" name="transaction" checked={options.transaction === "valid_only"} onChange={() => setOptions(current => ({ ...current, transaction: "valid_only" }))} /> Importer uniquement les stations valides</label>
+          <label><input type="radio" name="transaction" checked={options.transaction === "atomic"} onChange={() => { setOptions(current => ({ ...current, transaction: "atomic" })); invalidatePreview(); }} /> Annuler tout l’import si une erreur survient</label>
+          <label><input type="radio" name="transaction" checked={options.transaction === "valid_only"} onChange={() => { setOptions(current => ({ ...current, transaction: "valid_only" })); invalidatePreview(); }} /> Importer uniquement les stations valides</label>
         </fieldset>
         {!preview && <><ImportRules /><button className="btn btn--primary" disabled={!file || !!fileError || busy} onClick={analyze}>{busy ? "Analyse…" : "Analyser le fichier"}</button></>}
       </>}
@@ -64,11 +65,11 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
         {detail && (() => {
           const stationName = detail.name?.trim() || detail.slug?.trim() || "Station non identifiée";
           const changes = Array.isArray(detail.changes) ? detail.changes : [];
-          return <section className="import-detail"><button className="import-link" onClick={() => setDetail(null)}>Fermer le détail</button><h3>{stationName} — {detail.status}</h3><p>Slug : {detail.slug || "—"}</p><p>Identifiant : {detail.id ?? "—"}</p><ChangeList changes={changes} /></section>;
+          return <section className="import-detail"><button className="import-link" onClick={() => setDetail(null)}>Fermer le détail</button><h3>{stationName} — {detail.status}</h3><p>Slug : {detail.slug || "—"}</p><p>Identifiant : {detail.id ?? "—"}</p><MessageList title="Erreurs" messages={messages(detail.errors)} /><MessageList title="Avertissements" messages={messages(detail.warnings)} warning /><ChangeList changes={changes} /></section>;
         })()}
         <div className="import-actions"><button className="btn btn--secondary" disabled={busy} onClick={() => setPreview(null)}>Modifier les options</button><button className="btn btn--primary" disabled={blocked || busy} onClick={confirm}>{busy ? "Confirmation…" : "Confirmer l’import"}</button></div>
       </>}
-      {result && <div className="import-result"><h3>Rapport d’import</h3><p>{result.message || (result.success ? "Import terminé." : "Import partiel ou en erreur.")}</p><div className="import-summary">{Object.entries(result.summary || {}).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div><button className="btn btn--primary" onClick={close}>Fermer</button></div>}
+      {result && <div className="import-result" role={result.success ? "status" : "alert"}><h3>{result.success ? "Rapport d’import" : "Import partiel ou en erreur"}</h3><p>{result.message || (result.success ? "Import terminé." : "Certaines stations n’ont pas été importées.")}</p><div className="import-summary">{Object.entries(result.summary || {}).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div><MessageList title="Erreurs" messages={messages(result.errors)} /><MessageList title="Avertissements" messages={messages(result.warnings)} warning />{Array.isArray(result.stations) && result.stations.map((station, index) => <section className="import-detail" key={station.id ?? station.slug ?? `result-${index}`}><h3>{station.name || station.slug || "Station non identifiée"} — {station.status}</h3>{station.message && <p>{station.message}</p>}<MessageList title="Erreurs" messages={messages(station.errors)} /><MessageList title="Avertissements" messages={messages(station.warnings)} warning /></section>)}<div className="import-actions">{!result.success && <button className="btn btn--secondary" onClick={() => { setResult(null); setPreview(null); setDetail(null); }}>Corriger et réessayer</button>}<button className="btn btn--primary" onClick={close}>Fermer</button></div></div>}
     </div>
   </AccessibleModal>;
 }

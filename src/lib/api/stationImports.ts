@@ -15,8 +15,11 @@ function asApiError(error: unknown): AdminApiError {
 async function request<T>(call: Promise<AxiosResponse<T>>): Promise<T> { try { return (await call).data; } catch (e) { throw asApiError(e); } }
 const form = (file: File, extra: Record<string, string> = {}) => { const body = new FormData(); body.append("file", file, file.name); Object.entries(extra).forEach(([k, v]) => body.append(k, v)); return body; };
 
-async function bulkDocument(file: File, options: BulkImportOptions, previewToken?: string) {
-  const document: unknown = JSON.parse(await file.text());
+export async function readStationImportDocument(file: File): Promise<unknown> {
+  return JSON.parse(await file.text());
+}
+
+function bulkDocument(document: unknown, options: BulkImportOptions, previewToken?: string) {
   return {
     file: document,
     create_missing: options.create_missing,
@@ -35,8 +38,8 @@ export async function getAllStationsExportResponse() { try { return await api.ge
 export async function getTemplateResponse() { try { return await api.get<Blob>("/api/admin/stations/import/template", { responseType: "blob" }); } catch (e) { throw asApiError(e); } }
 export const previewStationImport = (id: string, file: File) => request(api.post<StationImportPreview>(`/api/admin/stations/${encodeURIComponent(id)}/import/preview`, form(file)));
 export const confirmStationImport = (id: string, file: File, previewToken: string) => request(api.post<ImportResult>(`/api/admin/stations/${encodeURIComponent(id)}/import/confirm`, form(file, { preview_token: previewToken })));
-export const previewBulkStationImport = async (file: File, options: BulkImportOptions) => request(api.post<StationImportPreviewResponse>("/api/admin/stations/import/preview", await bulkDocument(file, options)));
-export const confirmBulkStationImport = async (file: File, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", await bulkDocument(file, options, previewToken)));
+export const previewBulkStationImport = (document: unknown, options: BulkImportOptions) => request(api.post<StationImportPreviewResponse>("/api/admin/stations/import/preview", bulkDocument(document, options)));
+export const confirmBulkStationImport = (document: unknown, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", bulkDocument(document, options, previewToken)));
 export const getImportHistory = (filters: ImportHistoryFilters = {}) => request(api.get<ImportHistoryResponse>("/api/admin/stations/import/history", { params: filters }));
 export const getImportHistoryDetail = (id: string) => request(api.get<ImportHistoryDetail>(`/api/admin/stations/import/history/${encodeURIComponent(id)}`));
 

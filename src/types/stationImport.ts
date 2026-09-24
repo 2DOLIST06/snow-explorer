@@ -19,7 +19,7 @@ export interface StationImportPreview {
   preview_token?: string;
 }
 
-export interface ImportResult { success: boolean; updated_fields: string[]; message?: string }
+export interface ImportResult { success: boolean; updated_fields?: string[]; created?: boolean; errors?: ImportMessage[]; warnings?: ImportMessage[]; message?: string }
 export type BulkTransaction = "atomic" | "valid_only";
 export interface BulkImportOptions { create_missing: boolean; transaction: BulkTransaction }
 export type StationImportPreviewItem = {
@@ -28,6 +28,9 @@ export type StationImportPreviewItem = {
   slug: string;
   status: "create" | "update" | "unchanged" | "error";
   changes: ImportChange[];
+  errors?: ImportMessage[];
+  warnings?: ImportMessage[];
+  message?: string;
 };
 export type StationImportPreviewResponse = {
   checksum: string;
@@ -46,7 +49,7 @@ export type StationImportPreviewResponse = {
 };
 export interface BulkImportSummary { total: number; existing: number; updates: number; missing: number; creations: number; unchanged: number; errors: number; changed_fields: number }
 export type BulkImportPreview = StationImportPreviewResponse;
-export interface BulkImportResult { success: boolean; summary: BulkImportSummary; stations: StationImportPreviewItem[]; message?: string }
+export interface BulkImportResult { success: boolean; summary: BulkImportSummary; stations: StationImportPreviewItem[]; errors?: ImportMessage[]; warnings?: ImportMessage[]; message?: string }
 
 export interface ImportHistoryFilters { date_from?: string; date_to?: string; administrator?: string; status?: string; type?: "single" | "bulk"; station?: string }
 export interface ImportHistoryItem { id: string; created_at: string; administrator: string; type: "single" | "bulk"; filename: string; status: string; stations_analyzed: number; stations_updated: number; stations_created: number; stations_skipped: number; errors_count: number }
