@@ -209,6 +209,33 @@ test("price notes become ordered stars without reusing the dynamic label", () =>
   ]);
 });
 
+test("station pages render prices without starred notes and link to the tariff conditions", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const StationForfaitsBlock = componentModule.exports.default;
+  const sourceUrl = "https://station.example/tarifs";
+  const html = renderToStaticMarkup(React.createElement(StationForfaitsBlock, {
+    enabled: true,
+    stationPage: true,
+    source_url: sourceUrl,
+    periods: [{
+      id: "winter",
+      passes: [{
+        id: "day",
+        name: "1 jour",
+        prices: [{ category_id: "adult", category_label: "Adulte", price_type: "fixed", price: 42, note: "Hors assurance" }],
+      }],
+    }],
+  }));
+
+  assert.match(html, /42[^<]*€/);
+  assert.match(html, /Certaines conditions peuvent s&#x27;appliquer/);
+  assert.match(html, new RegExp(`href="${sourceUrl}"[^>]*>Voir les conditions tarifaires de la station<`));
+  assert.doesNotMatch(html, /forfait-note-marker/);
+  assert.doesNotMatch(html, /forfaits-price-notes/);
+  assert.doesNotMatch(html, /Hors assurance/);
+});
+
 test("the JSON preview reports imported starred notes", () => {
   const importer = fs.readFileSync(path.join(__dirname, "../src/components/admin/ForfaitsJsonImport.tsx"), "utf8");
 

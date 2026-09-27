@@ -9,6 +9,7 @@ type Props = {
   season?: string | ForfaitSeason | null;
   source_url?: string | null;
   sourceUrl?: string | null;
+  stationPage?: boolean;
 };
 
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
@@ -184,7 +185,7 @@ function ForfaitsTable({ grid, notes }: { grid: Grid; notes: PriceNote[] }) {
   </>;
 }
 
-export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl }: Props) {
+export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl, stationPage = false }: Props) {
   const seasonObject = typeof season === "object" && season ? season : null;
   const availablePeriods = periods.length ? periods : seasonObject?.periods || seasonObject?.pricing_periods || [];
   const orderedPeriods = useMemo(() => [...availablePeriods]
@@ -211,11 +212,12 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
   const seasonLabel = typeof season === "string" ? season : text(season?.label || season?.name);
   return <section className="forfaits-card">
     <div className="forfaits-heading"><div><h2>Forfaits</h2>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
+    {stationPage && source && <p className="forfaits-conditions">Certaines conditions peuvent s&apos;appliquer. <a href={source} target="_blank" rel="noopener noreferrer">Voir les conditions tarifaires de la station</a>.</p>}
     {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
     {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}
     {grid.columns.length > 4 && <p className="forfaits-scroll-hint">Utilisez la barre ou maintenez le clic pour déplacer le tableau <span aria-hidden="true">↔</span></p>}
-    <ForfaitsTable grid={grid} notes={priceNotes} />
-    {priceNotes.length > 0 && <div className="forfaits-price-notes" aria-label="Notes relatives aux tarifs">{priceNotes.map((note) => <p key={note.label}><span className="forfait-note-marker" aria-hidden="true">{note.stars}</span><span>{note.label}</span></p>)}</div>}
+    <ForfaitsTable grid={grid} notes={stationPage ? [] : priceNotes} />
+    {!stationPage && priceNotes.length > 0 && <div className="forfaits-price-notes" aria-label="Notes relatives aux tarifs">{priceNotes.map((note) => <p key={note.label}><span className="forfait-note-marker" aria-hidden="true">{note.stars}</span><span>{note.label}</span></p>)}</div>}
     {hasDynamic && <p className="forfaits-dynamic-note">Tarifs dynamiques : le prix peut varier notamment selon la date choisie et le moment de la réservation. Consultez le site officiel de la station pour connaître le tarif disponible au moment de l&apos;achat.</p>}
   </section>;
 }

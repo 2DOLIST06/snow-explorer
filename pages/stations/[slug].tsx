@@ -1516,11 +1516,13 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
     season={cfg?.forfaits?.season}
     source_url={cfg?.forfaits?.source_url}
     sourceUrl={cfg?.forfaits?.sourceUrl}
+    stationPage
         /><StationForfaitsBlock
     enabled={forfaitsVisibility(cfg).normalized}
     periods={cfg?.normalizedForfaits?.periods || []}
     season={cfg?.normalizedForfaits?.season}
     source_url={cfg?.normalizedForfaits?.source_url}
+    stationPage
         /></div> : null}
         {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
         {!resort.ski_areas?.length && departmentStations.length > 0 ? (
