@@ -25,6 +25,7 @@ import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
+import FollowStationButton from "@/components/newsletter/FollowStationButton";
 
 /* =========================
  * Types
@@ -1424,6 +1425,7 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
           <p>{resortRegionHref ? <Link className="station-profile-hero__region" href={resortRegionHref}>{resort.region?.name}</Link> : "Destination montagne"}</p>
           <div className="station-profile-hero__actions">
             <a className="btn btn--secondary" href="#station-conditions">Voir les conditions</a>
+            {resort.id != null ? <FollowStationButton stationId={resort.id} stationName={resort.name} /> : null}
             {adminAuth.status === "authenticated" ? (
               <Link className="btn btn--primary" href={`/admin/stations/${encodeURIComponent(resort.slug)}`}>
                 Modifier la station
