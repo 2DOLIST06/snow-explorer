@@ -1,28 +1,25 @@
 export type NewsletterLanguage = "fr" | "en";
 export type NewsletterSource = "footer" | "article" | "page" | "station_page";
-
+export type NewsletterPreferenceKey = "snow_conditions" | "snowfall" | "weather" | "resort_updates" | "opening_closing" | "lift_updates" | "ski_pass_updates" | "articles";
+export type NewsletterFrequency = "immediate" | "weekly" | "monthly";
+export type WeatherFrequency = "daily" | "friday" | "weekly" | "disabled";
+export type NewsletterPreferences = Record<NewsletterPreferenceKey, boolean>;
+export type NewsletterPreferencesUpdate = NewsletterPreferences & { newsletter_frequency: NewsletterFrequency };
+export type NewsletterSubscribePayload = { email: string; language: NewsletterLanguage; source: NewsletterSource; consent: boolean; consentTextVersion: "v1"; station_id?: string | number };
+export type NewsletterSubscribeResult = { status: "active" };
 export type StationSummary = { id: string | number; name: string; slug?: string };
-export type StationPreference = StationSummary & {
-  station?: StationSummary;
-  weather: boolean;
-  snow_conditions: boolean;
-  resort_updates: boolean;
-  weather_frequency: "daily" | "friday" | "weekly" | "disabled";
-};
-export type SnowAlert = {
-  id: string | number;
-  station_id: string | number;
-  station?: StationSummary;
-  snowfall_cm: number;
-  period_hours: 24 | 48 | 72;
-  active?: boolean;
-};
+export type StationPreference = { id?: string | number; station: StationSummary; weather_enabled: boolean; snow_conditions_enabled: boolean; resort_updates_enabled: boolean; weather_frequency: WeatherFrequency };
+export type StationPreferenceUpdate = Pick<StationPreference, "weather_enabled" | "snow_conditions_enabled" | "resort_updates_enabled" | "weather_frequency">;
+export type SnowAlertInput = { station_id: string | number; alert_type: "snowfall"; threshold_cm: number; forecast_period_hours: 24 | 48 | 72; is_active: boolean };
+export type SnowAlert = SnowAlertInput & { id: string | number; station?: StationSummary };
 export type NewsletterPreferencesData = {
-  email?: string;
-  status?: string;
-  consent?: boolean;
-  preferences: Record<string, boolean>;
-  frequency: "immediate" | "weekly" | "monthly";
+  status: "active";
+  language: NewsletterLanguage;
+  preferences: NewsletterPreferences & { newsletter_frequency: NewsletterFrequency };
+  newsletter_frequency: NewsletterFrequency;
   stations: StationPreference[];
   alerts: SnowAlert[];
+  unsubscribed: boolean;
 };
+export type ApiDataResponse<T> = { data: T };
+export const NEWSLETTER_CONSENT_TEXT_VERSION = "v1" as const;
