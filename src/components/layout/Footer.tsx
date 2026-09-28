@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 
 const groups = [
   // TODO: ajouter les URL absentes lorsque les pages correspondantes existeront.
@@ -12,6 +13,7 @@ const groups = [
 export default function Footer() {
   return (
     <footer className="site-footer">
+      <NewsletterSignup source="footer" compact />
       <div className="site-footer__inner">
         <div className="site-footer__brand">
           <div className="brand brand--footer"><Image src="/logo.png" alt="Snow Explorer" width={46} height={46} /><span><strong>Snow Explorer</strong><small>Préparer la montagne avec des informations claires, fiables et lisibles.</small></span></div>
