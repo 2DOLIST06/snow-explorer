@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StationSearch from "./StationSearch";
 import { newsletterApi, NewsletterApiError } from "@/lib/api/newsletter";
 import { newsletterLanguage, translator } from "@/lib/newsletter/i18n";
@@ -10,12 +10,16 @@ const stationValue = (item: StationPreference): StationSummary => item.station;
 const replaceById = <T extends { id: string | number }>(items: T[], value: T) => items.map((item) => String(item.id) === String(value.id) ? value : item);
 
 export default function NewsletterPreferences({ token }: { token: string }) {
-  const router = useRouter(); const t = translator(newsletterLanguage(router));
+  const router = useRouter();
+  const language = newsletterLanguage(router);
+  const t = useMemo(() => translator(language), [language]);
+  const translationRef = useRef(t);
+  useEffect(() => { translationRef.current = t; }, [t]);
   const [data, setData] = useState<NewsletterPreferencesData | null>(null); const [draftPrefs, setDraftPrefs] = useState<NewsletterPreferences>({} as NewsletterPreferences); const [frequency, setFrequency] = useState<NewsletterFrequency>("weekly");
   const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(""); const [notice, setNotice] = useState(""); const [error, setError] = useState(""); const [adding, setAdding] = useState(false); const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(false); const [unsubscribed, setUnsubscribed] = useState(false);
   useEffect(() => { if (router.query.action === "unsubscribe") setConfirmUnsubscribe(true); }, [router.query.action]);
   const fail = useCallback((e: unknown) => { const apiError = e instanceof NewsletterApiError ? e : null; setError(apiError?.code === "network" ? t("networkError") : t("genericError")); }, [t]);
-  useEffect(() => { let live = true; setLoading(true); newsletterApi.preferences(token).then((value) => { if (!live) return; setData(value); setDraftPrefs(value.preferences || {}); setFrequency(value.newsletter_frequency || value.preferences.newsletter_frequency); if (value.unsubscribed) setUnsubscribed(true); }).catch((e) => { if (!live) return; setError(e instanceof NewsletterApiError && [404, 410].includes(e.status) ? t("invalidToken") : e instanceof NewsletterApiError && e.code === "network" ? t("networkError") : t("genericError")); }).finally(() => live && setLoading(false)); return () => { live = false; }; }, [token, t]);
+  useEffect(() => { let live = true; setLoading(true); newsletterApi.preferences(token).then((value) => { if (!live) return; setData(value); setDraftPrefs(value.preferences || {}); setFrequency(value.newsletter_frequency || value.preferences.newsletter_frequency); if (value.unsubscribed) setUnsubscribed(true); }).catch((e) => { if (!live) return; const translate = translationRef.current; setError(e instanceof NewsletterApiError && [404, 410].includes(e.status) ? translate("invalidToken") : e instanceof NewsletterApiError && e.code === "network" ? translate("networkError") : translate("genericError")); }).finally(() => live && setLoading(false)); return () => { live = false; }; }, [token]);
   const action = async (name: string, fn: () => Promise<void>) => { setBusy(name); setError(""); setNotice(""); try { await fn(); } catch (e) { fail(e); } finally { setBusy(""); } };
   const followedIds = useMemo(() => new Set((data?.stations || []).map((s) => String(stationValue(s).id))), [data?.stations]);
   if (loading) return <main className="newsletter-page"><p role="status">{t("loading")}</p></main>;

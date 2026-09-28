@@ -69,3 +69,12 @@ test("preference response envelope and unsubscribe confirmation match the final 
   assert.match(centre, /confirmUnsubscribe \?/);
   assert.match(centre, /await newsletterApi\.unsubscribe\(token\)/);
 });
+
+test("preferences are loaded only when the token changes", () => {
+  const centre = read("src/components/newsletter/NewsletterPreferences.tsx");
+  const loadEffect = centre.match(/useEffect\(\(\) => \{ let live = true;[\s\S]*?\}, \[([^\]]*)\]\);/);
+
+  assert.ok(loadEffect, "the preferences loading effect should exist");
+  assert.equal(loadEffect[1].trim(), "token");
+  assert.equal((loadEffect[0].match(/newsletterApi\.preferences\(token\)/g) || []).length, 1);
+});
