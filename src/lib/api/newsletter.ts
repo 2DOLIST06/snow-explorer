@@ -1,4 +1,5 @@
 import type { NewsletterLanguage, NewsletterPreferencesData, NewsletterSource, SnowAlert, StationPreference, StationSummary } from "@/types/newsletter";
+import { ADMIN_API_BASE } from "@/lib/adminApi";
 
 export class NewsletterApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -12,8 +13,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 const root = "/api/newsletter";
 const resource = (token: string, suffix = "") => `${root}/preferences/${encodeURIComponent(token)}${suffix}`;
 export const newsletterApi = {
-  subscribe: (body: { email: string; language: NewsletterLanguage; source: NewsletterSource; consent: boolean; station_id?: string | number }) => request<{ token?: string; preferences_url?: string }>(`${root}/subscribe/`, { method: "POST", body: JSON.stringify(body) }),
-  preferences: (token: string) => request<NewsletterPreferencesData>(resource(token)),
+ subscribe: (body: { email: string; language: NewsletterLanguage; source: NewsletterSource; consent: boolean; station_id?: string | number }) => request<{ token?: string; preferences_url?: string }>(`${ADMIN_API_BASE}${root}/subscribe/`, { method: "POST", body: JSON.stringify(body) }),
   updatePreferences: (token: string, body: { preferences: Record<string, boolean>; frequency: string }) => request<NewsletterPreferencesData>(resource(token), { method: "PUT", body: JSON.stringify(body) }),
   addStation: (token: string, station_id: string | number) => request<StationPreference>(resource(token, "/stations/"), { method: "POST", body: JSON.stringify({ station_id }) }),
   updateStation: (token: string, stationId: string | number, body: Pick<StationPreference, "weather" | "snow_conditions" | "resort_updates" | "weather_frequency">) => request<StationPreference>(resource(token, `/stations/${encodeURIComponent(stationId)}/`), { method: "PUT", body: JSON.stringify(body) }),
