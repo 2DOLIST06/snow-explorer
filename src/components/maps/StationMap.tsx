@@ -7,12 +7,14 @@ type Props = {
   stations: StationMapItem[];
   mode: "overview" | "preview" | "modal";
   ariaLabel?: string;
+  resizeSignal?: unknown;
 };
 
 type GoogleMapsApi = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => any;
   InfoWindow: new () => any;
   LatLngBounds: new () => any;
+  event?: { trigger?: (instance: unknown, eventName: string) => void };
   marker: { AdvancedMarkerElement: new (options: Record<string, unknown>) => any; PinElement: new (options: Record<string, unknown>) => { element: HTMLElement } };
 };
 
@@ -57,8 +59,10 @@ function infoWindowHtml(station: StationMapItem): string {
   return `<article class="station-map-info">${station.logo ? `<img src="${escapeHtml(station.logo)}" alt="Logo de ${escapeHtml(station.name)}" loading="lazy" />` : ""}<div><strong>${escapeHtml(station.name)}</strong>${place ? `<span>${escapeHtml(place)}</span>` : ""}<a href="/stations/${encodeURIComponent(station.slug)}">Voir la station →</a></div></article>`;
 }
 
-export default function StationMap({ stations, mode, ariaLabel }: Props) {
+export default function StationMap({ stations, mode, ariaLabel, resizeSignal }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const boundsRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "missing-key" | "error">("loading");
   const labelId = useId();
   const validStations = useMemo(() => stations.filter(hasStationCoordinates), [stations]);
@@ -94,6 +98,8 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
       });
       const infoWindow = new maps.InfoWindow();
       const bounds = new maps.LatLngBounds();
+      mapRef.current = map;
+      boundsRef.current = bounds;
 
       validStations.forEach((station) => {
         const position = { lat: station.latitude, lng: station.longitude };
@@ -131,10 +137,21 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
 
     return () => {
       disposed = true;
+      mapRef.current = null;
+      boundsRef.current = null;
       clusterer?.clearMarkers();
       markers.forEach((marker) => { marker.map = null; });
     };
   }, [apiKey, mapId, mode, validStations]);
+
+  useEffect(() => {
+    if (!mapRef.current || !boundsRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      window.google?.maps?.event?.trigger?.(mapRef.current, "resize");
+      if (mode === "overview" && validStations.length > 1) mapRef.current.fitBounds(boundsRef.current, 48);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode, resizeSignal, validStations.length]);
 
   const label = ariaLabel || (mode !== "overview" && validStations[0] ? `Carte de localisation de ${validStations[0].name}` : "Carte des stations de ski en France");
   return (

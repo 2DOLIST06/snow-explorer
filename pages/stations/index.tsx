@@ -2,29 +2,59 @@ import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Map, MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Map as MapIcon, MapPin, Maximize2, Minimize2, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import { regionHref } from "@/lib/regions";
-import { fetchActiveResortsServer } from "@/lib/api/resorts";
+import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
+import { fetchAllPublicSkiAreas } from "@/lib/api/skiAreas";
+import type { SkiAreaPublic } from "@/types/skiArea";
 import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import StationMap from "@/components/maps/StationMapDynamic";
 import { fetchStationMapServer } from "@/lib/api/stationMap";
 import type { StationMapItem } from "@/types/stationMap";
 
-type Resort = { id: string; name: string; slug: string; is_active?: boolean; region?: { name?: string }; department?: { name?: string } };
+type Props = { initialStations: Resort[]; mapStations: StationMapItem[]; skiAreas: SkiAreaPublic[] };
 
-type Props = { initialStations: Resort[]; mapStations: StationMapItem[] };
-
-const StationsList: NextPage<Props> = ({ initialStations, mapStations }) => {
+const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas }) => {
   const [q, setQ] = useState("");
-  const [showMap, setShowMap] = useState(false);
+  const [region, setRegion] = useState("");
+  const [department, setDepartment] = useState("");
+  const [skiArea, setSkiArea] = useState("");
+  const [showFilters, setShowFilters] = useState(true);
+  const [showMap, setShowMap] = useState(true);
+  const [mapExpanded, setMapExpanded] = useState(false);
+
+  const skiAreaBySlug = useMemo(() => new Map(skiAreas.map((area) => [area.slug, area])), [skiAreas]);
+  const selectedAreaStationSlugs = useMemo(() => {
+    if (!skiArea) return null;
+    return new Set((skiAreaBySlug.get(skiArea)?.stations || []).map((station) => station.slug));
+  }, [skiArea, skiAreaBySlug]);
+
   const data = useMemo(() => {
     const needle = normalizeSearchText(q);
-    return needle
-      ? initialStations.filter((station) => matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle))
-      : initialStations;
-  }, [initialStations, q]);
+    return initialStations.filter((station) => {
+      const matchesQuery = !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle);
+      return matchesQuery
+        && (!region || station.region?.name === region)
+        && (!department || station.department?.name === department)
+        && (!selectedAreaStationSlugs || selectedAreaStationSlugs.has(station.slug));
+    });
+  }, [department, initialStations, q, region, selectedAreaStationSlugs]);
 
-  const regionsCount = useMemo(() => new Set(data.map((r) => r.region?.name).filter(Boolean)).size, [data]);
+  const regionOptions = useMemo(() => [...new Set(initialStations.map((station) => station.region?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations]);
+  const departmentOptions = useMemo(() => [...new Set(initialStations.filter((station) => !region || station.region?.name === region).map((station) => station.department?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations, region]);
+  const filteredMapStations = useMemo(() => {
+    const slugs = new Set(data.map((station) => station.slug));
+    return mapStations.filter((station) => slugs.has(station.slug));
+  }, [data, mapStations]);
+  const regionsCount = useMemo(() => new Set(data.map((station) => station.region?.name).filter(Boolean)).size, [data]);
+  const hasFilters = Boolean(q || region || department || skiArea);
+
+  const resetFilters = () => {
+    setQ("");
+    setRegion("");
+    setDepartment("");
+    setSkiArea("");
+  };
 
   return (
     <>
@@ -34,57 +64,72 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations }) => {
         <link rel="canonical" href="https://www.snow-explorer.com/stations" />
       </Head>
       <main className="stations-directory">
-      <section className="stations-directory__hero">
-        <div>
-          <p className="eyebrow">Explorer les domaines</p>
-          <h1>Stations de ski</h1>
-          <p>Trouvez rapidement une station, comparez sa région et ouvrez une fiche détaillée avec météo, webcams, pistes et informations pratiques.</p>
+        <section className="stations-directory__hero">
+          <div>
+            <p className="eyebrow">Explorer les domaines</p>
+            <h1>Stations de ski</h1>
+            <p>Trouvez rapidement une station, comparez sa région et ouvrez une fiche détaillée avec météo, webcams, pistes et informations pratiques.</p>
+          </div>
+          <div className="station-directory-stats" aria-label="Résumé des résultats">
+            <div><strong>{data.length}</strong><span>stations</span></div>
+            <div><strong>{regionsCount || "—"}</strong><span>régions</span></div>
+          </div>
+        </section>
+
+        <section className="station-search-card" aria-label="Recherche et filtres des stations">
+          <label className="station-search-field">
+            <span>Rechercher une station</span>
+            <div><Search size={20} aria-hidden="true" /><input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Auron, Val Thorens, Chamonix…" /></div>
+          </label>
+          <button type="button" className="btn btn--secondary station-filter-toggle" aria-expanded={showFilters} aria-controls="station-directory-filters" onClick={() => setShowFilters((visible) => !visible)}><SlidersHorizontal size={18} /> Filtres</button>
+          {showFilters && <div id="station-directory-filters" className="station-directory-filters">
+            <label><span>Région</span><select value={region} onChange={(event) => { setRegion(event.target.value); setDepartment(""); }}><option value="">Toutes les régions</option>{regionOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+            <label><span>Département</span><select value={department} onChange={(event) => setDepartment(event.target.value)}><option value="">Tous les départements</option>{departmentOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+            <label><span>Domaine skiable</span><select value={skiArea} onChange={(event) => setSkiArea(event.target.value)}><option value="">Tous les domaines</option>{skiAreas.map((area) => <option key={area.id} value={area.slug}>{area.name}</option>)}</select></label>
+            <button type="button" className="btn btn--ghost" onClick={resetFilters} disabled={!hasFilters}><RotateCcw size={17} /> Réinitialiser</button>
+          </div>}
+        </section>
+
+        <div className="station-map-toggle">
+          <button type="button" className="btn btn--secondary" aria-expanded={showMap} aria-controls="stations-overview-map" onClick={() => setShowMap((visible) => !visible)}>
+            <MapIcon size={18} aria-hidden="true" /> {showMap ? "Masquer la carte" : "Voir les stations sur la carte"}
+          </button>
         </div>
-        <div className="station-directory-stats" aria-label="Résumé des résultats">
-          <div><strong>{data.length}</strong><span>stations</span></div>
-          <div><strong>{regionsCount || "—"}</strong><span>régions</span></div>
+
+        <div className={`stations-directory-layout${mapExpanded ? " stations-directory-layout--map-expanded" : ""}${!showMap ? " stations-directory-layout--map-hidden" : ""}`}>
+          {showMap && <section id="stations-overview-map" className="stations-overview-map" aria-label="Carte des stations">
+            <button type="button" className="station-map-expand" onClick={() => setMapExpanded((expanded) => !expanded)} aria-pressed={mapExpanded}>
+              {mapExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />} {mapExpanded ? "Réduire la carte" : "Agrandir la carte"}
+            </button>
+            {filteredMapStations.length ? <StationMap stations={filteredMapStations} mode="overview" resizeSignal={mapExpanded} /> : <div className="empty-state"><strong>Aucune station géolocalisée</strong><span>Modifiez les filtres pour afficher d’autres stations.</span></div>}
+          </section>}
+
+          <div className="station-results" aria-live="polite">
+            <section className="station-results-grid" aria-label="Résultats stations">
+              {data.map((resort) => <article key={resort.id} className="station-result-card">
+                <div className="station-result-card__icon"><MapPin size={20} /></div>
+                <div><h2>{resort.name}</h2><p>{regionHref(resort.region) ? <Link href={regionHref(resort.region)!}>{resort.region?.name}</Link> : "Station de ski"}</p></div>
+                <Link href={`/stations/${resort.slug}`} className="station-result-card__link">Voir la fiche <ArrowRight size={16} /></Link>
+              </article>)}
+            </section>
+            {data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Modifiez votre recherche ou réinitialisez les filtres.</span>{hasFilters && <button type="button" className="btn btn--secondary" onClick={resetFilters}>Réinitialiser les filtres</button>}</div>}
+          </div>
         </div>
-      </section>
-
-      <section className="station-search-card" aria-label="Recherche de station">
-        <label className="station-search-field">
-          <span>Rechercher une station</span>
-          <div><Search size={20} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Auron, Val Thorens, Chamonix…" /></div>
-        </label>
-        <button type="button" className="btn btn--secondary"><SlidersHorizontal size={18} /> Filtres</button>
-      </section>
-
-      <div className="station-map-toggle">
-        <button type="button" className="btn btn--secondary" aria-expanded={showMap} aria-controls="stations-overview-map" onClick={() => setShowMap((visible) => !visible)}>
-          <Map size={18} aria-hidden="true" /> {showMap ? "Masquer la carte" : "Voir les stations sur la carte"}
-        </button>
-      </div>
-      {showMap ? <section id="stations-overview-map" className="stations-overview-map" aria-label="Carte des stations">
-        {mapStations.length ? <StationMap stations={mapStations} mode="overview" /> : <div className="empty-state"><strong>Aucune station géolocalisée</strong></div>}
-      </section> : null}
-
-      <section className="station-results-grid" aria-label="Résultats stations">
-        {data.map((r) => (
-          <article key={r.id} className="station-result-card">
-            <div className="station-result-card__icon"><MapPin size={20} /></div>
-            <div>
-              <h2>{r.name}</h2>
-              <p>{regionHref(r.region) ? <Link href={regionHref(r.region)!}>{r.region?.name}</Link> : "Station de ski"}</p>
-            </div>
-            <Link href={`/stations/${r.slug}`} className="station-result-card__link">Voir la fiche <ArrowRight size={16} /></Link>
-          </article>
-        ))}
-      </section>
-
-      {data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Essayez un nom plus court ou une autre destination montagne.</span></div>}
       </main>
     </>
   );
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
-  const [initialStations, mapStations] = await Promise.all([fetchActiveResortsServer(), fetchStationMapServer()]);
-  return { props: { initialStations, mapStations } };
+  const [initialStations, mapStations, skiAreas] = await Promise.all([
+    fetchActiveResortsServer(),
+    fetchStationMapServer(),
+    fetchAllPublicSkiAreas().catch((error) => {
+      console.error("[stations] Ski areas unavailable", error instanceof Error ? error.message : "unknown_error");
+      return [];
+    }),
+  ]);
+  return { props: { initialStations, mapStations, skiAreas } };
 };
 
 export default StationsList;
