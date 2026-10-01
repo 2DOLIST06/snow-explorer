@@ -1,5 +1,4 @@
 type DirectoryStation = {
-  id: string;
   slug: string;
   department?: unknown;
   region?: { name?: string } | null;
@@ -7,7 +6,7 @@ type DirectoryStation = {
 
 type DirectorySkiArea = {
   slug: string;
-  stations?: Array<{ id?: string | null }>;
+  stations?: Array<{ slug?: string | null }>;
 };
 
 export function getStationDepartment(station: DirectoryStation): string | null {
@@ -28,7 +27,7 @@ export function getDepartmentOptions(stations: DirectoryStation[], selectedRegio
   )].sort((a, b) => a.localeCompare(b, "fr"));
 }
 
-export function getSkiAreaStationIds(
+export function getSkiAreaStationSlugs(
   skiAreas: DirectorySkiArea[],
   selectedSkiAreaSlug: string,
 ): Set<string> | null {
@@ -37,7 +36,7 @@ export function getSkiAreaStationIds(
   const selectedSkiArea = skiAreas.find((area) => area.slug === selectedSkiAreaSlug);
   return new Set(
     (selectedSkiArea?.stations || [])
-      .map((station) => station.id)
-      .filter((id): id is string => Boolean(id)),
+      .map((station) => station.slug)
+      .filter((slug): slug is string => Boolean(slug)),
   );
 }

@@ -11,7 +11,7 @@ import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import StationMap from "@/components/maps/StationMapDynamic";
 import { fetchStationMapServer } from "@/lib/api/stationMap";
 import type { StationMapItem } from "@/types/stationMap";
-import { getDepartmentOptions, getSkiAreaStationIds, getStationDepartment } from "@/lib/stationDirectoryFilters";
+import { getDepartmentOptions, getSkiAreaStationSlugs, getStationDepartment } from "@/lib/stationDirectoryFilters";
 
 type Props = { initialStations: Resort[]; mapStations: StationMapItem[]; skiAreas: SkiAreaPublic[] };
 
@@ -24,8 +24,8 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
   const [showMap, setShowMap] = useState(true);
   const [mapExpanded, setMapExpanded] = useState(false);
 
-  const selectedSkiAreaStationIds = useMemo(
-    () => getSkiAreaStationIds(skiAreas, skiArea),
+  const selectedSkiAreaStationSlugs = useMemo(
+    () => getSkiAreaStationSlugs(skiAreas, skiArea),
     [skiArea, skiAreas],
   );
 
@@ -37,9 +37,9 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
       return matchesQuery
         && (!region || station.region?.name === region)
         && (!department || stationDepartment === department)
-        && (!selectedSkiAreaStationIds || selectedSkiAreaStationIds.has(station.id));
+        && (!selectedSkiAreaStationSlugs || selectedSkiAreaStationSlugs.has(station.slug));
     });
-  }, [department, initialStations, q, region, selectedSkiAreaStationIds]);
+  }, [department, initialStations, q, region, selectedSkiAreaStationSlugs]);
 
   const regionOptions = useMemo(() => [...new Set(initialStations.map((station) => station.region?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations]);
   const departmentOptions = useMemo(() => getDepartmentOptions(initialStations, region), [initialStations, region]);
