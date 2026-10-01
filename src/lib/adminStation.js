@@ -45,9 +45,31 @@ function normalizeAdminStation(resort = {}, widgets = {}) {
       sumDefinedNumbers([lifts.tireFesses, lifts.telesieges, lifts.telepheriques]),
       null
     ),
-    pistes_small_map_url: nonEmptyString(resort.pistes_small_map_url) || nonEmptyString(widgets?.pistes?.smallMapUrl),
-    pistes_large_map_url: nonEmptyString(resort.pistes_large_map_url) || nonEmptyString(widgets?.pistes?.largeMapUrl),
+    // Map columns are authoritative, including when the API explicitly returns
+    // null or an empty string. Legacy widget URLs must never repopulate them.
+    pistes_small_map_url: resort.pistes_small_map_url ?? null,
+    pistes_large_map_url: resort.pistes_large_map_url ?? null,
     pistes_caption: nonEmptyString(resort.pistes_caption) || nonEmptyString(widgets?.pistes?.caption),
+  };
+}
+
+function normalizePisteMapUrl(value) {
+  return nonEmptyString(value);
+}
+
+function syncLegacyPisteMapUrls(widgets = {}, resort = {}) {
+  const smallMapUrl = normalizePisteMapUrl(resort.pistes_small_map_url);
+  const largeMapUrl = normalizePisteMapUrl(resort.pistes_large_map_url);
+
+  return {
+    ...widgets,
+    pistes: {
+      ...(widgets.pistes || {}),
+      smallMapUrl,
+      largeMapUrl,
+      small_map_url: smallMapUrl,
+      large_map_url: largeMapUrl,
+    },
   };
 }
 
@@ -69,4 +91,9 @@ function normalizeAdminWidgets(rawWidgets = {}, resort = {}) {
   return widgets;
 }
 
-module.exports = { normalizeAdminStation, normalizeAdminWidgets };
+module.exports = {
+  normalizeAdminStation,
+  normalizeAdminWidgets,
+  normalizePisteMapUrl,
+  syncLegacyPisteMapUrls,
+};

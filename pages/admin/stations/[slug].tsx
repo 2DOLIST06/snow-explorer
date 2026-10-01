@@ -7,7 +7,12 @@ import CachePurgeButton from "@/components/admin/CachePurgeButton";
 import { downloadBlobResponse, getStationExportResponse } from "@/lib/api/stationImports";
 import { ADMIN_API_BASE as API, adminFetch } from "@/lib/adminApi";
 import { uploadStationImage } from "@/lib/stationImageUpload";
-import { normalizeAdminStation, normalizeAdminWidgets } from "@/lib/adminStation";
+import {
+  normalizeAdminStation,
+  normalizeAdminWidgets,
+  normalizePisteMapUrl,
+  syncLegacyPisteMapUrls,
+} from "@/lib/adminStation";
 import StationSkiAreas from "@/components/admin/StationSkiAreas";
 
 
@@ -902,12 +907,8 @@ setWidgets(w);
 
       const payload: ResortType = {
         ...editableResort,
-        pistes_large_map_url:
-          resort.pistes_large_map_url ??
-          (widgets?.pistes?.largeMapUrl || null),
-        pistes_small_map_url:
-          resort.pistes_small_map_url ??
-          (widgets?.pistes?.smallMapUrl || null),
+        pistes_large_map_url: normalizePisteMapUrl(resort.pistes_large_map_url),
+        pistes_small_map_url: normalizePisteMapUrl(resort.pistes_small_map_url),
         region_id:
           resort.region_id ??
           resort.region?.id ??
@@ -915,7 +916,7 @@ setWidgets(w);
       };
 
       const widgetsPayload = {
-        ...widgets,
+        ...syncLegacyPisteMapUrls(widgets, payload),
         forfaits: buildCanonicalForfaitsPayload(widgets?.forfaits),
       };
 
@@ -1033,8 +1034,8 @@ const sectionChecks = {
 
   plan:
     !!widgets?.pistes?.enabled &&
-    ((isFilled(widgets?.pistes?.largeMapUrl) &&
-      isFilled(widgets?.pistes?.smallMapUrl)) ||
+    ((isFilled(resort?.pistes_large_map_url) &&
+      isFilled(resort?.pistes_small_map_url)) ||
       isFilled(widgets?.pistes?.officialMapUrl)),
 
   description:
@@ -1834,8 +1835,13 @@ const removeForfaitRow = (rowIdx: number) => {
                 <label style={styles.label}>
                   Large map URL
                   <input
-                    value={widgets?.pistes?.largeMapUrl || ""}
-                    onChange={(e) => setW("pistes.largeMapUrl", e.target.value)}
+                    value={resort?.pistes_large_map_url || ""}
+                    onChange={(e) =>
+                      setResort((prev) => ({
+                        ...(prev || {}),
+                        pistes_large_map_url: e.target.value || null,
+                      }))
+                    }
                     placeholder="URL grande carte…"
                     style={styles.input}
                   />
@@ -1854,7 +1860,7 @@ const removeForfaitRow = (rowIdx: number) => {
                 <label style={styles.label}>
                   Small map URL (auto)
                   <input
-                    value={widgets?.pistes?.smallMapUrl || ""}
+                    value={resort?.pistes_small_map_url || ""}
                     readOnly
                     style={{ ...styles.input, background: "#f9fafb", color: "#6b7280" }}
                   />
@@ -1883,13 +1889,13 @@ const removeForfaitRow = (rowIdx: number) => {
                   </span>
                 </label>
 
-                {(widgets?.pistes?.largeMapUrl || widgets?.pistes?.smallMapUrl) ? (
+                {(resort?.pistes_large_map_url || resort?.pistes_small_map_url) ? (
                   <div style={styles.splitPreview}>
                     <div style={styles.previewCard}>
                       <div style={styles.previewCardHeader}>Small</div>
-                      {widgets?.pistes?.smallMapUrl ? (
+                      {resort?.pistes_small_map_url ? (
                         <img
-                          src={widgets?.pistes?.smallMapUrl}
+                          src={resort.pistes_small_map_url}
                           alt="Prévisualisation small"
                           style={{ width: "100%", height: "auto", display: "block" }}
                         />
@@ -1900,9 +1906,9 @@ const removeForfaitRow = (rowIdx: number) => {
 
                     <div style={styles.previewCard}>
                       <div style={styles.previewCardHeader}>Large</div>
-                      {widgets?.pistes?.largeMapUrl ? (
+                      {resort?.pistes_large_map_url ? (
                         <img
-                          src={widgets?.pistes?.largeMapUrl}
+                          src={resort.pistes_large_map_url}
                           alt="Prévisualisation large"
                           style={{ width: "100%", height: "auto", display: "block" }}
                         />
