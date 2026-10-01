@@ -35,5 +35,7 @@ test("stations directory searches its server data locally without a browser fetc
   assert.match(stations, /initialStations\.filter/);
   assert.doesNotMatch(stations, /fetch\(/);
   assert.doesNotMatch(stations, /useEffect/);
-  assert.match(stations, /props: \{ initialStations, mapStations \}/);
+  assert.match(stations, /props: \{ initialStations, mapStations, skiAreas \}/);
+  assert.match(stations, /fetchAllPublicSkiAreas/);
+  assert.match(stations, /mapStations\.filter/);
 });
