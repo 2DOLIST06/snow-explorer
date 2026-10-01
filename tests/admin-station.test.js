@@ -2,7 +2,12 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
-const { normalizeAdminStation, normalizeAdminWidgets } = require("../src/lib/adminStation");
+const {
+  normalizeAdminStation,
+  normalizeAdminWidgets,
+  normalizePisteMapUrl,
+  syncLegacyPisteMapUrls,
+} = require("../src/lib/adminStation");
 
 test("admin station uses the legacy values already supported by the public page", () => {
   const widgets = {
@@ -38,6 +43,93 @@ test("current resort values take precedence over derived widget values", () => {
   assert.equal(station.pistes_count, 42);
   assert.equal(station.lifts_count, 15);
   assert.equal(station.season_open_date, "2026-11-28");
+});
+
+test("a null station map URL is not restored from legacy widget keys", () => {
+  const station = normalizeAdminStation(
+    { pistes_small_map_url: null, pistes_large_map_url: null },
+    {
+      pistes: {
+        smallMapUrl: "https://example.com/legacy-small.webp",
+        large_map_url: "https://example.com/legacy-large.webp",
+      },
+    }
+  );
+
+  assert.equal(station.pistes_small_map_url, null);
+  assert.equal(station.pistes_large_map_url, null);
+});
+
+test("clearing a large map produces a null station payload value", () => {
+  assert.equal(normalizePisteMapUrl(""), null);
+  assert.equal(normalizePisteMapUrl("   "), null);
+});
+
+test("saving synchronizes every legacy map key without changing other piste properties", () => {
+  const widgets = syncLegacyPisteMapUrls(
+    {
+      pistes: {
+        enabled: true,
+        caption: "Plan 2025",
+        colors: { green: 4 },
+        smallMapUrl: "old-small.webp",
+        largeMapUrl: "old-large.webp",
+        small_map_url: "older-small.webp",
+        large_map_url: "older-large.webp",
+      },
+      snow: { enabled: true },
+    },
+    { pistes_small_map_url: null, pistes_large_map_url: null }
+  );
+
+  assert.equal(widgets.pistes.smallMapUrl, null);
+  assert.equal(widgets.pistes.largeMapUrl, null);
+  assert.equal(widgets.pistes.small_map_url, null);
+  assert.equal(widgets.pistes.large_map_url, null);
+  assert.equal(widgets.pistes.caption, "Plan 2025");
+  assert.deepEqual(widgets.pistes.colors, { green: 4 });
+  assert.deepEqual(widgets.snow, { enabled: true });
+});
+
+test("a deleted map stays deleted after save and reload", () => {
+  const savedWidgets = syncLegacyPisteMapUrls(
+    { pistes: { smallMapUrl: "old-small.webp", largeMapUrl: "old-large.webp" } },
+    { pistes_small_map_url: null, pistes_large_map_url: null }
+  );
+  const reloaded = normalizeAdminStation(
+    { pistes_small_map_url: null, pistes_large_map_url: null },
+    savedWidgets
+  );
+
+  assert.equal(reloaded.pistes_small_map_url, null);
+  assert.equal(reloaded.pistes_large_map_url, null);
+});
+
+test("newly uploaded small and large maps are preserved for station and legacy payloads", () => {
+  const uploaded = {
+    pistes_small_map_url: "https://example.com/new-small.webp",
+    pistes_large_map_url: "https://example.com/new-large.webp",
+  };
+  const stationPayload = {
+    pistes_small_map_url: normalizePisteMapUrl(uploaded.pistes_small_map_url),
+    pistes_large_map_url: normalizePisteMapUrl(uploaded.pistes_large_map_url),
+  };
+  const widgetsPayload = syncLegacyPisteMapUrls({ pistes: { caption: "Current" } }, stationPayload);
+
+  assert.deepEqual(stationPayload, uploaded);
+  assert.equal(widgetsPayload.pistes.smallMapUrl, uploaded.pistes_small_map_url);
+  assert.equal(widgetsPayload.pistes.largeMapUrl, uploaded.pistes_large_map_url);
+});
+
+test("station editor binds map fields and previews to canonical station URLs", () => {
+  const page = fs.readFileSync("pages/admin/stations/[slug].tsx", "utf8");
+
+  assert.match(page, /value=\{resort\?\.pistes_large_map_url \|\| ""\}/);
+  assert.match(page, /value=\{resort\?\.pistes_small_map_url \|\| ""\}/);
+  assert.match(page, /pistes_large_map_url: e\.target\.value \|\| null/);
+  assert.match(page, /pistes_large_map_url: largeUrl,[\s\S]*pistes_small_map_url: smallUrl/);
+  assert.doesNotMatch(page, /resort\.pistes_large_map_url \?\?/);
+  assert.doesNotMatch(page, /resort\.pistes_small_map_url \?\?/);
 });
 
 test("admin widgets use piste maps returned on the resort record", () => {
