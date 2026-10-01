@@ -20,31 +20,37 @@ function loadFilterHelpers() {
   return module.exports;
 }
 
-const { getDepartmentOptions, getSkiAreaStationSlugs, getStationDepartment } = loadFilterHelpers();
+const { getDepartmentOptions, getSkiAreaStationIds, getStationDepartment } = loadFilterHelpers();
 
 const stations = [
-  { name: "Courchevel", slug: "courchevel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
-  { name: "Méribel", slug: "meribel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
-  { name: "Val Thorens", slug: "val-thorens", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
-  { name: "Chamonix", slug: "chamonix", region: { name: "Auvergne-Rhône-Alpes" }, department: "Haute-Savoie" },
-  { name: "Auron", slug: "auron", region: { name: "Provence-Alpes-Côte d’Azur" }, department: "Alpes-Maritimes" },
-  { name: "Sans département", slug: "sans-departement", region: { name: "Occitanie" }, department: null },
-  { name: "Département vide", slug: "departement-vide", region: { name: "Occitanie" }, department: "" },
+  { id: "resort-courchevel", name: "Courchevel", slug: "courchevel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
+  { id: "resort-meribel", name: "Méribel", slug: "meribel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
+  { id: "resort-val-thorens", name: "Val Thorens", slug: "val-thorens", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
+  { id: "resort-chamonix", name: "Chamonix", slug: "chamonix", region: { name: "Auvergne-Rhône-Alpes" }, department: "Haute-Savoie" },
+  { id: "resort-auron", name: "Auron", slug: "auron", region: { name: "Provence-Alpes-Côte d’Azur" }, department: "Alpes-Maritimes" },
+  { id: "resort-sans-departement", name: "Sans département", slug: "sans-departement", region: { name: "Occitanie" }, department: null },
+  { id: "resort-departement-vide", name: "Département vide", slug: "departement-vide", region: { name: "Occitanie" }, department: "" },
 ];
 
 const skiAreas = [{
+  id: 7,
+  name: "Les 3 Vallées",
   slug: "les-3-vallees",
-  stations: [{ slug: "courchevel" }, { slug: "meribel" }, { slug: "val-thorens" }],
+  stations: [
+    { id: "resort-courchevel", name: "Courchevel", slug: "courchevel-1850", cover_image_url: null, logo_url: null },
+    { id: "resort-meribel", name: "Méribel", slug: "meribel-les-allues", cover_image_url: null, logo_url: null },
+    { id: "resort-val-thorens", name: "Val Thorens", slug: "val-thorens-station", cover_image_url: null, logo_url: null },
+  ],
 }];
 
 function filterStations({ q = "", region = "", department = "", skiArea = "" } = {}) {
-  const skiAreaStationSlugs = getSkiAreaStationSlugs(skiAreas, skiArea);
+  const skiAreaStationIds = getSkiAreaStationIds(skiAreas, skiArea);
   const query = q.toLocaleLowerCase("fr");
   return stations.filter((station) => (
     (!query || station.name.toLocaleLowerCase("fr").includes(query))
     && (!region || station.region?.name === region)
     && (!department || getStationDepartment(station) === department)
-    && (!skiAreaStationSlugs || skiAreaStationSlugs.has(station.slug))
+    && (!skiAreaStationIds || skiAreaStationIds.has(station.id))
   ));
 }
 
@@ -70,7 +76,7 @@ test("an invalid department is reset after a region change", () => {
   assert.match(page, /getDepartmentOptions\(initialStations, nextRegion\)\.includes\(department\).*setDepartment\(""\)/);
 });
 
-test("ski-area filtering uses only the station slugs from the selected area", () => {
+test("ski-area filtering uses the resort ids returned in the selected area's station objects", () => {
   assert.deepEqual(
     filterStations({ skiArea: "les-3-vallees" }).map((station) => station.slug),
     ["courchevel", "meribel", "val-thorens"],
@@ -84,11 +90,17 @@ test("ski-area membership intersects with region, department and search filters 
   assert.deepEqual(filterStations().map((station) => station.slug), stations.map((station) => station.slug));
 });
 
+test("ski-area filtering returns no result only when no resort id belongs to the area", () => {
+  assert.deepEqual(filterStations({ skiArea: "unknown-area" }), []);
+  assert.deepEqual(filterStations({ region: "Provence-Alpes-Côte d’Azur", skiArea: "les-3-vallees" }), []);
+});
+
 test("station directory combines search, region, department and ski-area membership", () => {
   assert.match(page, /matchesQuery\s*&& \(!region/);
   assert.match(page, /&& \(!department/);
-  assert.match(page, /&& \(!selectedSkiAreaStationSlugs/);
-  assert.match(page, /getSkiAreaStationSlugs\(skiAreas, skiArea\)/);
+  assert.match(page, /&& \(!selectedSkiAreaStationIds/);
+  assert.match(page, /selectedSkiAreaStationIds\.has\(station\.id\)/);
+  assert.match(page, /getSkiAreaStationIds\(skiAreas, skiArea\)/);
   assert.match(page, /getDepartmentOptions\(initialStations, region\)/);
 });
 
