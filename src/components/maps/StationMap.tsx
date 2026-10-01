@@ -5,6 +5,8 @@ import { hasStationCoordinates } from "@/types/stationMap";
 
 type Props = {
   stations: StationMapItem[];
+  fitBoundsStations?: StationMapItem[];
+  viewportKey?: string;
   mode: "overview" | "preview" | "modal";
   ariaLabel?: string;
 };
@@ -14,6 +16,7 @@ type GoogleMapsApi = {
   InfoWindow: new () => any;
   LatLngBounds: new () => any;
   marker: { AdvancedMarkerElement: new (options: Record<string, unknown>) => any; PinElement: new (options: Record<string, unknown>) => { element: HTMLElement } };
+  event?: { trigger: (instance: any, eventName: string) => void };
 };
 
 declare global {
@@ -57,11 +60,17 @@ function infoWindowHtml(station: StationMapItem): string {
   return `<article class="station-map-info">${station.logo ? `<img src="${escapeHtml(station.logo)}" alt="Logo de ${escapeHtml(station.name)}" loading="lazy" />` : ""}<div><strong>${escapeHtml(station.name)}</strong>${place ? `<span>${escapeHtml(place)}</span>` : ""}<a href="/stations/${encodeURIComponent(station.slug)}">Voir la station →</a></div></article>`;
 }
 
-export default function StationMap({ stations, mode, ariaLabel }: Props) {
+export default function StationMap({ stations, fitBoundsStations, viewportKey, mode, ariaLabel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const mapsRef = useRef<GoogleMapsApi | null>(null);
+  const clustererRef = useRef<MarkerClusterer | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "missing-key" | "error">("loading");
   const labelId = useId();
   const validStations = useMemo(() => stations.filter(hasStationCoordinates), [stations]);
+  const validBoundsStations = useMemo(() => (fitBoundsStations || stations).filter(hasStationCoordinates), [fitBoundsStations, stations]);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
 
@@ -70,18 +79,15 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
       setStatus("missing-key");
       return;
     }
-    if (!containerRef.current || validStations.length === 0) {
+    if (!containerRef.current) {
       setStatus("error");
       return;
     }
 
     let disposed = false;
-    let clusterer: MarkerClusterer | undefined;
-    const markers: any[] = [];
-
     loadGoogleMaps(apiKey).then((maps) => {
       if (disposed || !containerRef.current) return;
-      const initial = mode !== "overview"
+      const initial = mode !== "overview" && validStations[0]
         ? { lat: validStations[0].latitude, lng: validStations[0].longitude }
         : { lat: 46.603354, lng: 1.888334 };
       const map = new maps.Map(containerRef.current, {
@@ -92,49 +98,53 @@ export default function StationMap({ stations, mode, ariaLabel }: Props) {
         streetViewControl: false,
         fullscreenControl: true,
       });
+      mapRef.current = map;
+      mapsRef.current = maps;
       const infoWindow = new maps.InfoWindow();
-      const bounds = new maps.LatLngBounds();
-
-      validStations.forEach((station) => {
-        const position = { lat: station.latitude, lng: station.longitude };
-        const pin = new maps.marker.PinElement({
-          background: "#0b3d66",
-          borderColor: "#ffffff",
-          glyphColor: "#ffffff",
-          scale: mode === "overview" ? 1 : 1.15,
-        });
-        const marker = new maps.marker.AdvancedMarkerElement({
-          map: mode === "overview" ? null : map,
-          position,
-          title: station.name,
-          content: pin.element,
-          gmpClickable: mode === "overview",
-        });
-        if (mode === "overview") {
-          marker.addEventListener("gmp-click", () => {
-            infoWindow.close();
-            infoWindow.setContent(infoWindowHtml(station));
-            infoWindow.open({ map, anchor: marker });
-          });
-        }
-        markers.push(marker);
-        bounds.extend(position);
-      });
-
-      if (mode === "overview") {
-        clusterer = new MarkerClusterer({ map, markers });
-        if (validStations.length > 1) map.fitBounds(bounds, 48);
-        else map.setCenter(initial);
-      }
+      infoWindowRef.current = infoWindow;
       setStatus("ready");
     }).catch(() => { if (!disposed) setStatus("error"); });
 
     return () => {
       disposed = true;
-      clusterer?.clearMarkers();
-      markers.forEach((marker) => { marker.map = null; });
+      clustererRef.current?.clearMarkers();
+      markersRef.current.forEach((marker) => { marker.map = null; });
+      mapRef.current = null;
+      mapsRef.current = null;
     };
-  }, [apiKey, mapId, mode, validStations]);
+    // The map instance must survive filtering; markers are managed separately below.
+  }, [apiKey, mapId, mode]);
+
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current || !mapsRef.current) return;
+    const maps = mapsRef.current;
+    const map = mapRef.current;
+    clustererRef.current?.clearMarkers();
+    markersRef.current.forEach((marker) => { marker.map = null; });
+    const markers = validStations.map((station) => {
+      const pin = new maps.marker.PinElement({ background: "#0b3d66", borderColor: "#ffffff", glyphColor: "#ffffff", scale: mode === "overview" ? 1 : 1.15 });
+      const marker = new maps.marker.AdvancedMarkerElement({ map: mode === "overview" ? null : map, position: { lat: station.latitude, lng: station.longitude }, title: station.name, content: pin.element, gmpClickable: mode === "overview" });
+      if (mode === "overview") marker.addEventListener("gmp-click", () => { infoWindowRef.current?.close(); infoWindowRef.current?.setContent(infoWindowHtml(station)); infoWindowRef.current?.open({ map, anchor: marker }); });
+      return marker;
+    });
+    markersRef.current = markers;
+    if (mode === "overview") clustererRef.current = new MarkerClusterer({ map, markers });
+  }, [mode, status, validStations]);
+
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current || !mapsRef.current) return;
+    const map = mapRef.current;
+    const maps = mapsRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      maps.event?.trigger(map, "resize");
+      const bounds = new maps.LatLngBounds();
+      validBoundsStations.forEach((station) => bounds.extend({ lat: station.latitude, lng: station.longitude }));
+      if (validBoundsStations.length > 1) map.fitBounds(bounds, 48);
+      else if (validBoundsStations.length === 1) { map.setCenter({ lat: validBoundsStations[0].latitude, lng: validBoundsStations[0].longitude }); map.setZoom(11); }
+      else { bounds.extend({ lat: 41.2, lng: -5.5 }); bounds.extend({ lat: 51.2, lng: 9.8 }); map.fitBounds(bounds, 32); }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [status, validBoundsStations, viewportKey]);
 
   const label = ariaLabel || (mode !== "overview" && validStations[0] ? `Carte de localisation de ${validStations[0].name}` : "Carte des stations de ski en France");
   return (
