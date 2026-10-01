@@ -11,6 +11,7 @@ import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import StationMap from "@/components/maps/StationMapDynamic";
 import { fetchStationMapServer } from "@/lib/api/stationMap";
 import type { StationMapItem } from "@/types/stationMap";
+import { getDepartmentOptions, getSkiAreaStationSlugs, getStationDepartment } from "@/lib/stationDirectoryFilters";
 
 type Props = { initialStations: Resort[]; mapStations: StationMapItem[]; skiAreas: SkiAreaPublic[] };
 
@@ -23,25 +24,29 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
   const [showMap, setShowMap] = useState(true);
   const [mapExpanded, setMapExpanded] = useState(false);
 
-  const skiAreaBySlug = useMemo(() => new Map(skiAreas.map((area) => [area.slug, area])), [skiAreas]);
-  const selectedAreaStationSlugs = useMemo(() => {
-    if (!skiArea) return null;
-    return new Set((skiAreaBySlug.get(skiArea)?.stations || []).map((station) => station.slug));
-  }, [skiArea, skiAreaBySlug]);
+  const selectedSkiAreaStationSlugs = useMemo(
+    () => getSkiAreaStationSlugs(skiAreas, skiArea),
+    [skiArea, skiAreas],
+  );
 
   const data = useMemo(() => {
     const needle = normalizeSearchText(q);
     return initialStations.filter((station) => {
-      const matchesQuery = !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle);
+      const stationDepartment = getStationDepartment(station);
+      const matchesQuery = !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${stationDepartment || ""}`, needle);
       return matchesQuery
         && (!region || station.region?.name === region)
-        && (!department || station.department?.name === department)
-        && (!selectedAreaStationSlugs || selectedAreaStationSlugs.has(station.slug));
+        && (!department || stationDepartment === department)
+        && (!selectedSkiAreaStationSlugs || selectedSkiAreaStationSlugs.has(station.slug));
     });
-  }, [department, initialStations, q, region, selectedAreaStationSlugs]);
+  }, [department, initialStations, q, region, selectedSkiAreaStationSlugs]);
 
   const regionOptions = useMemo(() => [...new Set(initialStations.map((station) => station.region?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations]);
-  const departmentOptions = useMemo(() => [...new Set(initialStations.filter((station) => !region || station.region?.name === region).map((station) => station.department?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations, region]);
+  const departmentOptions = useMemo(() => getDepartmentOptions(initialStations, region), [initialStations, region]);
+  const changeRegion = (nextRegion: string) => {
+    setRegion(nextRegion);
+    if (department && !getDepartmentOptions(initialStations, nextRegion).includes(department)) setDepartment("");
+  };
   const filteredMapStations = useMemo(() => {
     const slugs = new Set(data.map((station) => station.slug));
     return mapStations.filter((station) => slugs.has(station.slug));
@@ -83,7 +88,7 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
           </label>
           <button type="button" className="btn btn--secondary station-filter-toggle" aria-expanded={showFilters} aria-controls="station-directory-filters" onClick={() => setShowFilters((visible) => !visible)}><SlidersHorizontal size={18} /> Filtres</button>
           {showFilters && <div id="station-directory-filters" className="station-directory-filters">
-            <label><span>Région</span><select value={region} onChange={(event) => { setRegion(event.target.value); setDepartment(""); }}><option value="">Toutes les régions</option>{regionOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+            <label><span>Région</span><select value={region} onChange={(event) => changeRegion(event.target.value)}><option value="">Toutes les régions</option>{regionOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
             <label><span>Département</span><select value={department} onChange={(event) => setDepartment(event.target.value)}><option value="">Tous les départements</option>{departmentOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
             <label><span>Domaine skiable</span><select value={skiArea} onChange={(event) => setSkiArea(event.target.value)}><option value="">Tous les domaines</option>{skiAreas.map((area) => <option key={area.id} value={area.slug}>{area.name}</option>)}</select></label>
             <button type="button" className="btn btn--ghost" onClick={resetFilters} disabled={!hasFilters}><RotateCcw size={17} /> Réinitialiser</button>
