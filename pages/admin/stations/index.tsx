@@ -20,6 +20,7 @@ function toRows(payload: any) {
 export default function AdminStationsList() {
   const [items, setItems] = useState<any[]>([]);
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [lat, setLat] = useState<string>("");
@@ -64,12 +65,20 @@ export default function AdminStationsList() {
     load();
   }, []);
 
-  const filtered = items.filter(
-    (s) =>
-      (s.name || "").toLowerCase().includes(q.toLowerCase()) ||
-      (s.slug || "").toLowerCase().includes(q.toLowerCase())
-  );
+ const filtered = items.filter((s) => {
+  const matchesSearch =
+    (s.name || "").toLowerCase().includes(q.toLowerCase()) ||
+    (s.slug || "").toLowerCase().includes(q.toLowerCase());
 
+  const isActive = s?.is_active !== false;
+
+  const matchesStatus =
+    statusFilter === "all" ||
+    (statusFilter === "active" && isActive) ||
+    (statusFilter === "inactive" && !isActive);
+
+  return matchesSearch && matchesStatus;
+});
   const activeCount = items.filter((s) => s?.is_active !== false).length;
   const allDisabled = items.length > 0 && activeCount === 0;
 
@@ -228,12 +237,46 @@ export default function AdminStationsList() {
         </button>
       </section>
 
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Rechercher…"
-        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb", margin: "12px 0" }}
-      />
+      <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 8,
+    margin: "12px 0",
+  }}
+>
+  <input
+    value={q}
+    onChange={(e) => setQ(e.target.value)}
+    placeholder="Rechercher…"
+    style={{
+      width: "100%",
+      padding: 8,
+      borderRadius: 8,
+      border: "1px solid #e5e7eb",
+    }}
+  />
+
+  <select
+    value={statusFilter}
+    onChange={(e) =>
+      setStatusFilter(e.target.value as "all" | "active" | "inactive")
+    }
+    style={{
+      padding: "8px 12px",
+      borderRadius: 8,
+      border: "1px solid #e5e7eb",
+      background: "#fff",
+      color: "#111827",
+      minWidth: 170,
+      cursor: "pointer",
+    }}
+  >
+    <option value="all">Toutes les stations</option>
+    <option value="active">Stations activées</option>
+    <option value="inactive">Stations désactivées</option>
+  </select>
+</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button
           onClick={() => toggleAllStations(allDisabled)}
