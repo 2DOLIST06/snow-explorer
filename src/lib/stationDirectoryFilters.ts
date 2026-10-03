@@ -34,16 +34,21 @@ export function getStationDepartment(station: DirectoryStation): string | null {
     : null;
 }
 
-export function getDepartmentOptions(stations: DirectoryStation[], selectedRegion: string): string[] {
-  const stationsForDepartmentOptions = selectedRegion
-    ? stations.filter((station) => station.region?.name === selectedRegion)
-    : stations;
-
+export function getDepartmentOptions(stations: DirectoryStation[]): string[] {
   return [...new Set(
-    stationsForDepartmentOptions
+    stations
       .map((station) => getStationDepartment(station))
       .filter((department): department is string => Boolean(department)),
   )].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+export function matchesStationLocation(
+  station: DirectoryStation,
+  selectedRegion: string,
+  selectedDepartment: string,
+): boolean {
+  if (selectedDepartment) return getStationDepartment(station) === selectedDepartment;
+  return !selectedRegion || station.region?.name === selectedRegion;
 }
 
 export function getSkiAreaStationIds(

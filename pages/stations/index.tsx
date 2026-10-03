@@ -11,7 +11,7 @@ import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import StationMap from "@/components/maps/StationMapDynamic";
 import { fetchStationMapServer } from "@/lib/api/stationMap";
 import type { StationMapItem } from "@/types/stationMap";
-import { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment } from "@/lib/stationDirectoryFilters";
+import { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment, matchesStationLocation } from "@/lib/stationDirectoryFilters";
 
 type Props = { initialStations: Resort[]; mapStations: StationMapItem[]; skiAreas: SkiAreaPublic[] };
 
@@ -35,18 +35,16 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
       const stationDepartment = getStationDepartment(station);
       const matchesQuery = !needle || matchesSearch(`${station.name} ${station.region?.name || ""} ${stationDepartment || ""}`, needle);
       return matchesQuery
-        && (!region || station.region?.name === region)
-        && (!department || stationDepartment === department)
+        && matchesStationLocation(station, region, department)
         && (!selectedSkiAreaStationIds || selectedSkiAreaStationIds.has(station.id));
     });
   }, [department, initialStations, q, region, selectedSkiAreaStationIds]);
 
   const regionOptions = useMemo(() => [...new Set(initialStations.map((station) => station.region?.name).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, "fr")), [initialStations]);
-  const departmentOptions = useMemo(() => getDepartmentOptions(initialStations, region), [initialStations, region]);
+  const departmentOptions = useMemo(() => getDepartmentOptions(initialStations), [initialStations]);
   const skiAreaOptions = useMemo(() => getSkiAreaOptions(skiAreas, initialStations, region), [initialStations, region, skiAreas]);
   const changeRegion = (nextRegion: string) => {
     setRegion(nextRegion);
-    if (department && !getDepartmentOptions(initialStations, nextRegion).includes(department)) setDepartment("");
     if (skiArea && !getSkiAreaOptions(skiAreas, initialStations, nextRegion).some((area) => area.slug === skiArea)) setSkiArea("");
   };
   const filteredMapStations = useMemo(() => {
