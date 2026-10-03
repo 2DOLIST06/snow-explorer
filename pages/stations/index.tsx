@@ -90,16 +90,16 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
   return (
     <>
       <Head>
-        <title>Stations de ski en France : guide et comparaison | Snow Explorer</title>
-        <meta name="description" content="Découvrez les stations de ski en France, comparez les domaines, altitudes, pistes et informations pratiques avec Snow Explorer." />
+        <title>Stations de ski en France : carte et fiches | Snow Explorer</title>
+        <meta name="description" content="Découvrez les stations de ski en France sur une carte, recherchez une station et consultez ses informations, son domaine, sa météo et ses données ski disponibles." />
         <link rel="canonical" href="https://www.snow-explorer.com/stations" />
       </Head>
       <main className="stations-directory">
         <section className="stations-directory__hero">
           <div>
             <p className="eyebrow">Explorer les domaines</p>
-            <h1>Stations de ski</h1>
-            <p>Trouvez rapidement une station, comparez sa région et ouvrez une fiche détaillée avec météo, webcams, pistes et informations pratiques.</p>
+            <h1>Stations de ski en France</h1>
+            <p>Explorez les stations de ski en France et trouvez celle qui correspond à votre destination. Utilisez la recherche, la carte et les filtres pour parcourir les stations disponibles, puis accédez à chaque fiche pour consulter ses informations pratiques, son domaine skiable, la météo, les forfaits et le plan des pistes lorsque ces données sont disponibles.</p>
           </div>
           <div className="station-directory-stats" aria-label="Résumé des résultats">
             <div><strong>{data.length}</strong><span>stations</span></div>
@@ -139,13 +139,17 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
             <section className="station-results-grid" aria-label="Résultats stations">
               {data.map((resort) => <article key={resort.id} className="station-result-card">
                 <div className="station-result-card__icon"><MapPin size={20} /></div>
-                <div><h2>{resort.name}</h2><p>{regionHref(resort.region) ? <Link href={regionHref(resort.region)!}>{resort.region?.name}</Link> : "Station de ski"}</p></div>
+                <div><h2><Link href={`/stations/${resort.slug}`}>{resort.name}</Link></h2><p>{regionHref(resort.region) ? <Link href={regionHref(resort.region)!}>{resort.region?.name}</Link> : "Station de ski"}</p></div>
                 <Link href={`/stations/${resort.slug}`} className="station-result-card__link">Voir la fiche <ArrowRight size={16} /></Link>
               </article>)}
             </section>
             {data.length === 0 && <div className="empty-state empty-state--hero"><strong>Aucun résultat</strong><span>Modifiez votre recherche ou réinitialisez les filtres.</span>{hasFilters && <button type="button" className="btn btn--secondary" onClick={resetFilters}>Réinitialiser les filtres</button>}</div>}
           </div>
         </div>
+        <section className="directory-editorial">
+          <div><h2>Trouver une station de ski en France</h2><p>Snow Explorer rassemble les stations de ski référencées sur la plateforme afin de faciliter leur recherche et leur comparaison. La carte permet de visualiser leur localisation tandis que les filtres permettent d’affiner la liste selon les critères réellement disponibles sur le site.</p></div>
+          <div><h2>Préparer sa journée ou son séjour au ski</h2><p>Chaque fiche station centralise les informations disponibles sur Snow Explorer. Selon la station, il est possible de retrouver les données du <Link href="/domaines-skiables">domaine skiable</Link>, les <Link href="/meteo">prévisions météo et l’enneigement</Link>, les <Link href="/forfaits">tarifs des forfaits</Link> ainsi que le <Link href="/plan-des-pistes">plan des pistes</Link>.</p></div>
+        </section>
       </main>
     </>
   );

@@ -86,16 +86,16 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
   return (
     <>
       <Head>
-        <title>Prix des forfaits de ski par station | Snow Explorer</title>
-        <meta name="description" content="Comparez les prix des forfaits de ski disponibles par station et préparez votre séjour à la montagne avec Snow Explorer." />
+        <title>Forfaits de ski : prix par station et domaine | Snow Explorer</title>
+        <meta name="description" content="Consultez les prix des forfaits de ski disponibles par station et domaine : saisons, durées, catégories et tarifs référencés sur Snow Explorer." />
         <link rel="canonical" href="https://www.snow-explorer.com/forfaits" />
       </Head>
       <main className="passes-page">
         <section className="passes-hero">
           <div>
             <p className="eyebrow">Tarifs en station</p>
-            <h1>Prix des forfaits de ski dans les stations</h1>
-            <p>Choisissez une station et retrouvez immédiatement les tarifs de forfaits renseignés : journée, séjour, adulte ou enfant selon les offres disponibles.</p>
+            <h1>Forfaits de ski : prix par station</h1>
+            <p>Comparez les forfaits de ski référencés sur Snow Explorer et retrouvez les tarifs disponibles par station, période et catégorie. Les prix affichés correspondent aux données enregistrées pour les saisons et périodes indiquées.</p>
           </div>
           <div className="passes-hero__ticket" aria-hidden="true"><Ticket size={34} /><span>Préparez votre budget</span><strong>Avant de partir</strong></div>
         </section>
@@ -136,8 +136,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
 
         <section className="passes-seo">
           <p className="eyebrow">Bien préparer son séjour</p>
-          <h2>Comment choisir son forfait de ski ?</h2>
-          <div><p>Le prix d’un forfait de ski dépend notamment de la durée, de l’âge du skieur, de la période et de l’étendue du domaine skiable. Comparer les formules avant le départ permet de choisir celle qui correspond vraiment à votre séjour.</p><p>Les stations peuvent proposer des tarifs journée, plusieurs jours, famille ou saison. Pensez à vérifier les dates de validité, les justificatifs demandés et les éventuelles conditions de réservation en ligne.</p></div>
+          <div><div><h2>Comparer le prix des forfaits de ski</h2><p>Le prix d’un forfait dépend notamment de la station ou du domaine, de la durée, de la période et de la catégorie du skieur. Snow Explorer rassemble les tarifs disponibles pour faciliter leur consultation sans mélanger des périodes ou des catégories différentes.</p></div><div><h2>Vérifier la période et les conditions du forfait</h2><p>Avant de comparer deux tarifs, vérifiez toujours la saison, la période, la durée et la catégorie auxquelles ils correspondent. Lorsqu’une source ou une information complémentaire est disponible dans Snow Explorer, elle reste accessible depuis le bloc tarifaire concerné.</p></div></div>
         </section>
       </main>
     </>

@@ -86,13 +86,13 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
   return (
     <>
       <Head>
-        <title>Plans des pistes des stations de ski | Snow Explorer</title>
-        <meta name="description" content="Consultez le plan des pistes de votre station de ski et préparez vos itinéraires sur le domaine skiable." />
+        <title>Plans des pistes : cartes des stations de ski | Snow Explorer</title>
+        <meta name="description" content="Retrouvez les plans des pistes disponibles pour les stations et domaines skiables référencés sur Snow Explorer." />
         <link rel="canonical" href="https://www.snow-explorer.com/plan-des-pistes" />
       </Head>
       <main className="passes-page">
         <section className="passes-hero">
-          <div><p className="eyebrow">Domaines skiables</p><h1>Plans des pistes des stations</h1><p>Choisissez une station et consultez son plan des pistes pour repérer les secteurs, les remontées mécaniques et préparer vos itinéraires.</p></div>
+          <div><p className="eyebrow">Domaines skiables</p><h1>Plans des pistes des stations de ski</h1><p>Retrouvez les plans des pistes disponibles pour les stations et domaines skiables référencés sur Snow Explorer. Recherchez une destination puis ouvrez son plan pour visualiser l’organisation du domaine et les secteurs représentés.</p></div>
           <div className="passes-hero__ticket" aria-hidden="true"><Map size={34} /><span>Repérez votre parcours</span><strong>Avant de skier</strong></div>
         </section>
 
@@ -116,6 +116,11 @@ const PlanDesPistesPage: NextPage<Props> = ({ initialStations }) => {
               {mapUrl ? <figure className="pistes-map"><button type="button" onClick={() => setMapOpen(true)} aria-label={`Agrandir le plan des pistes de ${selected.name}`}><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} /></button>{pistes?.caption && <figcaption>{pistes.caption}</figcaption>}</figure> : officialMap ? <div className="pistes-official-link"><Map size={38} /><strong>Plan officiel de {selected.name}</strong><p>Le plan est proposé sur le site officiel de la station.</p><button type="button" className="btn btn--primary" onClick={() => setMapOpen(true)}>Ouvrir le plan</button></div> : <div className="notice notice--warning"><strong>Plan indisponible</strong><span>Aucun plan des pistes n’est actuellement renseigné pour {selected.name}.</span></div>}
             </div>}
           </section>
+        </section>
+
+        <section className="directory-editorial">
+          <div><h2>Consulter le plan des pistes d’une station</h2><p>Le plan des pistes permet de visualiser l’organisation générale d’une station ou d’un domaine skiable. Snow Explorer centralise les plans disponibles afin de permettre un accès rapide depuis une même interface.</p></div>
+          <div><h2>Accéder aux informations de la station</h2><p>Depuis Snow Explorer, le plan peut être complété par les autres informations disponibles pour la station : caractéristiques du <Link href="/domaines-skiables">domaine</Link>, <Link href="/meteo">météo et enneigement</Link> ainsi que <Link href="/forfaits">tarifs des forfaits</Link>.</p></div>
         </section>
 
         {mapOpen && selected && (mapUrl || officialMap) && <div className="pistes-modal-backdrop" onClick={() => setMapOpen(false)} role="presentation"><div className={mapUrl ? "pistes-modal pistes-modal--image" : "pistes-modal pistes-modal--official"} role="dialog" aria-modal="true" aria-label={`Plan des pistes de ${selected.name}`} onClick={(event) => event.stopPropagation()}><button type="button" className="pistes-modal__close" onClick={() => setMapOpen(false)} aria-label="Fermer">×</button>{mapUrl ? <><img src={mapUrl} alt={`Plan des pistes de ${selected.name}`} />{pistes?.caption && <p>{pistes.caption}</p>}</> : officialMap ? <iframe src={officialMap.embedUrl} title={`Plan des pistes officiel de ${selected.name}`} referrerPolicy="strict-origin-when-cross-origin" allow={officialMap.provider === "calameo" ? "fullscreen" : undefined} allowFullScreen={officialMap.provider === "calameo"} /> : null}</div></div>}
