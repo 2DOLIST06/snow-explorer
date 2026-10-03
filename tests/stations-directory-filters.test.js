@@ -20,7 +20,7 @@ function loadFilterHelpers() {
   return module.exports;
 }
 
-const { getDepartmentOptions, getSkiAreaStationIds, getStationDepartment } = loadFilterHelpers();
+const { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment } = loadFilterHelpers();
 
 const stations = [
   { id: "resort-1", name: "Courchevel", slug: "courchevel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
@@ -32,10 +32,20 @@ const stations = [
   { id: "resort-7", name: "Département vide", slug: "departement-vide", region: { name: "Occitanie" }, department: "" },
 ];
 
-const skiAreas = [{
-  slug: "les-3-vallees",
-  stations: [{ id: "resort-1" }, { id: "resort-2" }, { id: "resort-3" }],
-}];
+const skiAreas = [
+  {
+    slug: "les-3-vallees",
+    stations: [{ id: "resort-1" }, { id: "resort-2" }, { id: "resort-3" }],
+  },
+  {
+    slug: "domaine-multi-regions",
+    stations: [{ id: "resort-4" }, { id: "resort-5" }],
+  },
+  {
+    slug: "domaine-occitan",
+    stations: [{ id: "resort-6" }],
+  },
+];
 
 function filterStations({ q = "", region = "", department = "", skiArea = "" } = {}) {
   const skiAreaStationIds = getSkiAreaStationIds(skiAreas, skiArea);
@@ -75,6 +85,23 @@ test("ski-area filtering uses the resort IDs resolved from ski_area_resort", () 
     filterStations({ skiArea: "les-3-vallees" }).map((station) => station.slug),
     ["courchevel", "meribel", "val-thorens"],
   );
+});
+
+test("ski-area options are restricted to areas with a station in the selected region", () => {
+  assert.deepEqual(
+    getSkiAreaOptions(skiAreas, stations, "Provence-Alpes-Côte d’Azur").map((area) => area.slug),
+    ["domaine-multi-regions"],
+  );
+  assert.deepEqual(
+    getSkiAreaOptions(skiAreas, stations, "Auvergne-Rhône-Alpes").map((area) => area.slug),
+    ["les-3-vallees", "domaine-multi-regions"],
+  );
+  assert.deepEqual(getSkiAreaOptions(skiAreas, stations, ""), skiAreas);
+});
+
+test("changing region clears a selected ski area that is no longer available", () => {
+  assert.match(page, /getSkiAreaOptions\(skiAreas, initialStations, nextRegion\).*area\.slug === skiArea.*setSkiArea\(""\)/);
+  assert.match(page, /skiAreaOptions\.map\(\(area\) =>/);
 });
 
 test("ski-area membership intersects with region, department and search filters and resets", () => {
