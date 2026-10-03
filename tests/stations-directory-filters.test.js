@@ -110,6 +110,17 @@ test("changing region clears a selected ski area that is no longer available", (
   assert.match(page, /skiAreaOptions\.map\(\(area\) =>/);
 });
 
+test("changing region clears the department so the new region filters results", () => {
+  const changeRegion = page.match(/const changeRegion = \(nextRegion: string\) => \{([\s\S]*?)\n  \};/)?.[1] || "";
+
+  assert.match(changeRegion, /setRegion\(nextRegion\)/);
+  assert.match(changeRegion, /setDepartment\(""\)/);
+  assert.ok(
+    changeRegion.indexOf("setDepartment") < changeRegion.indexOf("getSkiAreaOptions"),
+    "the stale department should be cleared as part of every region change",
+  );
+});
+
 test("ski-area membership intersects with region, department and search filters and resets", () => {
   assert.deepEqual(filterStations({ region: "Auvergne-Rhône-Alpes", skiArea: "les-3-vallees" }).map((station) => station.slug), ["courchevel", "meribel", "val-thorens"]);
   assert.deepEqual(filterStations({ department: "Savoie", skiArea: "les-3-vallees" }).map((station) => station.slug), ["courchevel", "meribel", "val-thorens"]);

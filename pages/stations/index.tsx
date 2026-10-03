@@ -45,6 +45,10 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
   const skiAreaOptions = useMemo(() => getSkiAreaOptions(skiAreas, initialStations, region), [initialStations, region, skiAreas]);
   const changeRegion = (nextRegion: string) => {
     setRegion(nextRegion);
+    // A department is the more specific location filter and therefore takes
+    // precedence while it is selected. Clear it when the user explicitly
+    // changes region so that the new region immediately updates the results.
+    setDepartment("");
     if (skiArea && !getSkiAreaOptions(skiAreas, initialStations, nextRegion).some((area) => area.slug === skiArea)) setSkiArea("");
   };
   const filteredMapStations = useMemo(() => {
