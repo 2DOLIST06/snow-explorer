@@ -20,7 +20,7 @@ function loadFilterHelpers() {
   return module.exports;
 }
 
-const { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment } = loadFilterHelpers();
+const { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment, matchesStationLocation } = loadFilterHelpers();
 
 const stations = [
   { id: "resort-1", name: "Courchevel", slug: "courchevel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
@@ -30,6 +30,8 @@ const stations = [
   { id: "resort-5", name: "Auron", slug: "auron", region: { name: "Provence-Alpes-Côte d’Azur" }, department: "Alpes-Maritimes" },
   { id: "resort-6", name: "Sans département", slug: "sans-departement", region: { name: "Occitanie" }, department: null },
   { id: "resort-7", name: "Département vide", slug: "departement-vide", region: { name: "Occitanie" }, department: "" },
+  { id: "resort-8", name: "La Grave", slug: "la-grave", region: { name: "Auvergne-Rhône-Alpes" }, department: "Hautes-Alpes" },
+  { id: "resort-9", name: "Les Orres", slug: "les-orres", region: { name: "Provence-Alpes-Côte d’Azur" }, department: "Hautes-Alpes" },
 ];
 
 const skiAreas = [
@@ -52,32 +54,36 @@ function filterStations({ q = "", region = "", department = "", skiArea = "" } =
   const query = q.toLocaleLowerCase("fr");
   return stations.filter((station) => (
     (!query || station.name.toLocaleLowerCase("fr").includes(query))
-    && (!region || station.region?.name === region)
-    && (!department || getStationDepartment(station) === department)
+    && matchesStationLocation(station, region, department)
     && (!skiAreaStationIds || skiAreaStationIds.has(station.id))
   ));
 }
 
 test("department options include all non-empty departments without a region", () => {
   assert.deepEqual(
-    [...getDepartmentOptions(stations, "")],
-    ["Alpes-Maritimes", "Haute-Savoie", "Savoie"],
+    [...getDepartmentOptions(stations)],
+    ["Alpes-Maritimes", "Haute-Savoie", "Hautes-Alpes", "Savoie"],
   );
 });
 
-test("department options are restricted to the selected region", () => {
+test("department options remain complete when a region is selected", () => {
   assert.deepEqual(
-    [...getDepartmentOptions(stations, "Auvergne-Rhône-Alpes")],
-    ["Haute-Savoie", "Savoie"],
+    [...getDepartmentOptions(stations)],
+    ["Alpes-Maritimes", "Haute-Savoie", "Hautes-Alpes", "Savoie"],
   );
+  assert.match(page, /getDepartmentOptions\(initialStations\)/);
 });
 
-test("an invalid department is reset after a region change", () => {
-  const selectedDepartment = "Savoie";
-  const nextOptions = getDepartmentOptions(stations, "Provence-Alpes-Côte d’Azur");
-  const nextDepartment = nextOptions.includes(selectedDepartment) ? selectedDepartment : "";
-  assert.equal(nextDepartment, "");
-  assert.match(page, /getDepartmentOptions\(initialStations, nextRegion\)\.includes\(department\).*setDepartment\(""\)/);
+test("department takes precedence over inconsistent station regions", () => {
+  assert.deepEqual(
+    filterStations({ region: "Auvergne-Rhône-Alpes", department: "Hautes-Alpes" }).map((station) => station.slug),
+    ["la-grave", "les-orres"],
+  );
+  assert.deepEqual(
+    filterStations({ region: "Provence-Alpes-Côte d’Azur", department: "Hautes-Alpes" }).map((station) => station.slug),
+    ["la-grave", "les-orres"],
+  );
+  assert.match(page, /matchesStationLocation\(station, region, department\)/);
 });
 
 test("ski-area filtering uses the resort IDs resolved from ski_area_resort", () => {
@@ -112,12 +118,11 @@ test("ski-area membership intersects with region, department and search filters 
 });
 
 test("station directory combines search, region, department and ski-area membership", () => {
-  assert.match(page, /matchesQuery\s*&& \(!region/);
-  assert.match(page, /&& \(!department/);
+  assert.match(page, /matchesQuery\s*&& matchesStationLocation/);
   assert.match(page, /&& \(!selectedSkiAreaStationIds/);
   assert.match(page, /getSkiAreaStationIds\(skiAreas, skiArea\)/);
   assert.match(page, /fetchAllPublicSkiAreasWithStations\(\)/);
-  assert.match(page, /getDepartmentOptions\(initialStations, region\)/);
+  assert.match(page, /getDepartmentOptions\(initialStations\)/);
 });
 
 test("station list and map share the filtered station slugs and expose a reset", () => {
