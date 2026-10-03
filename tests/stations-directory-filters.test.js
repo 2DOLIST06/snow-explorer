@@ -20,7 +20,7 @@ function loadFilterHelpers() {
   return module.exports;
 }
 
-const { getDepartmentOptions, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment, matchesStationLocation } = loadFilterHelpers();
+const { getDepartmentOptions, getDepartmentRegion, getSkiAreaLocation, getSkiAreaOptions, getSkiAreaStationIds, getStationDepartment, matchesStationLocation } = loadFilterHelpers();
 
 const stations = [
   { id: "resort-1", name: "Courchevel", slug: "courchevel", region: { name: "Auvergne-Rhône-Alpes" }, department: "Savoie" },
@@ -66,22 +66,26 @@ test("department options include all non-empty departments without a region", ()
   );
 });
 
-test("department options remain complete when a region is selected", () => {
+test("department options are restricted by region and support the API object shape", () => {
   assert.deepEqual(
-    [...getDepartmentOptions(stations)],
-    ["Alpes-Maritimes", "Haute-Savoie", "Hautes-Alpes", "Savoie"],
+    [...getDepartmentOptions(stations, "Provence-Alpes-Côte d’Azur")],
+    ["Alpes-Maritimes", "Hautes-Alpes"],
   );
-  assert.match(page, /getDepartmentOptions\(initialStations\)/);
+  assert.deepEqual(
+    [...getDepartmentOptions([{ ...stations[0], department: { name: "Savoie" } }])],
+    ["Savoie"],
+  );
+  assert.match(page, /getDepartmentOptions\(initialStations, region\)/);
 });
 
-test("department takes precedence over inconsistent station regions", () => {
+test("region and department are both enforced when filtering stations", () => {
   assert.deepEqual(
     filterStations({ region: "Auvergne-Rhône-Alpes", department: "Hautes-Alpes" }).map((station) => station.slug),
-    ["la-grave", "les-orres"],
+    ["la-grave"],
   );
   assert.deepEqual(
     filterStations({ region: "Provence-Alpes-Côte d’Azur", department: "Hautes-Alpes" }).map((station) => station.slug),
-    ["la-grave", "les-orres"],
+    ["les-orres"],
   );
   assert.match(page, /matchesStationLocation\(station, region, department\)/);
 });
@@ -103,22 +107,43 @@ test("ski-area options are restricted to areas with a station in the selected re
     ["les-3-vallees", "domaine-multi-regions"],
   );
   assert.deepEqual(getSkiAreaOptions(skiAreas, stations, ""), skiAreas);
+  assert.deepEqual(
+    getSkiAreaOptions(skiAreas, stations, "Auvergne-Rhône-Alpes", "Savoie").map((area) => area.slug),
+    ["les-3-vallees"],
+  );
 });
 
 test("changing region clears a selected ski area that is no longer available", () => {
-  assert.match(page, /getSkiAreaOptions\(skiAreas, initialStations, nextRegion\).*area\.slug === skiArea.*setSkiArea\(""\)/);
+  assert.match(page, /getSkiAreaOptions\(skiAreas, initialStations, nextRegion, nextDepartment\).*area\.slug === skiArea.*setSkiArea\(""\)/);
   assert.match(page, /skiAreaOptions\.map\(\(area\) =>/);
 });
 
-test("changing region clears the department so the new region filters results", () => {
+test("changing region retains only a compatible department", () => {
   const changeRegion = page.match(/const changeRegion = \(nextRegion: string\) => \{([\s\S]*?)\n  \};/)?.[1] || "";
 
   assert.match(changeRegion, /setRegion\(nextRegion\)/);
-  assert.match(changeRegion, /setDepartment\(""\)/);
-  assert.ok(
-    changeRegion.indexOf("setDepartment") < changeRegion.indexOf("getSkiAreaOptions"),
-    "the stale department should be cleared as part of every region change",
+  assert.match(changeRegion, /getDepartmentOptions\(initialStations, nextRegion\)\.includes\(department\)/);
+  assert.match(changeRegion, /setDepartment\(nextDepartment\)/);
+});
+
+test("department selection resolves its region without restricting region options", () => {
+  assert.equal(getDepartmentRegion(stations, "Savoie"), "Auvergne-Rhône-Alpes");
+  assert.equal(getDepartmentRegion(stations, "Hautes-Alpes"), null);
+  assert.equal(getDepartmentRegion(stations, "Hautes-Alpes", "Provence-Alpes-Côte d’Azur"), "Provence-Alpes-Côte d’Azur");
+  assert.match(page, /const regionOptions = useMemo\(\(\) => \[\.\.\.new Set\(initialStations/);
+  assert.match(page, /onChange=\{\(event\) => changeDepartment\(event\.target\.value\)\}/);
+});
+
+test("ski-area selection resolves only deterministic locations", () => {
+  assert.deepEqual(
+    { ...getSkiAreaLocation(skiAreas, stations, "les-3-vallees") },
+    { region: "Auvergne-Rhône-Alpes", department: "Savoie" },
   );
+  assert.deepEqual(
+    { ...getSkiAreaLocation(skiAreas, stations, "domaine-multi-regions") },
+    { region: null, department: null },
+  );
+  assert.match(page, /onChange=\{\(event\) => changeSkiArea\(event\.target\.value\)\}/);
 });
 
 test("ski-area membership intersects with region, department and search filters and resets", () => {
@@ -133,7 +158,7 @@ test("station directory combines search, region, department and ski-area members
   assert.match(page, /&& \(!selectedSkiAreaStationIds/);
   assert.match(page, /getSkiAreaStationIds\(skiAreas, skiArea\)/);
   assert.match(page, /fetchAllPublicSkiAreasWithStations\(\)/);
-  assert.match(page, /getDepartmentOptions\(initialStations\)/);
+  assert.match(page, /getDepartmentOptions\(initialStations, region\)/);
 });
 
 test("station list and map share the filtered station slugs and expose a reset", () => {
