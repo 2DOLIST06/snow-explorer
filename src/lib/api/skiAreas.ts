@@ -24,10 +24,19 @@ export async function fetchAllPublicSkiAreas(): Promise<SkiAreaPublic[]> {
   return [first, ...rest].flatMap(page => page.items).filter(area => area.status === "published");
 }
 
+/**
+ * The ski-area list is intentionally lightweight and does not necessarily
+ * include its stations. Load each detail resource so consumers that need the
+ * ski_area_resort memberships receive the associated resort IDs.
+ */
+export async function fetchAllPublicSkiAreasWithStations(): Promise<SkiAreaPublic[]> {
+  const areas = await fetchAllPublicSkiAreas();
+  return Promise.all(areas.map(async area => (await fetchPublicSkiArea(area.slug)) || area));
+}
+
 export async function fetchPublicSkiArea(slug: string) {
   const response = await fetch(`${getServerApiBase()}/api/ski-areas/${encodeURIComponent(slug)}`, { headers: { Accept: "application/json" } });
   if (response.status === 404) return null;
   const data = await json<{ ski_area: SkiAreaPublic }>(response);
   return data.ski_area.status === "published" ? data.ski_area : null;
 }
-
