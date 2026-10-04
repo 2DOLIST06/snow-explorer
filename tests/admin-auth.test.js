@@ -32,13 +32,13 @@ test("admin pages retain the public footer", () => {
 
 test("public station editing is visible only to an authenticated administrator", () => {
   const auth = read("src/contexts/AdminAuthContext.tsx");
-  const station = read("pages/stations/[slug].tsx");
+  const station = read("src/components/stations/StationLegacyHero.tsx");
   const adminStation = read("pages/admin/stations/[slug].tsx");
 
   assert.match(auth, /useEffect\(\(\) => \{ void refreshSession\(\); \}, \[refreshSession\]\)/);
   assert.match(station, /adminAuth\.status === "authenticated"/);
   assert.match(station, /Modifier la station/);
-  assert.match(station, /href=\{`\/admin\/stations\/\$\{encodeURIComponent\(resort\.slug\)\}`\}/);
+  assert.match(station, /href=\{`\/admin\/stations\/\$\{encodeURIComponent\(station\.slug\)\}`\}/);
   assert.match(adminStation, /href="\/admin\/stations"[^>]*>Toutes les stations<\/Link>/);
 });
 
