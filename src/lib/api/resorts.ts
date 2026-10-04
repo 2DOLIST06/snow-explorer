@@ -38,7 +38,6 @@ export type Resort = {
   cover_image_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  page_layout_version?: "legacy" | "v2";
   v2?: Record<string, unknown> | null;
   public_v2?: Record<string, unknown> | null;
   v2_content?: Record<string, unknown> | null;
