@@ -163,7 +163,7 @@ test("stations without a published ski area link to active stations in their dep
 });
 
 test("a recorded piste-map image is labelled like the webcam and weather cards", () => {
-  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  const stationPage = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationPisteMap.tsx"), "utf8");
 
   assert.match(
     stationPage,

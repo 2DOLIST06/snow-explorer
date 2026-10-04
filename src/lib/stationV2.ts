@@ -48,7 +48,7 @@ export function hasUsableWebcams(station: any, widgets?: StationWidgetsConfig | 
 }
 
 export function isV2SectionPublished(station: any, section: StationV2Section, widgets?: StationWidgetsConfig | null): boolean {
-  return hasV2SectionData(station, section, widgets);
+  return isStationV2(station);
 }
 
 export function getV2Content(station: any, section: StationPageSection): string {
@@ -63,12 +63,12 @@ const hasText = (value: unknown) => typeof value === "string" && value.trim().le
 /** Public existence/indexation is based on useful content, never on navigation visibility. */
 export function hasV2SectionData(station: any, section: StationV2Section, widgets?: StationWidgetsConfig | null): boolean {
   if (!isStationV2(station)) return false;
-  if (getV2Content(station, section)) return true;
   const data = getV2Section(station, section);
-  if (section === "meteo-neige") return Boolean(hasText(data.summary) || hasText(data.updated_at) || hasText(data.observed_at)
+  if (section === "meteo-neige") return Boolean(Number.isFinite(Number(station?.latitude)) && Number.isFinite(Number(station?.longitude))
+    || hasText(data.summary) || hasText(data.updated_at) || hasText(data.observed_at)
     || (widgets?.meteo?.enabled && hasText(widgets.meteo.iframeUrl))
     || (widgets?.snow?.enabled && (hasText(widgets.snow.iframeUrl) || hasText(widgets.snow.openingDate) || hasText(widgets.snow.closingDate))));
-  if (section === "webcams") return hasUsableWebcams(station, widgets);
+  if (section === "webcams") return hasUsableWebcams(station, widgets) || (Number.isFinite(Number(station?.latitude)) && Number.isFinite(Number(station?.longitude)));
   if (section === "forfaits") return Boolean((widgets?.forfaits?.enabled && (nonEmptyArray(widgets.forfaits.items) || nonEmptyArray(widgets.forfaits.periods)))
     || (widgets?.normalizedForfaits?.enabled && nonEmptyArray(widgets.normalizedForfaits.periods)) || nonEmptyArray(data.items) || nonEmptyArray(data.periods));
   return [data.large_map_url, data.image_url, data.official_map_url, widgets?.pistes?.largeMapUrl, widgets?.pistes?.smallMapUrl,
@@ -76,7 +76,7 @@ export function hasV2SectionData(station: any, section: StationV2Section, widget
 }
 
 export function publishedV2Sections(station: any, widgets?: StationWidgetsConfig | null): StationV2Section[] {
-  return STATION_V2_SECTIONS.filter((section) => hasV2SectionData(station, section, widgets));
+  return isStationV2(station) ? [...STATION_V2_SECTIONS] : [];
 }
 
 export function sectionHref(slug: string, section: StationPageSection): string {
