@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, "..");
 const component = fs.readFileSync(path.join(root, "src/components/stations/StationV3Page.tsx"), "utf8");
 const preview = fs.readFileSync(path.join(root, "pages/admin/stations/[slug]/preview-v3.tsx"), "utf8");
 const editor = fs.readFileSync(path.join(root, "pages/admin/stations/[slug].tsx"), "utf8");
+const { getStationPresentation, getStationPisteDetails } = require("../src/lib/stationOverview");
 
 test("V3 keeps every primary section in one reorderable page", () => {
   assert.match(component, /const DEFAULT_ORDER[^;]+apercu[^;]+meteo-neige[^;]+webcams[^;]+forfaits[^;]+plan-des-pistes/);
@@ -39,4 +40,19 @@ test("V3 preview is authenticated, noindex and never persists a layout value", (
   assert.match(component, /preview \? "noindex, nofollow"/);
   assert.doesNotMatch(preview, /page_layout_version\s*=/);
   assert.doesNotMatch(preview, /method:\s*["'](?:POST|PUT|PATCH)/);
+});
+
+test("V3 overview keeps the V1 presentation independently from optional V2 editorial content", () => {
+  assert.deepEqual(getStationPresentation({ description_md: "Premier paragraphe.\n\nSecond paragraphe." }), ["Premier paragraphe.", "Second paragraphe."]);
+  assert.deepEqual(getStationPresentation({}, { description: { html: "Texte historique V1" } }), ["Texte historique V1"]);
+  assert.match(component, /descriptionParagraphs\.map/);
+  assert.match(component, /editorial\(getV2Content\(station, "apercu"\)\)/);
+});
+
+test("V3 displays piste difficulty details only for strictly positive real values", () => {
+  const station = { description_md: "Présentation", pistes_colors: { green: 3, blue: 4, red: 6, black: 2 } };
+  assert.deepEqual(getStationPisteDetails(station).map(({ color, value }) => [color, value]), [["green", 3], ["blue", 4], ["red", 6], ["black", 2]]);
+  assert.deepEqual(getStationPisteDetails({ pistes_colors: { green: 0, blue: 0, red: 0, black: 0 } }), []);
+  assert.deepEqual(getStationPisteDetails({ pistes_colors: { green: null, blue: 4, red: undefined, black: 0 } }).map(({ color, value }) => [color, value]), [["blue", 4]]);
+  assert.match(component, /pistes\.length \? <div className="v3-pistes"><h3>Pistes par difficulté<\/h3>/);
 });

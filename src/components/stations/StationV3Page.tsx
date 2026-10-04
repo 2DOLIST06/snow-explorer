@@ -15,6 +15,7 @@ import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import { getV2Content, getV2Section, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationV2";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
+import { getStationPisteDetails, getStationPresentation } from "@/lib/stationOverview";
 
 const ORIGIN = "https://www.snow-explorer.com";
 const DEFAULT_ORDER: StationPageSection[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes"];
@@ -29,7 +30,6 @@ function SectionHeading({ eyebrow, title, intro, id }: { eyebrow: string; title:
 }
 
 function Overview({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
-  const colors = station.pistes_colors ?? widgets?.pistes?.colors ?? {};
   const stats = [
     ["Altitude basse", station.altitude_base_m ?? station.altitude_min_m, "m"],
     ["Altitude haute", station.altitude_top_m ?? station.altitude_max_m, "m"],
@@ -39,9 +39,8 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
     ["Remontées", station.lifts_count, ""],
     ["Snowparks", station.snowparks_count ?? widgets?.snowparks?.count, ""],
   ].filter(([, value]) => usefulNumber(value));
-  const pistes = [["Vertes", colors.green, "green"], ["Bleues", colors.blue, "blue"], ["Rouges", colors.red, "red"], ["Noires", colors.black, "black"]]
-    .filter(([, value]) => usefulNumber(value));
-  const description = text(station.description_md);
+  const pistes = getStationPisteDetails(station, widgets);
+  const descriptionParagraphs = getStationPresentation(station, widgets);
   const hasSeason = text(station.season_open_date) || text(station.season_close_date);
   const date = (value: string) => new Date(value).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -49,13 +48,13 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
     <SectionHeading id="v3-overview-title" eyebrow="La station" title={`Présentation de ${station.name}`} />
     <div className="v3-overview-grid">
       <div className="v3-story">
-        {description ? <p>{description}</p> : null}
+        {descriptionParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
         {editorial(getV2Content(station, "apercu"))}
       </div>
       {hasSeason ? <aside className="v3-season"><strong>Saison</strong>{text(station.season_open_date) ? <span>Ouverture · {date(station.season_open_date)}</span> : null}{text(station.season_close_date) ? <span>Fermeture · {date(station.season_close_date)}</span> : null}</aside> : null}
     </div>
     {stats.length ? <dl className="v3-stat-grid">{stats.map(([label, value, unit]) => <div key={String(label)}><dt>{label}</dt><dd>{formatNumber(value)}{unit ? ` ${unit}` : ""}</dd></div>)}</dl> : null}
-    {pistes.length ? <div className="v3-pistes"><h3>Pistes</h3><dl>{pistes.map(([label, value, color]) => <div key={String(label)} className={`v3-piste v3-piste--${color}`}><dt>{label}</dt><dd>{formatNumber(value)}</dd></div>)}</dl></div> : null}
+    {pistes.length ? <div className="v3-pistes"><h3>Pistes par difficulté</h3><dl>{pistes.map(({ label, value, color }) => <div key={label} className={`v3-piste v3-piste--${color}`}><dt>Pistes {label.toLowerCase()}</dt><dd>{formatNumber(value)}</dd></div>)}</dl></div> : null}
   </section>;
 }
 
