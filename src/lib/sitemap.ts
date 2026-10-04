@@ -12,19 +12,19 @@ const V2_SECTION_KEYS = {
 function sitemapV2Sections(resort: Resort): Array<keyof typeof V2_SECTION_KEYS> {
   if (resort.page_layout_version !== "v2") return [];
   const root: any = resort.v2 || resort.public_v2 || resort.v2_content || resort.v2_contents || {};
-  const map: any = root.published_sections || root.sections_published || resort.v2_published_sections;
   return (Object.keys(V2_SECTION_KEYS) as Array<keyof typeof V2_SECTION_KEYS>).filter((section) => {
     const keys = V2_SECTION_KEYS[section];
     const data: any = keys.map((key) => root?.sections?.[key] ?? root?.[key]).find((value) => value != null) || {};
-    let published = data.published === true || data.is_published === true || data.enabled === true || data.status === "published" || data.status === "ready";
-    if (Array.isArray(map)) published = map.includes(section) || keys.some((key) => map.includes(key));
-    else if (map && typeof map === "object") {
-      const value = map[section] ?? keys.map((key) => map[key]).find((candidate) => typeof candidate === "boolean");
-      if (typeof value === "boolean") published = value;
+    const editorialKeys: Record<string, string> = { "meteo-neige": "v2_weather_snow_html", webcams: "v2_webcam_html", forfaits: "v2_ski_pass_html", "plan-des-pistes": "v2_piste_map_html" };
+    if (typeof (resort as any)[editorialKeys[section]] === "string" && (resort as any)[editorialKeys[section]].trim()) return true;
+    if ([data.content_html, data.html, data.content, data.editorial_content].some((value) => typeof value === "string" && value.trim())) return true;
+    if (section === "webcams") {
+      const items = data.items || data.webcams || resort.webcams;
+      return Array.isArray(items) && items.some((item: any) => item && (item.iframeUrl || item.iframe_url || item.thumbUrl || item.thumb_url || item.image_url || item.pageUrl || item.page_url));
     }
-    if (section !== "webcams" || !published) return published;
-    const items = data.items || data.webcams || resort.webcams;
-    return Array.isArray(items) && items.some((item: any) => item && (item.iframeUrl || item.iframe_url || item.thumbUrl || item.thumb_url || item.image_url || item.pageUrl || item.page_url));
+    if (section === "forfaits") return [data.items, data.periods, (resort as any).ski_passes, (resort as any).ski_pass?.periods].some((items) => Array.isArray(items) && items.length);
+    if (section === "plan-des-pistes") return [data.large_map_url, data.image_url, data.official_map_url, (resort as any).pistes_large_map_url, (resort as any).pistes_small_map_url, (resort as any).pistes_official_map_url].some((value) => typeof value === "string" && value.trim());
+    return [data.summary, data.updated_at, data.observed_at, (resort as any).weather, (resort as any).snow].some(Boolean);
   });
 }
 

@@ -18,6 +18,10 @@ const API_KEYS: Record<StationV2Section, string[]> = {
   forfaits: ["forfaits", "ski_passes"],
   "plan-des-pistes": ["plan_des_pistes", "piste_map", "pistes"],
 };
+const EDITORIAL_KEYS: Record<StationPageSection, string> = {
+  apercu: "v2_overview_html", "meteo-neige": "v2_weather_snow_html", webcams: "v2_webcam_html",
+  forfaits: "v2_ski_pass_html", "plan-des-pistes": "v2_piste_map_html",
+};
 
 export function isStationV2(station: any): boolean {
   return station?.page_layout_version === "v2";
@@ -37,44 +41,42 @@ export function getV2Section(station: any, section: StationPageSection): any {
   return {};
 }
 
-function explicitPublication(value: any): boolean | null {
-  if (typeof value?.published === "boolean") return value.published;
-  if (typeof value?.is_published === "boolean") return value.is_published;
-  if (typeof value?.enabled === "boolean") return value.enabled;
-  if (value?.status) return value.status === "published" || value.status === "ready";
-  return null;
-}
-
 export function hasUsableWebcams(station: any, widgets?: StationWidgetsConfig | null): boolean {
   const section = getV2Section(station, "webcams");
-  const items = section.items ?? section.webcams ?? station?.webcams ?? widgets?.webcams?.items;
-  return Array.isArray(items) && items.some((item) => item && (item.iframeUrl || item.iframe_url || item.thumbUrl || item.thumb_url || item.image_url || item.pageUrl || item.page_url));
+  const sources = [section.items, section.webcams, station?.webcams, widgets?.webcams?.items];
+  return sources.some((items) => Array.isArray(items) && items.some((item) => item && (item.iframeUrl || item.iframe_url || item.thumbUrl || item.thumb_url || item.image_url || item.pageUrl || item.page_url)));
 }
 
 export function isV2SectionPublished(station: any, section: StationV2Section, widgets?: StationWidgetsConfig | null): boolean {
-  if (!isStationV2(station)) return false;
-  const data = getV2Section(station, section);
-  const root = getV2Root(station);
-  const publication = explicitPublication(data);
-  let published = publication ?? false;
-  const publicationMap = root?.published_sections ?? root?.sections_published ?? station?.v2_published_sections;
-  if (Array.isArray(publicationMap)) published = publicationMap.includes(section) || API_KEYS[section].some((key) => publicationMap.includes(key));
-  else if (publicationMap && typeof publicationMap === "object") {
-    const mapped = publicationMap[section] ?? API_KEYS[section].map((key) => publicationMap[key]).find((value) => typeof value === "boolean");
-    if (typeof mapped === "boolean") published = mapped;
-  }
-  if (section === "webcams") return published && hasUsableWebcams(station, widgets);
-  return published;
+  return hasV2SectionData(station, section, widgets);
 }
 
 export function getV2Content(station: any, section: StationPageSection): string {
   const data = getV2Section(station, section);
-  const value = data.content_html ?? data.html ?? data.content ?? data.editorial_content ?? data.description;
+  const value = station?.[EDITORIAL_KEYS[section]] ?? data.content_html ?? data.html ?? data.content ?? data.editorial_content ?? data.description;
   return typeof value === "string" ? value.trim() : "";
 }
 
+const nonEmptyArray = (value: unknown) => Array.isArray(value) && value.length > 0;
+const hasText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
+
+/** Public existence/indexation is based on useful content, never on navigation visibility. */
+export function hasV2SectionData(station: any, section: StationV2Section, widgets?: StationWidgetsConfig | null): boolean {
+  if (!isStationV2(station)) return false;
+  if (getV2Content(station, section)) return true;
+  const data = getV2Section(station, section);
+  if (section === "meteo-neige") return Boolean(hasText(data.summary) || hasText(data.updated_at) || hasText(data.observed_at)
+    || (widgets?.meteo?.enabled && hasText(widgets.meteo.iframeUrl))
+    || (widgets?.snow?.enabled && (hasText(widgets.snow.iframeUrl) || hasText(widgets.snow.openingDate) || hasText(widgets.snow.closingDate))));
+  if (section === "webcams") return hasUsableWebcams(station, widgets);
+  if (section === "forfaits") return Boolean((widgets?.forfaits?.enabled && (nonEmptyArray(widgets.forfaits.items) || nonEmptyArray(widgets.forfaits.periods)))
+    || (widgets?.normalizedForfaits?.enabled && nonEmptyArray(widgets.normalizedForfaits.periods)) || nonEmptyArray(data.items) || nonEmptyArray(data.periods));
+  return [data.large_map_url, data.image_url, data.official_map_url, widgets?.pistes?.largeMapUrl, widgets?.pistes?.smallMapUrl,
+    widgets?.pistes?.officialMapUrl, station?.pistes_large_map_url, station?.pistes_small_map_url, station?.pistes_official_map_url].some(hasText);
+}
+
 export function publishedV2Sections(station: any, widgets?: StationWidgetsConfig | null): StationV2Section[] {
-  return STATION_V2_SECTIONS.filter((section) => isV2SectionPublished(station, section, widgets));
+  return STATION_V2_SECTIONS.filter((section) => hasV2SectionData(station, section, widgets));
 }
 
 export function sectionHref(slug: string, section: StationPageSection): string {
