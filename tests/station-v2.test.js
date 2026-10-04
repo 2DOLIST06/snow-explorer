@@ -10,7 +10,25 @@ test("V2 always renders five clickable navigation entries and a clean business-d
   assert.match(page, /\["apercu", \.\.\.STATION_V2_SECTIONS\]/);
   assert.doesNotMatch(page, /aria-disabled="true"/);
   assert.match(page, /return <Link key=\{section\}/);
+  assert.match(page, /previewSectionHref\(station\.slug, section\)/);
+  assert.doesNotMatch(page, /preview \? `\?section=/);
   assert.match(page, /Cette information n&apos;est pas disponible pour cette station\./);
+});
+
+test("V2 metadata resolves location server-side instead of reading the browser global", () => {
+  const page = fs.readFileSync(path.join(root, "src/components/stations/StationV2Page.tsx"), "utf8");
+  const metadata = page.slice(page.indexOf("function metadata"), page.indexOf("function Navigation"));
+  assert.match(metadata, /const location = stationLocation\(station\)/);
+});
+
+test("authenticated preview navigation keeps its explicit admin route and legacy ski passes", () => {
+  const page = fs.readFileSync(path.join(root, "src/components/stations/StationV2Page.tsx"), "utf8");
+  const logic = fs.readFileSync(path.join(root, "src/lib/stationV2.ts"), "utf8");
+  const preview = fs.readFileSync(path.join(root, "pages/admin/stations/[slug]/preview-v2.tsx"), "utf8");
+  assert.match(logic, /\/admin\/stations\/\$\{encodeURIComponent\(slug\)\}\/preview-v2\?section=\$\{section\}/);
+  assert.match(page, /previewSectionHref\(station\.slug, "apercu"\)/);
+  assert.match(preview, /normalizeStationSkiPass\(raw\.ski_pass\)/);
+  assert.match(preview, /station\.page_layout_version = "v2"/);
 });
 
 test("V2 public routes depend on layout version, never editorial availability", () => {

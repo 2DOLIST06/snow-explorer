@@ -6,6 +6,7 @@ import { STATION_V2_SECTIONS, type StationPageSection } from "@/lib/stationV2";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { adminFetch } from "@/lib/adminApi";
 import { normalizeAdminStation, normalizeAdminWidgets } from "@/lib/adminStation";
+import { normalizeStationSkiPass } from "@/lib/stationForfaits";
 
 export default function StationV2Preview() {
   const router = useRouter();
@@ -23,7 +24,9 @@ export default function StationV2Preview() {
       if (!response.ok) { setError(`Prévisualisation indisponible (HTTP ${response.status}).`); return; }
       const payload = await response.json();
       const raw = payload.resort || payload;
-      const widgets = normalizeAdminWidgets(payload.widgets || {}, raw);
+      const widgets: any = normalizeAdminWidgets(payload.widgets || {}, raw);
+      const normalizedForfaits = normalizeStationSkiPass(raw.ski_pass);
+      if (normalizedForfaits) widgets.normalizedForfaits = normalizedForfaits;
       const station = normalizeAdminStation(raw, widgets) as any;
       station.page_layout_version = "v2";
       station.v2_contents = raw.v2_contents || raw.v2_content || raw.v2?.sections || {};
