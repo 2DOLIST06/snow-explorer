@@ -69,6 +69,11 @@ type Resort = {
   v2_content?: Record<string, unknown> | null;
   v2_contents?: Record<string, unknown> | null;
   v2_published_sections?: string[] | Record<string, boolean> | null;
+  v2_overview_html?: string | null;
+  v2_weather_snow_html?: string | null;
+  v2_ski_pass_html?: string | null;
+  v2_piste_map_html?: string | null;
+  v2_webcam_html?: string | null;
   pistes_colors?: Record<string, number | null> | null;
   elevation_drop_m?: number | null;
   vertical_drop_m?: number | null;
@@ -958,6 +963,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     ski_pass: resort.ski_pass ?? null,
     ski_areas: publishedSkiAreas,
     page_layout_version: resort.page_layout_version === "v2" ? "v2" : "legacy",
+    v2_overview_html: resort.v2_overview_html ?? null,
+    v2_weather_snow_html: resort.v2_weather_snow_html ?? null,
+    v2_ski_pass_html: resort.v2_ski_pass_html ?? null,
+    v2_piste_map_html: resort.v2_piste_map_html ?? null,
+    v2_webcam_html: resort.v2_webcam_html ?? null,
     ...(resort.v2 ? { v2: resort.v2 } : {}),
     ...(resort.public_v2 ? { public_v2: resort.public_v2 } : {}),
     ...(resort.v2_content ? { v2_content: resort.v2_content } : {}),

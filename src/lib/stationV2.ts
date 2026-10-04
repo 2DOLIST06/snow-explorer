@@ -84,6 +84,10 @@ export function sectionHref(slug: string, section: StationPageSection): string {
   return section === "apercu" ? base : `${base}/${section}`;
 }
 
+export function previewSectionHref(slug: string, section: StationPageSection): string {
+  return `/admin/stations/${encodeURIComponent(slug)}/preview-v2?section=${section}`;
+}
+
 export function stationLocation(station: any): string {
   const department = typeof station?.department === "string" ? station.department : station?.department?.name;
   return [department, station?.region?.name ?? station?.region_name].filter(Boolean).join(", ");
