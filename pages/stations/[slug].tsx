@@ -14,10 +14,9 @@ import type { SkiPassSeason } from "@/types/skiPass";
 import { regionHref } from "@/lib/regions";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 
-import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
+import StationForfaitsBlocks, { hasStationForfaits } from "@/components/stations/StationForfaitsBlocks";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
-import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
-import { normalizeStationSkiPass } from "@/lib/stationForfaits";
+import { resolveStationForfaits } from "@/lib/stationForfaits";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
 import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
@@ -95,11 +94,6 @@ interface Props {
 /* =========================
  * Constantes UI
  * =======================*/
-const forfaitsVisibility = (cfg: StationWidgetsConfig | null) => getSkiPassBlocksVisibility(
-  Boolean(cfg?.forfaits?.enabled),
-  Boolean(cfg?.normalizedForfaits?.enabled),
-);
-
 // Source de vérité unique pour le bloc de répartition des pistes. Elle pilote
 // à la fois son rendu et la présence de ses données dans les props SSR.
 const SHOW_PISTE_COLOR_DETAILS = false;
@@ -713,22 +707,7 @@ const LegacyResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) 
         </section>
 
         {/* Forfaits */}
-        {forfaitsVisibility(cfg).any ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlock
-    enabled={forfaitsVisibility(cfg).legacy}
-    columns={cfg?.forfaits?.columns || []}
-    items={cfg?.forfaits?.items || []}
-    periods={cfg?.forfaits?.periods || []}
-    season={cfg?.forfaits?.season}
-    source_url={cfg?.forfaits?.source_url}
-    sourceUrl={cfg?.forfaits?.sourceUrl}
-    stationPage
-        /><StationForfaitsBlock
-    enabled={forfaitsVisibility(cfg).normalized}
-    periods={cfg?.normalizedForfaits?.periods || []}
-    season={cfg?.normalizedForfaits?.season}
-    source_url={cfg?.normalizedForfaits?.source_url}
-    stationPage
-        /></div> : null}
+        {hasStationForfaits(cfg) ? <div style={{ marginTop: 20, display: "grid", gap: 20 }}><StationForfaitsBlocks widgets={cfg} /></div> : null}
         {resort.ski_areas?.map(area => <SkiAreaPublicCard key={area.id} area={area} />)}
         {!resort.ski_areas?.length && departmentStations.length > 0 ? (
           <section className="ski-area-public-card">
@@ -866,7 +845,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     cfg = null;
   }
 
-  const normalizedForfaits = normalizeStationSkiPass(loadedResort.ski_pass);
+  const stationForfaits = resolveStationForfaits(cfg?.forfaits, loadedResort.ski_pass);
+  const normalizedForfaits = stationForfaits.normalizedForfaits;
 
   // Une station peut publier un forfait normalisé même sans configuration de
   // widgets legacy. Dans ce cas, conserver un socle désactivé permet tout de
@@ -902,14 +882,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       metaTitle: cfg.description?.metaTitle || null,
       metaDescription: cfg.description?.metaDescription || null,
     },
-    forfaits: {
-      enabled: Boolean(cfg.forfaits?.enabled),
-      columns: cfg.forfaits?.columns || [],
-      items: cfg.forfaits?.items || [],
-      periods: cfg.forfaits?.periods || [],
-      season: cfg.forfaits?.season || null,
-      source_url: cfg.forfaits?.source_url || null,
-    },
+    forfaits: stationForfaits.forfaits,
     ...(normalizedForfaits ? { normalizedForfaits } : {}),
     webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
     snow: {
