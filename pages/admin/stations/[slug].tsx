@@ -46,6 +46,8 @@ type ResortType = {
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
+  page_layout_version?: "legacy" | "v2";
+  v2_contents?: Record<string, { content_html?: string; published?: boolean; available?: boolean; status?: string } | null>;
 };
 
 type ForfaitColumn = {
@@ -773,6 +775,7 @@ export default function AdminStationEdit() {
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedLayoutVersion, setSavedLayoutVersion] = useState<"legacy" | "v2">("legacy");
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -831,7 +834,10 @@ w.forfaits = normalizeForfaitConfig(w.forfaits);
 setWidgets(w);
 
       const normalized: ResortType = normalizeAdminStation(rcv, w);
+      normalized.page_layout_version = rcv.page_layout_version === "v2" ? "v2" : "legacy";
+      normalized.v2_contents = rcv.v2_contents || (rcv as any).v2_content || (rcv as any).v2?.sections || {};
       setResort(normalized);
+      setSavedLayoutVersion(normalized.page_layout_version);
 
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
       let regs: RegionRow[] = rr.ok ? await rr.json() : [];
@@ -892,6 +898,11 @@ setWidgets(w);
   const saveAll = async () => {
     if (!resort || saving) return;
 
+    if (savedLayoutVersion !== "v2" && resort.page_layout_version === "v2") {
+      const published = Object.entries(resort.v2_contents || {}).filter(([, value]) => value?.published).map(([key]) => key);
+      const summary = published.length ? `\n\nSeront publiées :\n${published.map((key) => `✓ ${key}`).join("\n")}` : "\n\nAucune sous-section n’est actuellement publiée.";
+      if (!window.confirm(`Activer la nouvelle présentation publique de cette station ?${summary}`)) return;
+    }
     setSaving(true);
     setMsg("Enregistrement de toutes les modifications…");
     setErr("");
@@ -1428,6 +1439,63 @@ const removeForfaitRow = (rowIdx: number) => {
                   ) : (
                     <div style={styles.helperBox}>Aucun logo.</div>
                   )}
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="presentation-public"
+              title="Présentation publique"
+              description="La fiche classique reste utilisée tant que la V2 n’est pas explicitement activée et enregistrée."
+            >
+              <div style={styles.stack}>
+                <div style={styles.helperBox}>
+                  Version actuelle : <strong>{resort.page_layout_version === "v2" ? "V2" : "Classique"}</strong>
+                </div>
+                <label style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={resort.page_layout_version === "v2"}
+                    onChange={(event) => setResort({ ...resort, page_layout_version: event.target.checked ? "v2" : "legacy" })}
+                  />
+                  Activer la nouvelle fiche station
+                </label>
+                <Link
+                  href={`/admin/stations/${encodeURIComponent(resort.slug || slug)}/preview-v2`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.secondaryBtn}
+                >
+                  Prévisualiser la nouvelle fiche
+                </Link>
+                <div>
+                  <h3 style={{ marginBottom: 12 }}>Contenus de la nouvelle fiche</h3>
+                  <div style={styles.stack}>
+                    {[
+                      ["apercu", "Aperçu"],
+                      ["meteo_neige", "Météo & enneigement"],
+                      ["forfaits", "Forfaits"],
+                      ["plan_des_pistes", "Plan des pistes"],
+                      ["webcams", "Webcams"],
+                    ].map(([key, label]) => {
+                      const section = resort.v2_contents?.[key] || {};
+                      const unavailable = section.available === false || section.status === "unavailable";
+                      const ready = section.published === true || section.status === "ready" || section.status === "published";
+                      return <div key={key} style={styles.lineItem}>
+                        <label style={styles.label}>
+                          <span>{label} — {unavailable ? "— indisponible" : ready ? "✓ Prêt" : "⚠ contenu manquant"}</span>
+                          <textarea
+                            rows={5}
+                            value={section.content_html || ""}
+                            disabled={unavailable}
+                            onChange={(event) => setResort({ ...resort, v2_contents: { ...(resort.v2_contents || {}), [key]: { ...section, content_html: event.target.value } } })}
+                            style={styles.textarea}
+                            placeholder={`Contenu éditorial : ${label}`}
+                          />
+                        </label>
+                      </div>;
+                    })}
+                  </div>
                 </div>
               </div>
             </SectionCard>
