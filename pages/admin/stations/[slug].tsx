@@ -1489,6 +1489,14 @@ const removeForfaitRow = (rowIdx: number) => {
                 >
                   Prévisualiser la nouvelle fiche
                 </Link>
+                <Link
+                  href={`/admin/stations/${encodeURIComponent(resort.slug || slug)}/preview-v3`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.secondaryBtn}
+                >
+                  Prévisualiser la fiche V3
+                </Link>
                 <div>
                   <h3 style={{ marginBottom: 12 }}>Contenus de la nouvelle fiche</h3>
                   <div style={styles.stack}>
