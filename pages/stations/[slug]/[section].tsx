@@ -2,7 +2,8 @@ import type { GetServerSideProps, NextPage } from "next";
 import StationV2Page from "@/components/stations/StationV2Page";
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getStationApiBase, isResortInactive, loadStationPageSources, resolveResortRegion } from "@/lib/api/stationPage";
-import { normalizeStationSkiPass } from "@/lib/stationForfaits";
+import { loadPublicSkiPasses } from "@/lib/publicSkiPasses";
+import { normalizeLegacyStationForfaits, normalizeStationSkiPass } from "@/lib/stationForfaits";
 import { isStationV2, STATION_V2_SECTIONS, type StationV2Section } from "@/lib/stationV2";
 import type { StationWidgetsConfig } from "@/types/station";
 
@@ -15,8 +16,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
   const section = String(params?.section || "") as StationV2Section;
   if (!STATION_V2_SECTIONS.includes(section)) return { notFound: true };
 
+  const apiBase = getStationApiBase();
   const { stationResponse, widgets: widgetsResult } = await loadStationPageSources(slug, {
-    apiBase: getStationApiBase(),
+    apiBase,
     loadWidgets: fetchStationWidgetsConfig,
   });
   if (stationResponse.status === 404) return { notFound: true };
@@ -27,8 +29,30 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
   const station = resolveResortRegion(raw);
   let widgets = widgetsResult.config as StationWidgetsConfig | null;
   if (widgetsResult.error) widgets = null;
-  const normalizedForfaits = normalizeStationSkiPass(raw.ski_pass);
-  if (normalizedForfaits) widgets = { ...(widgets || { stationSlug: slug, pistes: { enabled: false }, meteo: { enabled: false }, description: { enabled: false }, forfaits: { enabled: false, columns: [], items: [] }, webcams: { enabled: false, items: [] }, snow: { enabled: false }, snowpark: { enabled: false } }), normalizedForfaits };
+
+  if (section === "forfaits") {
+    const payload = await loadPublicSkiPasses(
+      async () => {
+        const response = await fetch(`${apiBase}/api/stations/${encodeURIComponent(slug)}/ski-passes`, {
+          headers: { accept: "application/json" },
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`[stations/[slug]/forfaits] ski-passes API returned HTTP ${response.status}`);
+        return response.json();
+      },
+      async () => {
+        if (widgetsResult.error) throw widgetsResult.error;
+        return { forfaits: widgetsResult.config?.forfaits || null };
+      },
+    );
+    const forfaits = normalizeLegacyStationForfaits(payload.legacy_forfaits);
+    const normalizedForfaits = normalizeStationSkiPass(payload.ski_pass);
+    widgets = {
+      ...(widgets || { stationSlug: slug, pistes: { enabled: false }, meteo: { enabled: false }, description: { enabled: false }, forfaits: { enabled: false, columns: [], items: [] }, webcams: { enabled: false, items: [] }, snow: { enabled: false }, snowpark: { enabled: false } }),
+      forfaits,
+      ...(normalizedForfaits ? { normalizedForfaits } : {}),
+    };
+  }
 
   if (!isStationV2(station)) return { notFound: true };
   res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
