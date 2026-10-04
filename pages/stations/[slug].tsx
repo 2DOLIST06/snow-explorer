@@ -26,6 +26,7 @@ import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPu
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
 import FollowStationButton from "@/components/newsletter/FollowStationButton";
+import StationV2Page from "@/components/stations/StationV2Page";
 
 /* =========================
  * Types
@@ -61,6 +62,16 @@ type Resort = {
   pistes_caption?: string | null;
   ski_pass?: SkiPassSeason | null;
   ski_areas?: SkiAreaPublic[];
+  page_layout_version?: "legacy" | "v2";
+  v2?: Record<string, unknown> | null;
+  public_v2?: Record<string, unknown> | null;
+  v2_content?: Record<string, unknown> | null;
+  v2_contents?: Record<string, unknown> | null;
+  v2_published_sections?: string[] | Record<string, boolean> | null;
+  pistes_colors?: Record<string, number | null> | null;
+  elevation_drop_m?: number | null;
+  vertical_drop_m?: number | null;
+  webcams?: unknown[];
 
   // Champs éventuels en base (admin)
   altitude_min_m?: number | null;
@@ -1314,7 +1325,7 @@ const StationExtraPanels: React.FC<{
 /* =========================
  * Page
  * =======================*/
-const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
+const LegacyResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   const router = useRouter();
   const adminAuth = useAdminAuth();
   const [selectedScope, setSelectedScope] = useState<"station" | number>("station");
@@ -1585,6 +1596,10 @@ const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => {
   );
 };
 
+const ResortPage: NextPage<Props> = (props) => props.resort.page_layout_version === "v2"
+  ? <StationV2Page station={props.resort} widgets={props.cfg} />
+  : <LegacyResortPage {...props} />;
+
 /* =========================
  * SSR
  * =======================*/
@@ -1755,6 +1770,16 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     pistes_caption: resort.pistes_caption ?? null,
     ski_pass: resort.ski_pass ?? null,
     ski_areas: publishedSkiAreas,
+    page_layout_version: resort.page_layout_version === "v2" ? "v2" : "legacy",
+    ...(resort.v2 ? { v2: resort.v2 } : {}),
+    ...(resort.public_v2 ? { public_v2: resort.public_v2 } : {}),
+    ...(resort.v2_content ? { v2_content: resort.v2_content } : {}),
+    ...(resort.v2_contents ? { v2_contents: resort.v2_contents } : {}),
+    ...(resort.v2_published_sections ? { v2_published_sections: resort.v2_published_sections } : {}),
+    ...(resort.pistes_colors ? { pistes_colors: resort.pistes_colors } : {}),
+    elevation_drop_m: resort.elevation_drop_m ?? null,
+    vertical_drop_m: resort.vertical_drop_m ?? null,
+    ...(Array.isArray(resort.webcams) ? { webcams: resort.webcams } : {}),
   };
 
   return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations } };

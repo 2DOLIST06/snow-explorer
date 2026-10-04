@@ -38,6 +38,13 @@ export type Resort = {
   cover_image_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  page_layout_version?: "legacy" | "v2";
+  v2?: Record<string, unknown> | null;
+  public_v2?: Record<string, unknown> | null;
+  v2_content?: Record<string, unknown> | null;
+  v2_contents?: Record<string, unknown> | null;
+  v2_published_sections?: string[] | Record<string, boolean> | null;
+  webcams?: unknown[];
 };
 
 type DepartmentRef = Resort["department"] | string | null | undefined;

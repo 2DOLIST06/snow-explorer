@@ -2,6 +2,32 @@ import type { Resort } from "@/lib/api/resorts";
 import { regionSlug, type RegionSummary } from "@/lib/regions";
 import type { SkiAreaPublic } from "@/types/skiArea";
 
+const V2_SECTION_KEYS = {
+  "meteo-neige": ["meteo_neige", "weather_snow", "meteo", "snow"],
+  webcams: ["webcams"],
+  forfaits: ["forfaits", "ski_passes"],
+  "plan-des-pistes": ["plan_des_pistes", "piste_map", "pistes"],
+} as const;
+
+function sitemapV2Sections(resort: Resort): Array<keyof typeof V2_SECTION_KEYS> {
+  if (resort.page_layout_version !== "v2") return [];
+  const root: any = resort.v2 || resort.public_v2 || resort.v2_content || resort.v2_contents || {};
+  const map: any = root.published_sections || root.sections_published || resort.v2_published_sections;
+  return (Object.keys(V2_SECTION_KEYS) as Array<keyof typeof V2_SECTION_KEYS>).filter((section) => {
+    const keys = V2_SECTION_KEYS[section];
+    const data: any = keys.map((key) => root?.sections?.[key] ?? root?.[key]).find((value) => value != null) || {};
+    let published = data.published === true || data.is_published === true || data.enabled === true || data.status === "published" || data.status === "ready";
+    if (Array.isArray(map)) published = map.includes(section) || keys.some((key) => map.includes(key));
+    else if (map && typeof map === "object") {
+      const value = map[section] ?? keys.map((key) => map[key]).find((candidate) => typeof candidate === "boolean");
+      if (typeof value === "boolean") published = value;
+    }
+    if (section !== "webcams" || !published) return published;
+    const items = data.items || data.webcams || resort.webcams;
+    return Array.isArray(items) && items.some((item: any) => item && (item.iframeUrl || item.iframe_url || item.thumbUrl || item.thumb_url || item.image_url || item.pageUrl || item.page_url));
+  });
+}
+
 const SITE_ORIGIN = "https://www.snow-explorer.com";
 const STATIC_PATHS = ["/", "/stations", "/domaines-skiables", "/meteo", "/forfaits", "/plan-des-pistes", "/contact"];
 
@@ -44,6 +70,12 @@ export function getSitemapEntries(resorts: Resort[], regions: RegionSummary[], s
       url: `${SITE_ORIGIN}/stations/${encodeURIComponent(slug)}`,
       ...(lastModified ? { lastModified } : {}),
     });
+    for (const section of sitemapV2Sections(resort)) {
+      entries.push({
+        url: `${SITE_ORIGIN}/stations/${encodeURIComponent(slug)}/${section}`,
+        ...(lastModified ? { lastModified } : {}),
+      });
+    }
   }
   for (const area of skiAreas) {
     const slug = canonicalPart(area?.slug);
