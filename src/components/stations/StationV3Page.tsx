@@ -119,7 +119,10 @@ export default function StationV3Page({ station, widgets, departmentStations = [
     window.requestAnimationFrame(() => navigationRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
   };
 
-  return <><Head><title>{`${station.name}, station de ski : météo, forfaits et pistes | Snow Explorer`}</title><meta name="description" content={`Découvrez ${station.name}${location ? `, ${location}` : ""} : pistes, météo, webcams, forfaits et plan des pistes sur une seule page.`} /><link rel="canonical" href={canonical} /><meta name="robots" content={preview ? "noindex, nofollow" : "index, follow"} /></Head>
+  const title = text(station.meta_title) || `${station.name}, station de ski : météo, forfaits et pistes | Snow Explorer`;
+  const description = text(station.meta_description) || `Découvrez ${station.name}${location ? `, ${location}` : ""} : pistes, météo, webcams, forfaits et plan des pistes sur une seule page.`;
+
+  return <><Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} /><meta name="robots" content={preview ? "noindex, nofollow" : "index, follow"} /></Head>
     <StationLegacyHero station={station} />
     <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{DEFAULT_ORDER.map((section) => <button key={section} type="button" aria-pressed={selected === section} onClick={() => select(section)}>{SECTION_LABELS[section]}</button>)}</nav>
     <main className="v3-page"><nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/stations">Stations</Link><span aria-hidden="true">›</span><span aria-current="page">{station.name}</span></nav>
