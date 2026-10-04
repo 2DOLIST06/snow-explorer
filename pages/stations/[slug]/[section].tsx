@@ -3,7 +3,7 @@ import StationV2Page from "@/components/stations/StationV2Page";
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { getStationApiBase, isResortInactive, loadStationPageSources, resolveResortRegion } from "@/lib/api/stationPage";
 import { normalizeStationSkiPass } from "@/lib/stationForfaits";
-import { isStationV2, isV2SectionPublished, STATION_V2_SECTIONS, type StationV2Section } from "@/lib/stationV2";
+import { hasV2SectionData, isStationV2, STATION_V2_SECTIONS, type StationV2Section } from "@/lib/stationV2";
 import type { StationWidgetsConfig } from "@/types/station";
 
 type Props = { station: any; widgets: StationWidgetsConfig | null; section: StationV2Section };
@@ -30,7 +30,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
   const normalizedForfaits = normalizeStationSkiPass(raw.ski_pass);
   if (normalizedForfaits) widgets = { ...(widgets || { stationSlug: slug, pistes: { enabled: false }, meteo: { enabled: false }, description: { enabled: false }, forfaits: { enabled: false, columns: [], items: [] }, webcams: { enabled: false, items: [] }, snow: { enabled: false }, snowpark: { enabled: false } }), normalizedForfaits };
 
-  if (!isStationV2(station) || !isV2SectionPublished(station, section, widgets)) return { notFound: true };
+  if (!isStationV2(station) || !hasV2SectionData(station, section, widgets)) return { notFound: true };
   res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
   return { props: { station: JSON.parse(JSON.stringify(station)), widgets: widgets ? JSON.parse(JSON.stringify(widgets)) : null, section } };
 };
