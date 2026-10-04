@@ -13,7 +13,7 @@ import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
-import { getV2Content, getV2Section, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationV2";
+import { getStationEditorialContent, getStationSectionData, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationContent";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 import { getStationOverviewScope, getStationPresentation } from "@/lib/stationOverview";
 
@@ -49,7 +49,7 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
   return <section className="v3-floor v3-floor--overview" aria-labelledby="v3-overview-title">
     <SectionHeading id="v3-overview-title" eyebrow="La station" title={`Présentation de ${station.name}`} />
     <div className="v3-overview-grid">
-      <div className="v3-story">{descriptionParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}{editorial(getV2Content(station, "apercu"))}</div>
+      <div className="v3-story">{descriptionParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}{editorial(getStationEditorialContent(station, "apercu"))}</div>
       {hasSeason ? <aside className="v3-season"><strong>Saison</strong>{text(scope.openDate) ? <span>Ouverture · {date(String(scope.openDate))}</span> : null}{text(scope.closeDate) ? <span>Fermeture · {date(String(scope.closeDate))}</span> : null}</aside> : null}
     </div>
     {skiAreas.length ? <div className="v3-scope" role="group" aria-label="Informations affichées"><button type="button" aria-pressed={selectedScope === "station"} onClick={() => setSelectedScope("station")}>Station</button>{skiAreas.map((area: any) => <button type="button" key={area.id} aria-pressed={selectedScope === area.id} onClick={() => setSelectedScope(area.id)}>{area.name}</button>)}</div> : null}
@@ -60,12 +60,12 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
 }
 
 function Weather({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
-  const data = getV2Section(station, "meteo-neige");
+  const data = getStationSectionData(station, "meteo-neige");
   const hasCoordinates = Number.isFinite(Number(station.latitude)) && Number.isFinite(Number(station.longitude));
   const updated = data.updated_at || data.observed_at;
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-weather-title">
     <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement à ${station.name}`} intro="Prévisions et informations neige disponibles pour la station." />
-    {editorial(getV2Content(station, "meteo-neige"))}
+    {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : null}
     <div className="v3-widget-grid">{hasCoordinates ? <MeteoblueSkiWidget lat={station.latitude} lon={station.longitude} /> : null}<StationMeteoWidget enabled={Boolean(widgets?.meteo?.enabled && widgets.meteo.iframeUrl)} iframeUrl={widgets?.meteo?.iframeUrl || undefined} /><StationSnowWidget enabled={Boolean(widgets?.snow?.enabled && widgets.snow.iframeUrl)} iframeUrl={widgets?.snow?.iframeUrl || undefined} /></div>
     {updated ? <p className="v3-updated">Mise à jour : <time dateTime={updated}>{new Date(updated).toLocaleString("fr-FR")}</time></p> : null}
@@ -73,12 +73,12 @@ function Weather({ station, widgets }: { station: any; widgets: StationWidgetsCo
 }
 
 function Webcams({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
-  const data = getV2Section(station, "webcams");
+  const data = getStationSectionData(station, "webcams");
   const items = data.items ?? data.webcams ?? station.webcams ?? widgets?.webcams?.items ?? [];
   const hasCoordinates = Number.isFinite(Number(station.latitude)) && Number.isFinite(Number(station.longitude));
   return <section className="v3-floor" aria-labelledby="v3-webcams-title">
     <SectionHeading id="v3-webcams-title" eyebrow="En direct" title={`Webcams de ${station.name}`} />
-    {editorial(getV2Content(station, "webcams"))}
+    {editorial(getStationEditorialContent(station, "webcams"))}
     <div className="v3-media-stage">{Array.isArray(items) && items.length ? <StationWebcamsBlock enabled items={items} /> : hasCoordinates ? <WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} /> : <p className="v3-empty">Webcam non disponible pour cette station.</p>}</div>
   </section>;
 }
@@ -86,7 +86,7 @@ function Webcams({ station, widgets }: { station: any; widgets: StationWidgetsCo
 function SkiPasses({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-forfaits-title">
     <SectionHeading id="v3-forfaits-title" eyebrow="Tarifs" title={`Forfaits de ski à ${station.name}`} intro="Saisons, périodes et catégories publiées par la station." />
-    {editorial(getV2Content(station, "forfaits"))}
+    {editorial(getStationEditorialContent(station, "forfaits"))}
     <div className="v3-passes">{hasStationForfaits(widgets) ? <StationForfaitsBlocks widgets={widgets} /> : <p className="v3-empty">Forfaits non disponibles pour cette station.</p>}</div>
   </section>;
 }
@@ -98,7 +98,7 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
   const facts = [["Pistes", station.pistes_count], ["Remontées", station.lifts_count], ["Vertes", colors.green], ["Bleues", colors.blue], ["Rouges", colors.red], ["Noires", colors.black]].filter(([, value]) => usefulNumber(value));
   return <section className="v3-floor" aria-labelledby="v3-map-title">
     <SectionHeading id="v3-map-title" eyebrow="Le domaine" title={`Plan des pistes de ${station.name}`} />
-    {editorial(getV2Content(station, "plan-des-pistes"))}
+    {editorial(getStationEditorialContent(station, "plan-des-pistes"))}
     <div className="v3-piste-map">{available ? <PlanPistesFigure name={station.name} small={map.smallMapUrl || map.largeMapUrl} large={map.largeMapUrl} officialUrl={map.officialMapUrl} caption={map.caption} /> : <p className="v3-empty">Plan des pistes non disponible pour cette station.</p>}{facts.length ? <aside><h3>En un coup d’œil</h3><dl>{facts.map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{formatNumber(value)}</dd></div>)}</dl></aside> : null}</div>
   </section>;
 }
@@ -110,7 +110,7 @@ function LocationAccess({ station }: { station: any }) {
   </section>;
 }
 
-export default function StationV3Page({ station, widgets, departmentStations = [], preview = false }: { station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[]; preview?: boolean }) {
+export default function StationV3Page({ station, widgets, departmentStations = [] }: { station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
   const [order, setOrder] = useState(DEFAULT_ORDER);
   const [selected, setSelected] = useState<StationV3Section>("apercu");
   const navigationRef = useRef<HTMLElement>(null);
@@ -131,7 +131,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   const title = text(station.meta_title) || `${station.name}, station de ski : météo, forfaits et pistes | Snow Explorer`;
   const description = text(station.meta_description) || `Découvrez ${station.name}${location ? `, ${location}` : ""} : pistes, météo, webcams, forfaits et plan des pistes sur une seule page.`;
 
-  return <><Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} /><meta name="robots" content={preview ? "noindex, nofollow" : "index, follow"} /></Head>
+  return <><Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} /><meta name="robots" content="index, follow" /></Head>
     <StationLegacyHero station={station} />
     <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{DEFAULT_ORDER.map((section) => <button key={section} type="button" aria-pressed={selected === section} onClick={() => select(section)}>{V3_SECTION_LABELS[section]}</button>)}</nav>
     <main className="v3-page"><nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/stations">Stations</Link><span aria-hidden="true">›</span><span aria-current="page">{station.name}</span></nav>

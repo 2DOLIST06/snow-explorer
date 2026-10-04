@@ -46,13 +46,11 @@ type ResortType = {
   pistes_small_map_url?: string | null;
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
-  page_layout_version?: "legacy" | "v2";
   v2_overview_html?: string | null;
   v2_weather_snow_html?: string | null;
   v2_ski_pass_html?: string | null;
   v2_piste_map_html?: string | null;
   v2_webcam_html?: string | null;
-  v2_contents?: Record<string, { content_html?: string; published?: boolean; available?: boolean; status?: string } | null>;
 };
 
 type ForfaitColumn = {
@@ -838,7 +836,6 @@ w.forfaits = normalizeForfaitConfig(w.forfaits);
 setWidgets(w);
 
       const normalized: ResortType = normalizeAdminStation(rcv, w);
-      normalized.v2_contents = rcv.v2_contents || (rcv as any).v2_content || (rcv as any).v2?.sections || {};
       normalized.v2_overview_html ??= null;
       normalized.v2_weather_snow_html ??= null;
       normalized.v2_ski_pass_html ??= null;

@@ -141,25 +141,27 @@ test("station page backend budget excludes ski-passes and regions", () => {
   assert.equal((widgetsApi.match(/await fetch\(/g) || []).length, 1);
 });
 
-test("station detail region and ski pass preserve functional content and SEO", () => {
+test("station detail preserves region, ski passes and V3 SEO", () => {
   const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  const presentation = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationV3Page.tsx"), "utf8");
 
   assert.match(stationPage, /region\?: \{ id\?: string; name\?: string; slug\?: string/);
-  assert.match(stationPage, /<StationForfaitsBlock/);
-  assert.match(stationPage, /<title>\{seoTitle\}<\/title>/);
-  assert.match(stationPage, /<meta name="description" content=\{seoDescription\}/);
-  assert.match(stationPage, /<link rel="canonical" href=\{canonicalUrl\}/);
-  assert.match(stationPage, /application\/ld\+json/);
+  assert.match(presentation, /<StationForfaitsBlocks widgets=\{widgets\}/);
+  assert.match(presentation, /<title>\{title\}<\/title>/);
+  assert.match(presentation, /<meta name="description" content=\{description\}/);
+  assert.match(presentation, /<link rel="canonical" href=\{canonical\}/);
+  assert.match(presentation, /<meta name="robots" content="index, follow"/);
 });
 
 test("stations without a published ski area link to active stations in their department", () => {
   const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  const presentation = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationV3Page.tsx"), "utf8");
 
   assert.match(stationPage, /publishedSkiAreas\.length === 0 && resort\.department/);
   assert.match(stationPage, /getDepartmentResorts\(activeResorts, resort\.department, resort\.slug\)/);
-  assert.match(stationPage, /!resort\.ski_areas\?\.length && departmentStations\.length > 0/);
-  assert.match(stationPage, /Autres stations du même département/);
-  assert.match(stationPage, /<StationCards stations=\{departmentStations\}/);
+  assert.match(presentation, /!station\.ski_areas\?\.length && departmentStations\.length/);
+  assert.match(presentation, /Autres stations du même département/);
+  assert.match(presentation, /<StationCards stations=\{departmentStations\}/);
 });
 
 test("a recorded piste-map image is labelled like the webcam and weather cards", () => {
@@ -185,17 +187,13 @@ test("station 404 handling remains authoritative when widgets fail", async () =>
   assert.match(stationPage, /if \(stationResponse\.status === 404\) \{\s*return \{ notFound: true \};/);
 });
 
-test("piste color details use one display switch for rendering and SSR serialization", () => {
-  const stationPage = fs.readFileSync(
-    path.join(__dirname, "../pages/stations/[slug].tsx"),
-    "utf8",
-  );
+test("piste color details preserve canonical station values while legacy widget colors stay disabled", () => {
+  const stationPage = fs.readFileSync(path.join(__dirname, "../pages/stations/[slug].tsx"), "utf8");
+  const presentation = fs.readFileSync(path.join(__dirname, "../src/components/stations/StationV3Page.tsx"), "utf8");
 
   assert.match(stationPage, /const SHOW_PISTE_COLOR_DETAILS = false;/);
-  assert.match(stationPage, /SHOW_PISTE_COLOR_DETAILS && colors \?/);
-  assert.match(
-    stationPage,
-    /SHOW_PISTE_COLOR_DETAILS && cfg\.pistes\?\.colors \? \{ colors: cfg\.pistes\.colors \} : \{\}/,
-  );
+  assert.match(stationPage, /SHOW_PISTE_COLOR_DETAILS && cfg\.pistes\?\.colors/);
+  assert.match(stationPage, /resort\.pistes_colors/);
+  assert.match(presentation, /scope\.pistes\.length/);
   assert.doesNotMatch(stationPage, /JSON\.parse\(JSON\.stringify\(resort\)\)/);
 });

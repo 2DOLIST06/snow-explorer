@@ -89,14 +89,3 @@ test("a failed aggregate request is rendered as an explicit error, not an empty 
   assert.match(page, /role="alert"/);
   assert.doesNotMatch(page, /catch \{\s*setSelected/);
 });
-
-test("V2 forfaits uses the canonical aggregate instead of station-detail ski_pass", () => {
-  const page = fs.readFileSync("pages/stations/[slug]/[section].tsx", "utf8");
-
-  assert.match(page, /section === "forfaits"/);
-  assert.match(page, /\/api\/stations\/\$\{encodeURIComponent\(slug\)\}\/ski-passes/);
-  assert.match(page, /loadPublicSkiPasses/);
-  assert.match(page, /normalizeLegacyStationForfaits\(payload\.legacy_forfaits\)/);
-  assert.match(page, /normalizeStationSkiPass\(payload\.ski_pass\)/);
-  assert.doesNotMatch(page, /normalizeStationSkiPass\(raw\.ski_pass\)/);
-});

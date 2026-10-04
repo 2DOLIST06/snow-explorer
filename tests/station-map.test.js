@@ -18,8 +18,8 @@ test("the map uses Advanced Markers, one InfoWindow, clustering and the configur
 });
 
 test("station cards use published coordinates and expose a safe missing-coordinate state", () => {
-  const source = read("pages/stations/[slug].tsx");
-  assert.match(source, /latitude: hasValidCoordinates \?/);
+  const source = read("src/components/stations/StationV3Page.tsx");
+  assert.match(source, /latitude: station\.latitude/);
   assert.match(source, /<StationMapCard/);
   assert.doesNotMatch(source, /nominatim\.openstreetmap/);
   const card = read("src/components/maps/StationMapCard.tsx");

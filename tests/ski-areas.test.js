@@ -38,13 +38,13 @@ test('ski-area snowpark count is prefilled from every linked station and stays e
 test('public pages, reciprocal links, drafts, navigation and sitemap are wired', () => {
   const api = read('src/lib/api/skiAreas.ts');
   const card = read('src/components/stations/SkiAreaPublicCard.tsx');
-  const station = read('pages/stations/[slug].tsx');
+  const station = read('src/components/stations/StationV3Page.tsx');
   const sitemap = read('src/lib/sitemap.ts');
   assert.match(api, /\/api\/ski-areas\?page=/);
   assert.match(api, /area\.status === "published"/);
   assert.match(card, /Autres stations du même domaine/);
   assert.match(card, /\/stations\/\$\{station\.slug\}/);
-  assert.match(station, /resort\.ski_areas\?\.map/);
+  assert.match(station, /station\.ski_areas/);
   assert.match(station, /area\?\.status === "published"/);
   assert.match(sitemap, /\/domaines-skiables\/\$\{encodeURIComponent\(slug\)\}/);
   assert.match(read('src/components/layout/ProHeader.tsx'), /Domaines skiables/);
@@ -73,24 +73,24 @@ test('ski-area hero text uses the full card width when there is no cover image',
 });
 
 test('station statistics can switch from the station to each published ski area', () => {
-  const station = read('pages/stations/[slug].tsx');
+  const station = read('src/components/stations/StationV3Page.tsx');
   const styles = read('src/styles/globals.css');
   assert.match(station, /useState<"station" \| number>\("station"\)/);
-  assert.match(station, /skiAreas\.map\(\(area\) =>/);
+  assert.match(station, /skiAreas\.map\(\(area: any\) =>/);
   assert.match(station, /aria-pressed=\{selectedScope === area\.id\}/);
-  assert.match(station, /const activeStats = getStationOverviewScope\(/);
-  assert.match(station, /cfg,\s+selectedSkiArea,/);
+  assert.match(station, /const scope = getStationOverviewScope\(/);
+  assert.match(station, /station, widgets, selectedSkiArea/);
   const overview = read('src/lib/stationOverview.js');
   assert.match(overview, /skiAreaKm: skiArea\.ski_area_km/);
   assert.match(overview, /pistesCount: skiArea\.pistes_count/);
   assert.match(overview, /liftsCount: skiArea\.lifts_count/);
   assert.match(overview, /snowparksCount: skiArea\.snowparks_count/);
-  assert.match(station, /snowparkName=\{selectedSkiArea\?\.snowpark_name\}/);
+  assert.match(station, /selectedSkiArea\.slug/);
   assert.match(overview, /openDate: skiArea\.forecast_open_date/);
   assert.match(overview, /closeDate: skiArea\.forecast_close_date/);
   assert.match(overview, /skiArea\.altitude_max_m - skiArea\.altitude_min_m/);
-  assert.match(station, /<PlanPistesFigure name=\{resort\.name\} small=\{mapSmall\}/);
-  assert.match(station, /<StationForfaitsBlocks widgets=\{cfg\}/);
+  assert.match(station, /<PlanPistesFigure name=\{station\.name\}/);
+  assert.match(station, /<StationForfaitsBlocks widgets=\{widgets\}/);
   assert.doesNotMatch(station, /selectedMapSmall|selectedForfaits/);
   assert.match(styles, /\.station-stats-scope button\.is-active/);
 });
