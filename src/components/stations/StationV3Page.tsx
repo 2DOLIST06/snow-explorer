@@ -18,7 +18,10 @@ import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 import { getStationOverviewScope, getStationPresentation } from "@/lib/stationOverview";
 
 const ORIGIN = "https://www.snow-explorer.com";
-const DEFAULT_ORDER: StationPageSection[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes"];
+type StationV3Section = StationPageSection | "localisation-acces";
+
+const DEFAULT_ORDER: StationV3Section[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes", "localisation-acces"];
+const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "localisation-acces": "Localisation et accès" };
 
 const text = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : "";
 const usefulNumber = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -100,18 +103,26 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
   </section>;
 }
 
+function LocationAccess({ station }: { station: any }) {
+  return <section className="v3-location" aria-labelledby="v3-location-title">
+    <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation et accès à ${station.name}`} />
+    <StationMapCard station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
+  </section>;
+}
+
 export default function StationV3Page({ station, widgets, departmentStations = [], preview = false }: { station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[]; preview?: boolean }) {
   const [order, setOrder] = useState(DEFAULT_ORDER);
-  const [selected, setSelected] = useState<StationPageSection>("apercu");
+  const [selected, setSelected] = useState<StationV3Section>("apercu");
   const navigationRef = useRef<HTMLElement>(null);
   const location = stationLocation(station);
   const canonical = `${ORIGIN}/stations/${encodeURIComponent(station.slug)}`;
-  const sections: Record<StationPageSection, ReactNode> = {
+  const sections: Record<StationV3Section, ReactNode> = {
     apercu: <Overview station={station} widgets={widgets} />, "meteo-neige": <Weather station={station} widgets={widgets} />,
     webcams: <Webcams station={station} widgets={widgets} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
     "plan-des-pistes": <PisteMap station={station} widgets={widgets} />,
+    "localisation-acces": <LocationAccess station={station} />,
   };
-  const select = (section: StationPageSection) => {
+  const select = (section: StationV3Section) => {
     setSelected(section);
     setOrder([section, ...DEFAULT_ORDER.filter((item) => item !== section)]);
     window.requestAnimationFrame(() => navigationRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
@@ -122,11 +133,10 @@ export default function StationV3Page({ station, widgets, departmentStations = [
 
   return <><Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} /><meta name="robots" content={preview ? "noindex, nofollow" : "index, follow"} /></Head>
     <StationLegacyHero station={station} />
-    <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{DEFAULT_ORDER.map((section) => <button key={section} type="button" aria-pressed={selected === section} onClick={() => select(section)}>{SECTION_LABELS[section]}</button>)}</nav>
+    <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{DEFAULT_ORDER.map((section) => <button key={section} type="button" aria-pressed={selected === section} onClick={() => select(section)}>{V3_SECTION_LABELS[section]}</button>)}</nav>
     <main className="v3-page"><nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/stations">Stations</Link><span aria-hidden="true">›</span><span aria-current="page">{station.name}</span></nav>
       <div className="v3-floors">{order.map((section) => <div key={section} className="v3-floor-slot">{sections[section]}</div>)}</div>
       <div className="v3-complementary">{Array.isArray(station.ski_areas) ? station.ski_areas.filter((area: any) => area?.status === "published").map((area: any) => <SkiAreaPublicCard key={area.id} area={area} compact />) : null}
-        <section className="v3-location"><SectionHeading eyebrow="Localisation" title={`Situer ${station.name}`} /><StationMapCard station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} /></section>
         {!station.ski_areas?.length && departmentStations.length ? <section className="ski-area-public-card"><header><p className="eyebrow">À proximité</p><h2>Autres stations du même département</h2></header><StationCards stations={departmentStations} /></section> : null}
       </div>
     </main>
