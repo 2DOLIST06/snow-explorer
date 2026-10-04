@@ -9,7 +9,7 @@ const preview = fs.readFileSync(path.join(root, "pages/admin/stations/[slug]/pre
 const editor = fs.readFileSync(path.join(root, "pages/admin/stations/[slug].tsx"), "utf8");
 const publicPage = fs.readFileSync(path.join(root, "pages/stations/[slug].tsx"), "utf8");
 const sitemap = fs.readFileSync(path.join(root, "src/lib/sitemap.ts"), "utf8");
-const { getStationPresentation, getStationPisteDetails } = require("../src/lib/stationOverview");
+const { getStationPresentation, getStationPisteDetails, getStationOverviewScope } = require("../src/lib/stationOverview");
 
 test("V3 keeps every primary section in one reorderable page", () => {
   assert.match(component, /const DEFAULT_ORDER[^;]+apercu[^;]+meteo-neige[^;]+webcams[^;]+forfaits[^;]+plan-des-pistes/);
@@ -82,4 +82,20 @@ test("V3 displays piste difficulty details only for strictly positive real value
   assert.deepEqual(getStationPisteDetails({ pistes_colors: { green: 0, blue: 0, red: 0, black: 0 } }), []);
   assert.deepEqual(getStationPisteDetails({ pistes_colors: { green: null, blue: 4, red: undefined, black: 0 } }).map(({ color, value }) => [color, value]), [["blue", 4]]);
   assert.match(component, /pistes\.length \? <div className="v3-pistes"><h3>Pistes par difficulté<\/h3>/);
+});
+
+test("V3 overview reuses the V1 station / ski-area scope contract", () => {
+  const station = { altitude_base_m: 1200, altitude_top_m: 2400, ski_area_km: 80, pistes_count: 32, pistes_colors: { green: 0, blue: 5, red: 0, black: null } };
+  const area = { id: 7, altitude_min_m: 1000, altitude_max_m: 3000, ski_area_km: null, pistes_count: 90, lifts_count: 0, green_pistes_count: 0, blue_pistes_count: 12, red_pistes_count: null, black_pistes_count: 4 };
+  const stationScope = getStationOverviewScope(station);
+  const areaScope = getStationOverviewScope(station, null, area);
+  assert.equal(stationScope.skiAreaKm, 80);
+  assert.deepEqual(stationScope.pistes.map(({ color, value }) => [color, value]), [["blue", 5]]);
+  assert.equal(areaScope.elevationDrop, 2000);
+  assert.equal(areaScope.skiAreaKm, null, "a missing ski-area value must not fall back to the station");
+  assert.deepEqual(areaScope.pistes.map(({ color, value }) => [color, value]), [["blue", 12], ["black", 4]]);
+  assert.match(component, /useState<"station" \| number>\("station"\)/);
+  assert.match(component, /skiAreas\.length \? <div className="v3-scope"/);
+  assert.match(component, /href=\{`\/domaines-skiables\/\$\{selectedSkiArea\.slug\}`\}/);
+  assert.doesNotMatch(component, /router\.push\(`\/domaines-skiables/);
 });
