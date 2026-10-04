@@ -68,7 +68,7 @@ test("station detail and forfaits pages share the normalized ski-pass preparatio
   const stationPage = fs.readFileSync("pages/stations/[slug].tsx", "utf8");
   const forfaitsPage = fs.readFileSync("pages/forfaits.tsx", "utf8");
 
-  assert.match(stationPage, /normalizeStationSkiPass\(loadedResort\.ski_pass\)/);
+  assert.match(stationPage, /resolveStationForfaits\(cfg\?\.forfaits, loadedResort\.ski_pass\)/);
   assert.match(forfaitsPage, /normalizeStationSkiPass\(payload\.ski_pass\)/);
   assert.match(forfaitsPage, /getSkiPassBlocksVisibility/);
   assert.doesNotMatch(forfaitsPage, /hasActiveForfaits/);

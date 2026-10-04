@@ -135,7 +135,7 @@ test("station page backend budget excludes ski-passes and regions", () => {
   const widgetsApi = fs.readFileSync(path.join(__dirname, "../src/lib/api/stations.ts"), "utf8");
 
   assert.match(stationPage, /loadStationPageSources\(slug/);
-  assert.match(stationPage, /normalizeStationSkiPass\(loadedResort\.ski_pass\)/);
+  assert.match(stationPage, /resolveStationForfaits\(cfg\?\.forfaits, loadedResort\.ski_pass\)/);
   assert.doesNotMatch(stationPage, /\/api\/regions/);
   assert.doesNotMatch(widgetsApi, /\/ski-passes/);
   assert.equal((widgetsApi.match(/await fetch\(/g) || []).length, 1);

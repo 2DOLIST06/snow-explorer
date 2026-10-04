@@ -43,3 +43,19 @@ export function normalizeStationSkiPass(
     source_url: skiPass.source_url || null,
   };
 }
+
+/**
+ * Prepare the two independent fare sources exactly as the public V1 station
+ * page does. Consumers must render this result without selecting a preferred
+ * source: the legacy widget and the active normalized season may coexist.
+ */
+export function resolveStationForfaits(
+  forfaits: Partial<StationWidgetsConfig["forfaits"]> | null | undefined,
+  skiPass?: SkiPassSeason | null,
+): Pick<StationWidgetsConfig, "forfaits" | "normalizedForfaits"> {
+  const normalizedForfaits = normalizeStationSkiPass(skiPass);
+  return {
+    forfaits: normalizeLegacyStationForfaits(forfaits),
+    ...(normalizedForfaits ? { normalizedForfaits } : {}),
+  };
+}

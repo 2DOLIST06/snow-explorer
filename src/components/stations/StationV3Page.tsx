@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import type { StationWidgetsConfig } from "@/types/station";
 import type { StationOption } from "@/types/skiArea";
 import StationLegacyHero from "@/components/stations/StationLegacyHero";
-import StationForfaitsBlock from "@/components/stations/StationForfaitsBlock";
+import StationForfaitsBlocks, { hasStationForfaits } from "@/components/stations/StationForfaitsBlocks";
 import StationMeteoWidget from "@/components/stations/StationMeteoWidget";
 import StationSnowWidget from "@/components/stations/StationSnowWidget";
 import StationWebcamsBlock from "@/components/stations/StationWebcamsBlock";
@@ -13,7 +13,6 @@ import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
-import { getSkiPassBlocksVisibility } from "@/lib/skiPassVisibility";
 import { getV2Content, getV2Section, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationV2";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 
@@ -85,12 +84,10 @@ function Webcams({ station, widgets }: { station: any; widgets: StationWidgetsCo
 }
 
 function SkiPasses({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
-  const visibility = getSkiPassBlocksVisibility(Boolean(widgets?.forfaits?.enabled), Boolean(widgets?.normalizedForfaits?.enabled));
-  const data = getV2Section(station, "forfaits");
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-forfaits-title">
     <SectionHeading id="v3-forfaits-title" eyebrow="Tarifs" title={`Forfaits de ski à ${station.name}`} intro="Saisons, périodes et catégories publiées par la station." />
     {editorial(getV2Content(station, "forfaits"))}
-    <div className="v3-passes">{visibility.any ? <><StationForfaitsBlock enabled={visibility.legacy} columns={widgets?.forfaits?.columns || []} items={widgets?.forfaits?.items || []} periods={widgets?.forfaits?.periods || []} season={widgets?.forfaits?.season} source_url={widgets?.forfaits?.source_url} sourceUrl={widgets?.forfaits?.sourceUrl} stationPage /><StationForfaitsBlock enabled={visibility.normalized} periods={widgets?.normalizedForfaits?.periods || []} season={widgets?.normalizedForfaits?.season} source_url={widgets?.normalizedForfaits?.source_url} stationPage /></> : Array.isArray(data.items) && data.items.length ? <StationForfaitsBlock enabled items={data.items} periods={data.periods || []} season={data.season} source_url={data.source_url} stationPage /> : <p className="v3-empty">Forfaits non disponibles pour cette station.</p>}</div>
+    <div className="v3-passes">{hasStationForfaits(widgets) ? <StationForfaitsBlocks widgets={widgets} /> : <p className="v3-empty">Forfaits non disponibles pour cette station.</p>}</div>
   </section>;
 }
 

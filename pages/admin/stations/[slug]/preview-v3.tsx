@@ -5,7 +5,7 @@ import StationV3Page from "@/components/stations/StationV3Page";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { adminFetch } from "@/lib/adminApi";
 import { normalizeAdminStation, normalizeAdminWidgets } from "@/lib/adminStation";
-import { normalizeStationSkiPass } from "@/lib/stationForfaits";
+import { resolveStationForfaits } from "@/lib/stationForfaits";
 
 export default function StationV3Preview() {
   const router = useRouter();
@@ -22,8 +22,7 @@ export default function StationV3Preview() {
       const payload = await response.json();
       const raw = payload.resort || payload;
       const widgets: any = normalizeAdminWidgets(payload.widgets || {}, raw);
-      const normalizedForfaits = normalizeStationSkiPass(raw.ski_pass);
-      if (normalizedForfaits) widgets.normalizedForfaits = normalizedForfaits;
+      Object.assign(widgets, resolveStationForfaits(widgets.forfaits, raw.ski_pass));
       const station = normalizeAdminStation(raw, widgets) as any;
       station.v2_contents = raw.v2_contents || raw.v2_content || raw.v2?.sections || {};
       setData({ station, widgets });

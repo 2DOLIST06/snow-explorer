@@ -88,7 +88,7 @@ test('station statistics can switch from the station to each published ski area'
   assert.match(station, /closeDate: selectedSkiArea\.forecast_close_date/);
   assert.match(station, /Number\(altMax\) - Number\(altMin\)/);
   assert.match(station, /<PlanPistesFigure name=\{resort\.name\} small=\{mapSmall\}/);
-  assert.match(station, /periods=\{cfg\?\.normalizedForfaits\?\.periods \|\| \[\]\}/);
+  assert.match(station, /<StationForfaitsBlocks widgets=\{cfg\}/);
   assert.doesNotMatch(station, /selectedMapSmall|selectedForfaits/);
   assert.match(styles, /\.station-stats-scope button\.is-active/);
 });
