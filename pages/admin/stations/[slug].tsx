@@ -47,6 +47,11 @@ type ResortType = {
   pistes_large_map_url?: string | null;
   pistes_caption?: string | null;
   page_layout_version?: "legacy" | "v2";
+  v2_overview_html?: string | null;
+  v2_weather_snow_html?: string | null;
+  v2_ski_pass_html?: string | null;
+  v2_piste_map_html?: string | null;
+  v2_webcam_html?: string | null;
   v2_contents?: Record<string, { content_html?: string; published?: boolean; available?: boolean; status?: string } | null>;
 };
 
@@ -836,6 +841,11 @@ setWidgets(w);
       const normalized: ResortType = normalizeAdminStation(rcv, w);
       normalized.page_layout_version = rcv.page_layout_version === "v2" ? "v2" : "legacy";
       normalized.v2_contents = rcv.v2_contents || (rcv as any).v2_content || (rcv as any).v2?.sections || {};
+      normalized.v2_overview_html ??= null;
+      normalized.v2_weather_snow_html ??= null;
+      normalized.v2_ski_pass_html ??= null;
+      normalized.v2_piste_map_html ??= null;
+      normalized.v2_webcam_html ??= null;
       setResort(normalized);
       setSavedLayoutVersion(normalized.page_layout_version);
 
@@ -899,31 +909,42 @@ setWidgets(w);
     if (!resort || saving) return;
 
     if (savedLayoutVersion !== "v2" && resort.page_layout_version === "v2") {
-      const published = Object.entries(resort.v2_contents || {}).filter(([, value]) => value?.published).map(([key]) => key);
-      const summary = published.length ? `\n\nSeront publiées :\n${published.map((key) => `✓ ${key}`).join("\n")}` : "\n\nAucune sous-section n’est actuellement publiée.";
-      if (!window.confirm(`Activer la nouvelle présentation publique de cette station ?${summary}`)) return;
+      if (!window.confirm("Activer la nouvelle présentation publique de cette station ?")) return;
     }
     setSaving(true);
     setMsg("Enregistrement de toutes les modifications…");
     setErr("");
 
     try {
-      const {
-        id,
-        slug: resortSlug,
-        region,
-        updated_at,
-        ...editableResort
-      } = resort;
-
       const payload: ResortType = {
-        ...editableResort,
+        name: resort.name,
+        latitude: resort.latitude,
+        longitude: resort.longitude,
+        website_url: resort.website_url,
+        cover_image_url: resort.cover_image_url,
+        logo_url: resort.logo_url,
+        description_md: resort.description_md,
+        department: resort.department,
+        altitude_min_m: resort.altitude_min_m,
+        altitude_max_m: resort.altitude_max_m,
+        season_open_date: resort.season_open_date,
+        season_close_date: resort.season_close_date,
+        pistes_count: resort.pistes_count,
+        ski_area_km: resort.ski_area_km,
+        lifts_count: resort.lifts_count,
         pistes_large_map_url: normalizePisteMapUrl(resort.pistes_large_map_url),
         pistes_small_map_url: normalizePisteMapUrl(resort.pistes_small_map_url),
+        pistes_caption: resort.pistes_caption,
         region_id:
           resort.region_id ??
           resort.region?.id ??
           null,
+        page_layout_version: resort.page_layout_version,
+        v2_overview_html: resort.v2_overview_html ?? null,
+        v2_weather_snow_html: resort.v2_weather_snow_html ?? null,
+        v2_ski_pass_html: resort.v2_ski_pass_html ?? null,
+        v2_piste_map_html: resort.v2_piste_map_html ?? null,
+        v2_webcam_html: resort.v2_webcam_html ?? null,
       };
 
       const widgetsPayload = {
@@ -1471,24 +1492,20 @@ const removeForfaitRow = (rowIdx: number) => {
                 <div>
                   <h3 style={{ marginBottom: 12 }}>Contenus de la nouvelle fiche</h3>
                   <div style={styles.stack}>
-                    {[
-                      ["apercu", "Aperçu"],
-                      ["meteo_neige", "Météo & enneigement"],
-                      ["forfaits", "Forfaits"],
-                      ["plan_des_pistes", "Plan des pistes"],
-                      ["webcams", "Webcams"],
-                    ].map(([key, label]) => {
-                      const section = resort.v2_contents?.[key] || {};
-                      const unavailable = section.available === false || section.status === "unavailable";
-                      const ready = section.published === true || section.status === "ready" || section.status === "published";
+                    {([
+                      ["v2_overview_html", "Aperçu"],
+                      ["v2_weather_snow_html", "Météo & enneigement"],
+                      ["v2_ski_pass_html", "Forfaits"],
+                      ["v2_piste_map_html", "Plan des pistes"],
+                      ["v2_webcam_html", "Webcams"],
+                    ] as const).map(([key, label]) => {
                       return <div key={key} style={styles.lineItem}>
                         <label style={styles.label}>
-                          <span>{label} — {unavailable ? "— indisponible" : ready ? "✓ Prêt" : "⚠ contenu manquant"}</span>
+                          <span>{label}</span>
                           <textarea
                             rows={5}
-                            value={section.content_html || ""}
-                            disabled={unavailable}
-                            onChange={(event) => setResort({ ...resort, v2_contents: { ...(resort.v2_contents || {}), [key]: { ...section, content_html: event.target.value } } })}
+                            value={resort[key] || ""}
+                            onChange={(event) => setResort({ ...resort, [key]: event.target.value || null })}
                             style={styles.textarea}
                             placeholder={`Contenu éditorial : ${label}`}
                           />

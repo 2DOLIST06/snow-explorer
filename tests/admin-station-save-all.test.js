@@ -21,3 +21,13 @@ test("per-section completion indicators remain independent from saving", () => {
   assert.match(source, /style=\{section\.complete \? styles\.sectionStatusOk : styles\.sectionStatusKo\}/);
   assert.match(source, /\{section\.complete \? "✓" : "✕"\}/);
 });
+
+test("station PATCH explicitly sends editable V2 fields and never computed V2 contents", () => {
+  const payloadBlock = source.slice(source.indexOf("const payload: ResortType = {"), source.indexOf("const widgetsPayload"));
+  assert.doesNotMatch(payloadBlock, /\.\.\.editableResort|v2_contents/);
+  assert.match(payloadBlock, /page_layout_version: resort\.page_layout_version/);
+  for (const field of ["v2_overview_html", "v2_weather_snow_html", "v2_ski_pass_html", "v2_piste_map_html", "v2_webcam_html"]) {
+    assert.match(payloadBlock, new RegExp(`${field}: resort\\.${field} \\?\\? null`));
+  }
+  assert.doesNotMatch(source, /Aucune sous-section n[’']est actuellement publiée/);
+});
