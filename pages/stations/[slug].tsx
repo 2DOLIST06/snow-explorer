@@ -22,7 +22,7 @@ import StationMapCard from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import type { SkiAreaPublic } from "@/types/skiArea";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
-import StationV2Page from "@/components/stations/StationV2Page";
+import StationV3Page from "@/components/stations/StationV3Page";
 import StationLegacyHero from "@/components/stations/StationLegacyHero";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import { MeteoblueSkiWidget } from "@/components/stations/StationLegacyWeather";
@@ -767,9 +767,11 @@ const LegacyResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) 
   );
 };
 
-const ResortPage: NextPage<Props> = (props) => props.resort.page_layout_version === "v2"
-  ? <StationV2Page station={props.resort} widgets={props.cfg} />
-  : <LegacyResortPage {...props} />;
+// The historical page implementations remain in this file for a quick rollback,
+// but the canonical station URL now always renders the validated V3 presentation.
+const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => (
+  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} />
+);
 
 /* =========================
  * SSR
@@ -935,7 +937,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     pistes_caption: resort.pistes_caption ?? null,
     ski_pass: resort.ski_pass ?? null,
     ski_areas: publishedSkiAreas,
-    page_layout_version: resort.page_layout_version === "v2" ? "v2" : "legacy",
     v2_overview_html: resort.v2_overview_html ?? null,
     v2_weather_snow_html: resort.v2_weather_snow_html ?? null,
     v2_ski_pass_html: resort.v2_ski_pass_html ?? null,

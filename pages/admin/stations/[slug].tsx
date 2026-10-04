@@ -780,7 +780,6 @@ export default function AdminStationEdit() {
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedLayoutVersion, setSavedLayoutVersion] = useState<"legacy" | "v2">("legacy");
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -839,7 +838,6 @@ w.forfaits = normalizeForfaitConfig(w.forfaits);
 setWidgets(w);
 
       const normalized: ResortType = normalizeAdminStation(rcv, w);
-      normalized.page_layout_version = rcv.page_layout_version === "v2" ? "v2" : "legacy";
       normalized.v2_contents = rcv.v2_contents || (rcv as any).v2_content || (rcv as any).v2?.sections || {};
       normalized.v2_overview_html ??= null;
       normalized.v2_weather_snow_html ??= null;
@@ -847,7 +845,6 @@ setWidgets(w);
       normalized.v2_piste_map_html ??= null;
       normalized.v2_webcam_html ??= null;
       setResort(normalized);
-      setSavedLayoutVersion(normalized.page_layout_version);
 
       const rr = await fetch(`${API}/api/regions`, { cache: "no-store" });
       let regs: RegionRow[] = rr.ok ? await rr.json() : [];
@@ -908,9 +905,6 @@ setWidgets(w);
   const saveAll = async () => {
     if (!resort || saving) return;
 
-    if (savedLayoutVersion !== "v2" && resort.page_layout_version === "v2") {
-      if (!window.confirm("Activer la nouvelle présentation publique de cette station ?")) return;
-    }
     setSaving(true);
     setMsg("Enregistrement de toutes les modifications…");
     setErr("");
@@ -939,7 +933,6 @@ setWidgets(w);
           resort.region_id ??
           resort.region?.id ??
           null,
-        page_layout_version: resort.page_layout_version,
         v2_overview_html: resort.v2_overview_html ?? null,
         v2_weather_snow_html: resort.v2_weather_snow_html ?? null,
         v2_ski_pass_html: resort.v2_ski_pass_html ?? null,
@@ -1466,39 +1459,11 @@ const removeForfaitRow = (rowIdx: number) => {
 
             <SectionCard
               id="presentation-public"
-              title="Présentation publique"
-              description="La fiche classique reste utilisée tant que la V2 n’est pas explicitement activée et enregistrée."
+              title="Contenus de la fiche station"
+              description="Contenus éditoriaux complémentaires affichés dans les différentes rubriques de la fiche publique."
             >
               <div style={styles.stack}>
-                <div style={styles.helperBox}>
-                  Version actuelle : <strong>{resort.page_layout_version === "v2" ? "V2" : "Classique"}</strong>
-                </div>
-                <label style={styles.checkboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={resort.page_layout_version === "v2"}
-                    onChange={(event) => setResort({ ...resort, page_layout_version: event.target.checked ? "v2" : "legacy" })}
-                  />
-                  Activer la nouvelle fiche station
-                </label>
-                <Link
-                  href={`/admin/stations/${encodeURIComponent(resort.slug || slug)}/preview-v2`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.secondaryBtn}
-                >
-                  Prévisualiser la nouvelle fiche
-                </Link>
-                <Link
-                  href={`/admin/stations/${encodeURIComponent(resort.slug || slug)}/preview-v3`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.secondaryBtn}
-                >
-                  Prévisualiser la fiche V3
-                </Link>
                 <div>
-                  <h3 style={{ marginBottom: 12 }}>Contenus de la nouvelle fiche</h3>
                   <div style={styles.stack}>
                     {([
                       ["v2_overview_html", "Aperçu"],
