@@ -12,11 +12,19 @@ const sitemap = fs.readFileSync(path.join(root, "src/lib/sitemap.ts"), "utf8");
 const { getStationPresentation, getStationPisteDetails, getStationOverviewScope } = require("../src/lib/stationOverview");
 
 test("V3 keeps every primary section in one reorderable page", () => {
-  assert.match(component, /const DEFAULT_ORDER[^;]+apercu[^;]+meteo-neige[^;]+webcams[^;]+forfaits[^;]+plan-des-pistes/);
+  assert.match(component, /const DEFAULT_ORDER[^;]+apercu[^;]+meteo-neige[^;]+webcams[^;]+forfaits[^;]+plan-des-pistes[^;]+localisation-acces/);
   assert.match(component, /setOrder\(\[section, \.\.\.DEFAULT_ORDER\.filter/);
   assert.match(component, /order\.map\(\(section\)/);
   assert.match(component, /type="button" aria-pressed=/);
   assert.doesNotMatch(component, /router\.push|window\.location|href=.*meteo-neige/);
+});
+
+test("V3 location and access is an internal reorderable section", () => {
+  assert.match(component, /"localisation-acces": "Localisation et accès"/);
+  assert.match(component, /"localisation-acces": <LocationAccess station=\{station\} \/>/);
+  assert.match(component, /id="v3-location-title"[^>]+title=\{`Localisation et accès à \$\{station\.name\}`\}/);
+  assert.match(component, /function LocationAccess[\s\S]+<StationMapCard/);
+  assert.doesNotMatch(component, /href=[^\n]+localisation-acces|router\.push|window\.location/);
 });
 
 test("V3 reuses the public business widgets and legacy hero", () => {
