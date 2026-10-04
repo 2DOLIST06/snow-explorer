@@ -13,6 +13,7 @@ import { StationWidgetsConfig } from "@/types/station";
 import type { SkiPassSeason } from "@/types/skiPass";
 import { regionHref } from "@/lib/regions";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
+import { getStationOverviewScope } from "@/lib/stationOverview";
 
 import StationForfaitsBlocks, { hasStationForfaits } from "@/components/stations/StationForfaitsBlocks";
 import { getSnowparksCount, isSnowparkEnabled } from "@/lib/snowparkAvailability";
@@ -374,27 +375,12 @@ const StationExtraPanels: React.FC<{
 }) => {
   const router = useRouter();
 
-  const activeStats = selectedSkiArea
-    ? {
-        altitudeMin: selectedSkiArea.altitude_min_m,
-        altitudeMax: selectedSkiArea.altitude_max_m,
-        skiAreaKm: selectedSkiArea.ski_area_km,
-        pistesCount: selectedSkiArea.pistes_count,
-        liftsCount: selectedSkiArea.lifts_count,
-        snowparksCount: selectedSkiArea.snowparks_count ?? null,
-        openDate: selectedSkiArea.forecast_open_date,
-        closeDate: selectedSkiArea.forecast_close_date,
-      }
-    : {
-        altitudeMin: resort.altitude_min_m ?? resort.altitude_base_m ?? null,
-        altitudeMax: resort.altitude_max_m ?? resort.altitude_top_m ?? null,
-        skiAreaKm: resort.ski_area_km,
-        pistesCount: computedPistesCount,
-        liftsCount: computedLiftsCount,
-        snowparksCount: resort.snowparks_count,
-        openDate: resort.season_open_date ?? cfg?.snow?.season?.openingDate ?? cfg?.snow?.openingDate ?? null,
-        closeDate: resort.season_close_date ?? cfg?.snow?.season?.closingDate ?? cfg?.snow?.closingDate ?? null,
-      };
+  // Shared with V3: this is the legacy switch's original data contract.
+  const activeStats = getStationOverviewScope(
+    { ...resort, pistes_count: computedPistesCount, lifts_count: computedLiftsCount },
+    cfg,
+    selectedSkiArea,
+  );
 
   // Altitudes
   const altMin = activeStats.altitudeMin;
