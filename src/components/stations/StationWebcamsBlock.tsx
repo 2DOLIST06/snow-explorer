@@ -3,13 +3,16 @@ import { WebcamItem } from "@/types/station";
 import Modal from "@/components/ui/Modal";
 import Image from "next/image";
 
-const StationWebcamsBlock: React.FC<{ items: WebcamItem[]; enabled?: boolean }> = ({ items, enabled }) => {
+type HeadingLevel = "h2" | "h3";
+
+const StationWebcamsBlock: React.FC<{ items: WebcamItem[]; enabled?: boolean; headingLevel?: HeadingLevel }> = ({ items, enabled, headingLevel = "h2" }) => {
   const [openId, setOpenId] = useState<string | null>(null);
   if (!enabled) return null;
+  const Heading = headingLevel;
 
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-semibold">Webcams</h2>
+      <Heading className="mb-3 text-lg font-semibold">Webcams</Heading>
       {!items?.length ? <p className="text-sm text-neutral-500">Aucune webcam renseignée.</p> : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

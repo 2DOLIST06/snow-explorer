@@ -10,7 +10,7 @@ export function hasStationForfaits(widgets: StationWidgetsConfig | null) {
 }
 
 /** The single renderer shared by the V1 station page and the V3 preview. */
-export default function StationForfaitsBlocks({ widgets }: { widgets: StationWidgetsConfig | null }) {
+export default function StationForfaitsBlocks({ widgets, headingLevel = "h2" }: { widgets: StationWidgetsConfig | null; headingLevel?: "h2" | "h3" }) {
   const visibility = getSkiPassBlocksVisibility(
     Boolean(widgets?.forfaits?.enabled),
     Boolean(widgets?.normalizedForfaits?.enabled),
@@ -27,6 +27,7 @@ export default function StationForfaitsBlocks({ widgets }: { widgets: StationWid
       source_url={widgets?.forfaits?.source_url}
       sourceUrl={widgets?.forfaits?.sourceUrl}
       stationPage
+      headingLevel={headingLevel}
     />
     <StationForfaitsBlock
       enabled={visibility.normalized}
@@ -34,6 +35,7 @@ export default function StationForfaitsBlocks({ widgets }: { widgets: StationWid
       season={widgets?.normalizedForfaits?.season}
       source_url={widgets?.normalizedForfaits?.source_url}
       stationPage
+      headingLevel={headingLevel}
     />
   </>;
 }

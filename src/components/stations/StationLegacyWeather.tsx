@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 
-const Card: React.FC<React.PropsWithChildren<{ title?: string }>> = ({ title, children }) => (
+type HeadingLevel = "h2" | "h3";
+
+const Card: React.FC<React.PropsWithChildren<{ title?: string; headingLevel?: HeadingLevel }>> = ({ title, headingLevel = "h2", children }) => {
+  const Heading = headingLevel;
+  return (
   <section style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12 }}>
-    {title ? <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</h2> : null}
+    {title ? <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</Heading> : null}
     <div>{children}</div>
   </section>
-);
+  );
+};
 
 const getWeatherIcon = (code: number | null | undefined) => {
   const c = typeof code === "number" ? code : 0;
@@ -45,9 +50,10 @@ type OpenMeteoDaily = {
   code: number;
 };
 
-export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; height?: number }> = ({
+export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | null; height?: number; headingLevel?: HeadingLevel }> = ({
   lat,
   lon,
+  headingLevel = "h2",
 }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [err, setErr] = useState<string | null>(null);
@@ -122,7 +128,7 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
 
   if (!Number.isFinite(usedLat) || !Number.isFinite(usedLon)) {
     return (
-      <Card title="Météo & neige">
+      <Card title="Météo & neige" headingLevel={headingLevel}>
         <div style={{ fontSize: 13, color: "#4b5563" }}>Coordonnées indisponibles.</div>
       </Card>
     );
@@ -131,7 +137,7 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
   const currentIcon = getWeatherIcon(current?.code ?? null);
 
   return (
-    <Card title="Météo & neige">
+    <Card title="Météo & neige" headingLevel={headingLevel}>
       {loading && <div style={{ fontSize: 13, color: "#4b5563" }}>Chargement…</div>}
       {err && !loading && <div style={{ fontSize: 13, color: "#dc2626" }}>Erreur : {err}</div>}
 
@@ -243,4 +249,3 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
     </Card>
   );
 };
-

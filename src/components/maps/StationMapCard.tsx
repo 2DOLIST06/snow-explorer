@@ -3,7 +3,7 @@ import StationMap from "./StationMapDynamic";
 import type { StationMapItem } from "@/types/stationMap";
 import { hasStationCoordinates } from "@/types/stationMap";
 
-type Props = { station: Partial<StationMapItem> & Pick<StationMapItem, "id" | "name" | "slug"> };
+type Props = { station: Partial<StationMapItem> & Pick<StationMapItem, "id" | "name" | "slug">; headingLevel?: "h2" | "h3" };
 
 function googleMapsUrl(station: Props["station"]): string {
   const location = [station.name, station.department, station.region, "France"].filter(Boolean).join(", ");
@@ -11,11 +11,12 @@ function googleMapsUrl(station: Props["station"]): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-export default function StationMapCard({ station }: Props) {
+export default function StationMapCard({ station, headingLevel = "h2" }: Props) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const hasCoordinates = hasStationCoordinates(station);
+  const Heading = headingLevel;
 
   useEffect(() => {
     if (!open) return;
@@ -31,7 +32,7 @@ export default function StationMapCard({ station }: Props) {
   }, [open]);
 
   return <section className="station-map-card">
-    <h2>Carte</h2>
+    <Heading>Carte</Heading>
     {hasCoordinates ? <div className="station-map-card__preview">
       <StationMap stations={[station]} mode="preview" />
       <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir la carte de ${station.name}`}>Agrandir la carte</button>

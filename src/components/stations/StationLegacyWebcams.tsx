@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
 
-const Card: React.FC<React.PropsWithChildren<{ title?: string; style?: React.CSSProperties }>> = ({ title, style, children }) => (
+type HeadingLevel = "h2" | "h3";
+
+const Card: React.FC<React.PropsWithChildren<{ title?: string; style?: React.CSSProperties; headingLevel?: HeadingLevel }>> = ({ title, style, headingLevel = "h2", children }) => {
+  const Heading = headingLevel;
+  return (
   <section style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12, ...style }}>
-    {title ? <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</h2> : null}
+    {title ? <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</Heading> : null}
     <div>{children}</div>
   </section>
-);
+  );
+};
 
-export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null }> = ({
+export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel }> = ({
   name,
   lat,
   lon,
+  headingLevel = "h2",
 }) => {
   const [cams, setCams] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -73,7 +79,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
   const activePreview = hasActive?.preview || null;
 
   return (
-    <Card title="Webcam" style={{ width: "100%" }}>
+    <Card title="Webcam" headingLevel={headingLevel} style={{ width: "100%" }}>
       {loading && <div style={{ fontSize: 13, color: "#4b5563" }}>Chargement…</div>}
       {err && !loading && <div style={{ fontSize: 13, color: "#dc2626" }}>Webcams : {err}</div>}
       {!loading && !err && cams.length === 0 && (
@@ -296,4 +302,3 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     </Card>
   );
 };
-

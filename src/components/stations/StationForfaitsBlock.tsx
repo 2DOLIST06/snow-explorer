@@ -185,7 +185,7 @@ function ForfaitsTable({ grid, notes }: { grid: Grid; notes: PriceNote[] }) {
   </>;
 }
 
-export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl, stationPage = false }: Props) {
+export default function StationForfaitsBlock({ enabled, columns = [], items = [], periods = [], season, source_url, sourceUrl, stationPage = false, headingLevel = "h2" }: Props & { headingLevel?: "h2" | "h3" }) {
   const seasonObject = typeof season === "object" && season ? season : null;
   const availablePeriods = periods.length ? periods : seasonObject?.periods || seasonObject?.pricing_periods || [];
   const orderedPeriods = useMemo(() => [...availablePeriods]
@@ -210,8 +210,9 @@ export default function StationForfaitsBlock({ enabled, columns = [], items = []
   const priceNotes = collectPriceNotes(grid);
   const source = source_url || sourceUrl || selected?.source_url || selected?.sourceUrl || seasonObject?.source_url || seasonObject?.sourceUrl;
   const seasonLabel = typeof season === "string" ? season : text(season?.label || season?.name);
+  const Heading = headingLevel;
   return <section className="forfaits-card">
-    <div className="forfaits-heading"><div><h2>Forfaits</h2>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
+    <div className="forfaits-heading"><div><Heading>Forfaits</Heading>{seasonLabel && <p>Saison {seasonLabel}</p>}</div>{source && <a className="btn btn--secondary" href={source} target="_blank" rel="noopener noreferrer">Voir les tarifs officiels</a>}</div>
     {stationPage && source && <p className="forfaits-conditions">Certaines conditions peuvent s&apos;appliquer. <a href={source} target="_blank" rel="noopener noreferrer">Voir les conditions tarifaires de la station</a>.</p>}
     {orderedPeriods.length > 1 && <label className="forfaits-period">Période<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{orderedPeriods.map((period, index) => <option key={idOf(period.id, String(index))} value={idOf(period.id, String(index))}>{periodLabel(period)}</option>)}</select></label>}
     {orderedPeriods.length === 1 && <p className="forfaits-period-label"><strong>Période</strong><span>{periodLabel(orderedPeriods[0])}</span></p>}

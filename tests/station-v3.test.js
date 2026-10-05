@@ -81,6 +81,27 @@ test("V3 SEO is self-referencing, indexable and keeps specific metadata", () => 
   assert.match(component, /<SectionHeading id="v3-overview-title"/);
 });
 
+test("V3 exposes matching social metadata and one visible-breadcrumb JSON-LD trail", () => {
+  for (const property of ["og:title", "og:description", "og:url", "og:type", "og:image"]) assert.match(component, new RegExp(`property="${property}"`));
+  for (const name of ["twitter:card", "twitter:title", "twitter:description", "twitter:image"]) assert.match(component, new RegExp(`name="${name}"`));
+  assert.match(component, /"@type": "BreadcrumbList"/);
+  assert.match(component, /name: "Accueil", item: `\$\{ORIGIN\}\/`/);
+  assert.match(component, /name: "Stations", item: `\$\{ORIGIN\}\/stations`/);
+  assert.match(component, /name: station\.name, item: canonical/);
+  assert.equal((component.match(/type="application\/ld\+json"/g) || []).length, 1);
+});
+
+test("V3 initial HTML contextualizes client-only weather and webcam widgets", () => {
+  assert.match(component, /Consultez les prévisions météo et les informations d’enneigement disponibles pour \{station\.name\}/);
+  assert.match(component, /Consultez les webcams disponibles pour \{station\.name\}/);
+  assert.match(component, /MeteoblueSkiWidget[^>]+headingLevel="h3"/);
+  assert.match(component, /WebcamsAuto[^>]+headingLevel="h3"/);
+  assert.match(component, /StationWebcamsBlock[^>]+headingLevel="h3"/);
+  assert.match(component, /StationForfaitsBlocks[^>]+headingLevel="h3"/);
+  assert.match(component, /PlanPistesFigure[^>]+headingLevel="h3"/);
+  assert.match(component, /StationMapCard headingLevel="h3"/);
+});
+
 test("V3 overview keeps the V1 presentation independently from optional V2 editorial content", () => {
   assert.deepEqual(getStationPresentation({ description_md: "Premier paragraphe.\n\nSecond paragraphe." }), ["Premier paragraphe.", "Second paragraphe."]);
   assert.deepEqual(getStationPresentation({}, { description: { html: "Texte historique V1" } }), ["Texte historique V1"]);
