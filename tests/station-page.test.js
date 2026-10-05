@@ -169,7 +169,7 @@ test("a recorded piste-map image is labelled like the webcam and weather cards",
 
   assert.match(
     stationPage,
-    /if \(!src\) \{[\s\S]*?return \([\s\S]*?<h2[^>]*>\s*Plan des pistes\s*<\/h2>[\s\S]*?<img src=\{src\}/,
+    /if \(!src\) \{[\s\S]*?return \([\s\S]*?<Heading[^>]*>\s*Plan des pistes\s*<\/Heading>[\s\S]*?<img src=\{src\}/,
   );
 });
 

@@ -85,12 +85,13 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
   );
 };
 
-export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; officialUrl?: string | null; caption?: string | null }> = ({
+export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; officialUrl?: string | null; caption?: string | null; headingLevel?: "h2" | "h3" }> = ({
   name,
   small,
   large,
   officialUrl,
   caption,
+  headingLevel = "h2",
 }) => {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -103,6 +104,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
   const officialMapUrl = normalizeOfficialMapUrl(officialUrl);
   if (!src && !officialMapUrl) return null;
   const big = textOrEmpty(large) || (small as string);
+  const Heading = headingLevel;
 
   if (!src) {
     const officialMap = getOfficialMapPresentation(officialMapUrl);
@@ -187,9 +189,9 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           padding: 12,
         }}
       >
-        <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>
+        <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>
           Plan des pistes
-        </h2>
+        </Heading>
         <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes de ${name}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt={`Plan des pistes de ${name}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
@@ -261,4 +263,3 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
     </>
   );
 };
-
