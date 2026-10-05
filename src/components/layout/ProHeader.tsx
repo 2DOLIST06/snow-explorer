@@ -61,6 +61,7 @@ export default function ProHeader({ initialStations }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [desktopHeaderMode, setDesktopHeaderMode] = useState<DesktopHeaderMode>("full");
   const [headerBarHeight, setHeaderBarHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const headerRef = useRef<HTMLElement | null>(null);
   const headerBarRef = useRef<HTMLDivElement | null>(null);
@@ -75,13 +76,25 @@ export default function ProHeader({ initialStations }: Props) {
 
     function measureHeaderBar() {
       setHeaderBarHeight(headerBar?.getBoundingClientRect().height ?? 0);
+      setHeaderHeight(headerRef.current?.getBoundingClientRect().height ?? 0);
     }
 
     measureHeaderBar();
     const observer = new ResizeObserver(measureHeaderBar);
     observer.observe(headerBar);
+    if (headerRef.current) observer.observe(headerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const visibleHeight = desktopHeaderMode === "hidden"
+      ? 0
+      : desktopHeaderMode === "navigation"
+        ? Math.max(0, headerHeight - headerBarHeight)
+        : headerHeight;
+    document.documentElement.style.setProperty("--site-header-visible-height", `${visibleHeight}px`);
+    return () => { document.documentElement.style.removeProperty("--site-header-visible-height"); };
+  }, [desktopHeaderMode, headerBarHeight, headerHeight]);
 
   useEffect(() => {
     let cancelled = false;
