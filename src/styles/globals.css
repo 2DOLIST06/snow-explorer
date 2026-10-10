@@ -151,3 +151,4 @@
 .station-result-card h2 a:hover,.ski-areas-directory h2 a:hover{text-decoration-color:currentColor}
 .ski-areas-hero>p:last-child{max-width:900px;margin-top:16px;color:#dbeafe;line-height:1.7}
 @media(max-width:700px){.directory-editorial{grid-template-columns:1fr;padding:24px 20px}}
+.station-directions{margin-top:16px;max-width:100%;min-height:44px;text-align:center;white-space:normal}.station-directions:focus-visible{outline:3px solid var(--accent);outline-offset:3px}@media(max-width:640px){.station-directions{width:100%}}

@@ -5,6 +5,17 @@ import { hasStationCoordinates } from "@/types/stationMap";
 
 type Props = { station: Partial<StationMapItem> & Pick<StationMapItem, "id" | "name" | "slug">; headingLevel?: "h2" | "h3" };
 
+export function stationDirectionsUrl(station: Partial<StationMapItem>): string | null {
+  if (!hasStationCoordinates(station) || Math.abs(station.latitude) > 90 || Math.abs(station.longitude) > 180) return null;
+  const url = new URL("https://www.google.com/maps/dir/?api=1");
+  url.search = new URLSearchParams({
+    api: "1",
+    destination: `${station.latitude},${station.longitude}`,
+    travelmode: "driving",
+  }).toString();
+  return url.toString();
+}
+
 function googleMapsUrl(station: Props["station"]): string {
   const location = [station.name, station.department, station.region, "France"].filter(Boolean).join(", ");
   const query = location || (hasStationCoordinates(station) ? `${station.latitude},${station.longitude}` : station.name);
