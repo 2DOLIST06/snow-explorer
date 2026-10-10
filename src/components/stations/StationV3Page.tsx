@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StationWidgetsConfig } from "@/types/station";
 import type { StationOption } from "@/types/skiArea";
@@ -11,7 +12,7 @@ import StationWebcamsBlock from "@/components/stations/StationWebcamsBlock";
 import { MeteoblueSkiWidget } from "@/components/stations/StationLegacyWeather";
 import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
-import StationMapCard from "@/components/maps/StationMapCard";
+import StationMapCard, { stationDirectionsUrl } from "@/components/maps/StationMapCard";
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import { getStationEditorialContent, getStationSectionData, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationContent";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
@@ -106,9 +107,11 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
 }
 
 function LocationAccess({ station }: { station: any }) {
+  const directionsUrl = stationDirectionsUrl(station);
   return <section className="v3-location" aria-labelledby="v3-location-title">
     <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation et accès à ${station.name}`} />
     <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
+    {directionsUrl ? <a className="btn btn--primary station-directions" href={directionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir le trajet sur Google Maps</a> : null}
   </section>;
 }
 
