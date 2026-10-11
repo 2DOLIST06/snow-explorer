@@ -20,18 +20,8 @@ export type Resort = {
   pistes_official_map_url?: string | null;
   pistes_map_caption?: string | null;
   pistes?: import("@/lib/publicPisteMap").PublicPisteMap;
-  meteo?: {
-    enabled?: boolean;
-    iframeUrl?: string | null;
-    iframe_url?: string | null;
-  };
   widgets?: {
     pistes?: import("@/lib/publicPisteMap").PublicPisteMap;
-    meteo?: {
-      enabled?: boolean;
-      iframeUrl?: string | null;
-      iframe_url?: string | null;
-    };
   };
   logo_url?: string | null;
   logoUrl?: string | null;
@@ -43,7 +33,6 @@ export type Resort = {
   v2_content?: Record<string, unknown> | null;
   v2_contents?: Record<string, unknown> | null;
   v2_published_sections?: string[] | Record<string, boolean> | null;
-  webcams?: unknown[];
 };
 
 type DepartmentRef = Resort["department"] | string | null | undefined;

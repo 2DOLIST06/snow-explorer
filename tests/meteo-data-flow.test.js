@@ -17,13 +17,11 @@ test("weather page uses its SSR directory without collection refetches", () => {
   assert.match(page, /onClick=\{\(\) => selectStation\(station\)\}/);
 });
 
-test("weather widget detail is fetched only when directory weather config is insufficient", () => {
+test("weather page always uses automatic forecasts without widget iframe reads", () => {
   const page = read("pages/meteo.tsx");
-
-  assert.match(page, /const directoryMeteo = selected\.meteo \|\| selected\.widgets\?\.meteo/);
-  assert.match(page, /if \(directoryIframeUrl \|\| directoryMeteo\?\.enabled === false\)/);
-  assert.match(page, /fetch\(`\/api\/ski\/stations\/\$\{encodeURIComponent\(selected\.slug\)\}-widgets`\)/);
-  assert.match(page, /!iframeUrl && selected\.latitude != null && selected\.longitude != null && <SkiWeatherWidget/);
+  assert.doesNotMatch(page, /iframe|loadingWidget|directoryMeteo|selected\.widgets|selected\.meteo|fetch\(/);
+  assert.match(page, /lat !== null && lon !== null && <SkiWeatherWidget/);
+  assert.match(page, /parseCoordinate\(selected\?\.latitude, 90\)/);
 });
 
 test("external weather fallback geocodes only missing coordinates", () => {

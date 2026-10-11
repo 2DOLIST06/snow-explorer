@@ -1,3 +1,4 @@
+const { normalizeSeasonDate } = require("./stationAutomaticData");
 const nonEmptyText = (value) => typeof value === "string" && value.trim() ? value.trim() : "";
 
 /**
@@ -47,8 +48,8 @@ function getStationOverviewScope(station = {}, widgets = null, skiArea = null) {
     elevationDrop: station.elevation_drop_m ?? station.vertical_drop_m ?? null,
     skiAreaKm: station.ski_area_km, pistesCount: station.pistes_count, liftsCount: station.lifts_count,
     snowparksCount: station.snowparks_count ?? widgets?.snowparks?.count,
-    openDate: station.season_open_date ?? widgets?.snow?.season?.openingDate ?? widgets?.snow?.openingDate ?? null,
-    closeDate: station.season_close_date ?? widgets?.snow?.season?.closingDate ?? widgets?.snow?.closingDate ?? null,
+    openDate: normalizeSeasonDate(station.season_open_date),
+    closeDate: normalizeSeasonDate(station.season_close_date),
     pistes: getStationPisteDetails(station, widgets),
   };
 }

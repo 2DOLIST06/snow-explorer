@@ -22,8 +22,8 @@ test("admin station uses the legacy values already supported by the public page"
 
   assert.equal(station.altitude_min_m, 1600);
   assert.equal(station.altitude_max_m, 2610);
-  assert.equal(station.season_open_date, "2026-12-05");
-  assert.equal(station.season_close_date, "2027-04-18");
+  assert.equal(station.season_open_date, null);
+  assert.equal(station.season_close_date, null);
   assert.equal(station.pistes_count, 30);
   assert.equal(station.lifts_count, 12);
   assert.equal(station.region_id, "paca");

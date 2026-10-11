@@ -1,3 +1,4 @@
+import { parseCoordinate } from "@/lib/stationAutomaticData";
 import React, { useEffect, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
@@ -27,13 +28,15 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
   const [showAll, setShowAll] = useState<boolean>(false);
 
   useEffect(() => {
+    let aborted = false;
+    setOpen(false);
     (async () => {
       try {
         setLoading(true);
         setErr(null);
-        const usedLat = Number(lat);
-        const usedLon = Number(lon);
-        if (!Number.isFinite(usedLat) || !Number.isFinite(usedLon)) {
+        const usedLat = parseCoordinate(lat, 90);
+        const usedLon = parseCoordinate(lon, 180);
+        if (usedLat === null || usedLon === null) {
           setErr("Coordonnées indisponibles.");
           setCams([]);
           return;
@@ -43,6 +46,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = await r.json();
+        if (aborted) return;
         const list: any[] = Array.isArray(j?.webcams) ? j.webcams : [];
 
         // tri par distance
@@ -65,12 +69,14 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
         setCams(in30);
         setActiveIndex(0);
       } catch (e: any) {
+        if (aborted) return;
         setErr(e?.message || "Erreur webcams");
         setCams([]);
       } finally {
-        setLoading(false);
+        if (!aborted) setLoading(false);
       }
     })();
+    return () => { aborted = true; };
   }, [name, lat, lon]);
 
   const MAX_STRIP = 6;

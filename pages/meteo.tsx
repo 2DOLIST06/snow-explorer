@@ -1,21 +1,18 @@
+import { parseCoordinate } from "@/lib/stationAutomaticData";
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin } from "lucide-react";
 import SkiWeatherWidget from "@/components/SkiWeatherWidget";
 import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
-
-type StationWidgets = { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null }; widgets?: { meteo?: { enabled?: boolean; iframeUrl?: string | null; iframe_url?: string | null } } };
 
 type Props = { initialStations: Resort[] };
 
 const MeteoPage: NextPage<Props> = ({ initialStations }) => {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Resort | null>(null);
-  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
-  const [loadingWidget, setLoadingWidget] = useState(false);
   const [mobilePickerOpen, setMobilePickerOpen] = useState(true);
   const pickerRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLElement>(null);
@@ -42,27 +39,8 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
     return needle ? initialStations.filter((station) => matchesSearch(`${station.name} ${station.region?.name || ""} ${station.department?.name || ""}`, needle)) : initialStations;
   }, [q, initialStations]);
 
-  useEffect(() => {
-    async function loadWidget() {
-      if (!selected?.slug) { setIframeUrl(null); return; }
-      const directoryMeteo = selected.meteo || selected.widgets?.meteo;
-      const directoryIframeUrl = directoryMeteo?.iframeUrl || directoryMeteo?.iframe_url || null;
-      if (directoryIframeUrl || directoryMeteo?.enabled === false) {
-        setIframeUrl(directoryIframeUrl);
-        setLoadingWidget(false);
-        return;
-      }
-      setLoadingWidget(true);
-      try {
-        const r = await fetch(`/api/ski/stations/${encodeURIComponent(selected.slug)}-widgets`);
-        if (!r.ok) throw new Error("station_fetch_failed");
-        const detail: StationWidgets = await r.json();
-        setIframeUrl(detail?.meteo?.iframeUrl || detail?.meteo?.iframe_url || detail?.widgets?.meteo?.iframeUrl || detail?.widgets?.meteo?.iframe_url || null);
-      } catch { setIframeUrl(null); }
-      finally { setLoadingWidget(false); }
-    }
-    loadWidget();
-  }, [selected]);
+  const lat = parseCoordinate(selected?.latitude, 90);
+  const lon = parseCoordinate(selected?.longitude, 180);
 
   return (
     <>
@@ -84,7 +62,7 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
         </aside>
         <section ref={contentRef} className="weather-content">
           {selected && <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>Météo à {selected.name}</h2></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></div>}
-          {!selected && <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Sélectionnez une station pour consulter ses conditions météo et ses prévisions.</span></div>}{loadingWidget && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}{selected && !loadingWidget && iframeUrl && <div className="embedded-weather"><iframe src={iframeUrl} title={`Météo ${selected.name}`} loading="lazy" /></div>}{selected && !loadingWidget && !iframeUrl && selected.latitude != null && selected.longitude != null && <SkiWeatherWidget name={selected.name} lat={selected.latitude} lon={selected.longitude} />}{selected && !loadingWidget && !iframeUrl && !(selected.latitude != null && selected.longitude != null) && <div className="notice notice--warning"><strong>Météo indisponible</strong><span>Aucun widget météo ou coordonnées ne sont configurés pour {selected.name}.</span></div>}
+          {!selected && <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Sélectionnez une station pour consulter ses conditions météo et ses prévisions.</span></div>}{selected && lat !== null && lon !== null && <SkiWeatherWidget name={selected.name} lat={lat} lon={lon} />}{selected && (lat === null || lon === null) && <div className="notice notice--warning"><strong>Météo indisponible</strong><span>Coordonnées indisponibles pour {selected.name}.</span></div>}
         </section>
       </section>
       <section className="directory-editorial">

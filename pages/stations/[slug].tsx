@@ -56,7 +56,6 @@ type Resort = {
   pistes_colors?: Record<string, number | null> | null;
   elevation_drop_m?: number | null;
   vertical_drop_m?: number | null;
-  webcams?: unknown[];
 };
 
 interface Props {
@@ -176,7 +175,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       caption: resolvedPistes.caption,
       ...(SHOW_PISTE_COLOR_DETAILS && cfg.pistes?.colors ? { colors: cfg.pistes.colors } : {}),
     },
-    meteo: { enabled: Boolean(cfg.meteo?.enabled), iframeUrl: cfg.meteo?.iframeUrl || null },
+    meteo: { enabled: false },
     description: {
       enabled: Boolean(cfg.description?.enabled),
       html: cfg.description?.html || null,
@@ -185,17 +184,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     },
     forfaits: stationForfaits.forfaits,
     ...(normalizedForfaits ? { normalizedForfaits } : {}),
-    webcams: { enabled: Boolean(cfg.webcams?.enabled), items: cfg.webcams?.items || [] },
-    snow: {
-      enabled: Boolean(cfg.snow?.enabled),
-      iframeUrl: cfg.snow?.iframeUrl || null,
-      openingDate: cfg.snow?.openingDate || null,
-      closingDate: cfg.snow?.closingDate || null,
-      ...(cfg.snow?.season ? { season: {
-        openingDate: cfg.snow.season.openingDate || null,
-        closingDate: cfg.snow.season.closingDate || null,
-      } } : {}),
-    },
+    webcams: { enabled: false, items: [] },
+    snow: { enabled: false },
     snowpark: {
       enabled: Boolean(cfg.snowpark?.enabled),
       mapUrl: cfg.snowpark?.mapUrl || null,
@@ -248,7 +238,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     ...(resort.pistes_colors ? { pistes_colors: resort.pistes_colors } : {}),
     elevation_drop_m: resort.elevation_drop_m ?? null,
     vertical_drop_m: resort.vertical_drop_m ?? null,
-    ...(Array.isArray(resort.webcams) ? { webcams: resort.webcams } : {}),
   };
 
   return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations } };
