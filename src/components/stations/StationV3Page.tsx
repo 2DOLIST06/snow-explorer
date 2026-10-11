@@ -1,3 +1,4 @@
+import { parseCoordinate } from "@/lib/stationAutomaticData";
 import Head from "next/head";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
@@ -6,9 +7,6 @@ import type { StationWidgetsConfig } from "@/types/station";
 import type { StationOption } from "@/types/skiArea";
 import StationLegacyHero from "@/components/stations/StationLegacyHero";
 import StationForfaitsBlocks, { hasStationForfaits } from "@/components/stations/StationForfaitsBlocks";
-import StationMeteoWidget from "@/components/stations/StationMeteoWidget";
-import StationSnowWidget from "@/components/stations/StationSnowWidget";
-import StationWebcamsBlock from "@/components/stations/StationWebcamsBlock";
 import { MeteoblueSkiWidget } from "@/components/stations/StationLegacyWeather";
 import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
@@ -61,28 +59,26 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
   </section>;
 }
 
-function Weather({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
+function Weather({ station }: { station: any }) {
   const data = getStationSectionData(station, "meteo-neige");
-  const hasCoordinates = Number.isFinite(Number(station.latitude)) && Number.isFinite(Number(station.longitude));
+  const lat = parseCoordinate(station.latitude, 90);
+  const lon = parseCoordinate(station.longitude, 180);
   const updated = data.updated_at || data.observed_at;
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-weather-title">
     <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement à ${station.name}`} intro="Prévisions et informations neige disponibles pour la station." />
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
-    <div className="v3-widget-grid">{hasCoordinates ? <MeteoblueSkiWidget lat={station.latitude} lon={station.longitude} headingLevel="h3" /> : null}<StationMeteoWidget enabled={Boolean(widgets?.meteo?.enabled && widgets.meteo.iframeUrl)} iframeUrl={widgets?.meteo?.iframeUrl || undefined} /><StationSnowWidget enabled={Boolean(widgets?.snow?.enabled && widgets.snow.iframeUrl)} iframeUrl={widgets?.snow?.iframeUrl || undefined} /></div>
+    <div className="v3-widget-grid"><MeteoblueSkiWidget lat={lat} lon={lon} headingLevel="h3" /></div>
     {updated ? <p className="v3-updated">Mise à jour : <time dateTime={updated}>{new Date(updated).toLocaleString("fr-FR")}</time></p> : null}
   </section>;
 }
 
-function Webcams({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
-  const data = getStationSectionData(station, "webcams");
-  const items = data.items ?? data.webcams ?? station.webcams ?? widgets?.webcams?.items ?? [];
-  const hasCoordinates = Number.isFinite(Number(station.latitude)) && Number.isFinite(Number(station.longitude));
+function Webcams({ station }: { station: any }) {
   return <section className="v3-floor" aria-labelledby="v3-webcams-title">
     <SectionHeading id="v3-webcams-title" eyebrow="En direct" title={`Webcams de ${station.name}`} />
     {editorial(getStationEditorialContent(station, "webcams"))}
     <p className="v3-highlight">Consultez les webcams disponibles pour {station.name}.</p>
-    <div className="v3-media-stage">{Array.isArray(items) && items.length ? <StationWebcamsBlock enabled items={items} headingLevel="h3" /> : hasCoordinates ? <WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /> : <p className="v3-empty">Webcam non disponible pour cette station.</p>}</div>
+    <div className="v3-media-stage"><WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
   </section>;
 }
 
@@ -123,8 +119,8 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   const location = stationLocation(station);
   const canonical = `${ORIGIN}/stations/${encodeURIComponent(station.slug)}`;
   const sections: Record<StationV3Section, ReactNode> = {
-    apercu: <Overview station={station} widgets={widgets} />, "meteo-neige": <Weather station={station} widgets={widgets} />,
-    webcams: <Webcams station={station} widgets={widgets} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
+    apercu: <Overview station={station} widgets={widgets} />, "meteo-neige": <Weather station={station} />,
+    webcams: <Webcams station={station} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
     "plan-des-pistes": <PisteMap station={station} widgets={widgets} />,
     "localisation-acces": <LocationAccess station={station} />,
   };

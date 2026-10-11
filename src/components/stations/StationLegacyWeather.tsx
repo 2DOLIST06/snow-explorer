@@ -1,3 +1,4 @@
+import { parseCoordinate } from "@/lib/stationAutomaticData";
 import React, { useEffect, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
@@ -60,11 +61,11 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
   const [current, setCurrent] = useState<{ temp: number; wind_kmh: number; code: number | null } | null>(null);
   const [forecast, setForecast] = useState<OpenMeteoDaily[]>([]);
 
-  const usedLat = Number(lat);
-  const usedLon = Number(lon);
+  const usedLat = parseCoordinate(lat, 90);
+  const usedLon = parseCoordinate(lon, 180);
 
   useEffect(() => {
-    if (!Number.isFinite(usedLat) || !Number.isFinite(usedLon)) {
+    if (usedLat === null || usedLon === null) {
       setErr("Coordonnées indisponibles.");
       setLoading(false);
       setCurrent(null);
@@ -104,7 +105,7 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
           date: d,
           temp_min: typeof tmin[idx] === "number" ? Math.round(tmin[idx]) : NaN,
           temp_max: typeof tmax[idx] === "number" ? Math.round(tmax[idx]) : NaN,
-          snow_cm: typeof snow[idx] === "number" ? Math.round(snow[idx]) : 0,
+          snow_cm: typeof snow[idx] === "number" ? Math.round(snow[idx]) : NaN,
           code: typeof codes[idx] === "number" ? codes[idx] : 0,
         }));
 
@@ -126,7 +127,7 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
     };
   }, [usedLat, usedLon]);
 
-  if (!Number.isFinite(usedLat) || !Number.isFinite(usedLon)) {
+  if (usedLat === null || usedLon === null) {
     return (
       <Card title="Météo & neige" headingLevel={headingLevel}>
         <div style={{ fontSize: 13, color: "#4b5563" }}>Coordonnées indisponibles.</div>
@@ -233,7 +234,7 @@ export const MeteoblueSkiWidget: React.FC<{ lat?: number | null; lon?: number | 
                       >
                         <span style={{ fontSize: 13 }}>❄️</span>
                         <span style={{ fontSize: 12 }}>
-                          {d.snow_cm > 0 ? `${d.snow_cm} cm de neige` : "Pas de neige prévue"}
+                          {!Number.isFinite(d.snow_cm) ? "Prévision neige indisponible" : d.snow_cm > 0 ? `${d.snow_cm} cm de neige` : "Pas de neige prévue"}
                         </span>
                       </div>
                     </div>
