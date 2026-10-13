@@ -1,0 +1,15 @@
+.panel { min-width: 0; max-width: 100%; padding: 22px; margin-top: 18px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-sm); overflow-wrap: anywhere; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.heading h3 { color: var(--brand); font-size: 1.35rem; }
+.level { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 12px; color: var(--brand); }
+.level strong { font-size: 1.8rem; }
+.level span { font-weight: 800; }
+.dates { display: grid; gap: 8px; margin-top: 12px; }
+.dates > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.dates dt, .source { color: var(--muted); font-size: .85rem; }
+.summary { margin-top: 14px; white-space: pre-line; }
+.disclaimer { margin-top: 16px; padding: 16px; background: var(--surface-2); border-radius: 16px; line-height: 1.6; }
+.source { margin-top: 14px; }
+.pdf { display: inline-block; margin-top: 12px; text-decoration: underline; }
+.pdf:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+@media (max-width: 640px) { .panel { padding: 16px; } }

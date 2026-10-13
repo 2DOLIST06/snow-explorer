@@ -8,6 +8,7 @@ import type { StationOption } from "@/types/skiArea";
 import StationLegacyHero from "@/components/stations/StationLegacyHero";
 import StationForfaitsBlocks, { hasStationForfaits } from "@/components/stations/StationForfaitsBlocks";
 import StationWeather from "@/components/weather/StationWeather";
+import StationAvalancheRisk from "@/components/avalanche/StationAvalancheRisk";
 import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import StationMapCard, { stationDirectionsUrl } from "@/components/maps/StationMapCard";
@@ -68,6 +69,7 @@ function Weather({ station }: { station: any }) {
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
     <StationWeather slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
+    <StationAvalancheRisk key={station.slug} slug={station.slug} />
   </section>;
 }
 
