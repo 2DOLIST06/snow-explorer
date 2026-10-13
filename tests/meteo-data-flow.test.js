@@ -20,14 +20,13 @@ test("weather page uses its SSR directory without collection refetches", () => {
 test("weather page always uses automatic forecasts without widget iframe reads", () => {
   const page = read("pages/meteo.tsx");
   assert.doesNotMatch(page, /iframe|loadingWidget|directoryMeteo|selected\.widgets|selected\.meteo|fetch\(/);
-  assert.match(page, /lat !== null && lon !== null && <SkiWeatherWidget/);
+  assert.match(page, /selected && <StationWeather/);
   assert.match(page, /parseCoordinate\(selected\?\.latitude, 90\)/);
 });
 
-test("external weather fallback geocodes only missing coordinates", () => {
-  const widget = read("src/components/SkiWeatherWidget.tsx");
-
-  assert.match(widget, /if \(usedLat == null \|\| usedLon == null\)/);
-  assert.match(widget, /nominatim\.openstreetmap\.org\/search/);
-  assert.match(widget, /fetch\(`\/api\/ski-weather\?lat=\$\{usedLat\}&lon=\$\{usedLon\}`/);
+test("shared weather keeps observations independent from missing forecast coordinates", () => {
+  const widget = read("src/components/weather/StationWeather.tsx");
+  assert.match(widget, /fetchStationWeather\(slug, signal\)/);
+  assert.match(widget, /lat === null \|\| lon === null/);
+  assert.doesNotMatch(widget, /nominatim|current_weather|snow_depth_cm.*Open-Meteo/);
 });

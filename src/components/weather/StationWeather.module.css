@@ -1,0 +1,37 @@
+.weather { display: grid; gap: 18px; min-width: 0; max-width: 100%; }
+.panel { min-width: 0; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-sm); }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.heading h2, .heading h3 { color: var(--brand); font-size: 1.35rem; }
+.indicators { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-block: 16px; }
+.indicators > div { background: var(--surface-2); padding: 16px; border-radius: 16px; }
+.indicators dt, .metadata dt, .forecast dt { color: var(--muted); font-size: .85rem; }
+.indicators dd, .forecast dd { font-weight: 800; margin-top: 5px; color: var(--brand); }
+.temperature dd { font-size: 1.8rem; }
+.snow { padding: 18px; border-radius: 16px; background: #eefafe; border: 1px solid #bae6fd; margin-bottom: 16px; }
+.snow h3, .snow h4 { color: var(--brand); margin-bottom: 10px; }
+.snow dd { font-size: 1.6rem; color: var(--brand); font-weight: 800; }
+.snow p { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+.metadata { display: grid; gap: 8px; }
+.metadata > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.metadata dd { overflow-wrap: anywhere; }
+.attribution, .description { color: var(--muted); font-size: .85rem; }
+.attribution { margin-top: 14px; }
+.description { margin-bottom: 14px; }
+.forecasts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.forecasts:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.forecast { border: 1px solid var(--line); border-radius: 16px; padding: 14px; min-width: 0; }
+.forecast time { color: var(--brand); font-weight: 800; }
+.forecast dl { display: grid; gap: 10px; }
+.weatherIcon { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); margin-block: 12px; font-size: .85rem; }
+.forecastSnow { background: #eefafe; border-radius: 10px; padding: 8px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 640px) {
+  .panel { padding: 16px; }
+  .indicators { grid-template-columns: 1fr; }
+  .forecasts { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 4px 4px 12px; }
+  .forecast { flex: 0 0 180px; scroll-snap-align: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .weather :global(.skeleton-panel) div { animation: none; }
+  .forecasts { scroll-behavior: auto; }
+}
