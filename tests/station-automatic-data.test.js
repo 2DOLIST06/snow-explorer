@@ -51,7 +51,6 @@ const StationPage = load('src/components/stations/StationV3Page.tsx', (name) => 
   const stub = () => null;
   stubs.set(name, stub);
   if (name.includes('StationLegacyWebcams')) return { WebcamsAuto: stub };
-  if (name.includes('StationLegacyWeather')) return { MeteoblueSkiWidget: stub };
   return { __esModule: true, default: stub };
 }).default;
 function find(node, predicate) {
@@ -75,17 +74,17 @@ test('station sections select automatic components despite disabled widgets and 
     assert.equal(find(camTree, (n) => n.type === 'iframe'), null);
     const weather = find(tree, (n) => n.type?.name === 'Weather');
     const weatherTree = weather.type(weather.props);
-    const auto = find(weatherTree, (n) => n.type === stubs.get('@/components/stations/StationLegacyWeather'));
-    assert.equal(auto.props.lat, null);
-    assert.equal(auto.props.lon, null);
+    const auto = find(weatherTree, (n) => n.type === stubs.get('@/components/weather/StationWeather'));
+    assert.equal(auto.props.latitude, null);
+    assert.equal(auto.props.longitude, null);
     assert.equal(find(weatherTree, (n) => n.type === 'iframe'), null);
   }
 });
 
-test('Windy and station weather effects make no request for invalid coordinates and use explicit zero', async () => {
+test('Windy effects make no request for invalid coordinates and use explicit zero', async () => {
   const originalFetch = global.fetch;
   try {
-    for (const [file, exportName] of [['StationLegacyWebcams', 'WebcamsAuto'], ['StationLegacyWeather', 'MeteoblueSkiWidget']]) {
+    for (const [file, exportName] of [['StationLegacyWebcams', 'WebcamsAuto']]) {
       for (const lat of [null, undefined, '', ' ', false, true, 91, 0, '0']) {
         const effects = [];
         const requests = [];

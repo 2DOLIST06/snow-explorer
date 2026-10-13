@@ -28,7 +28,7 @@ test("V3 location and access is an internal reorderable section", () => {
 });
 
 test("V3 reuses the public business widgets and legacy hero", () => {
-  for (const reused of ["StationLegacyHero", "StationForfaitsBlocks", "MeteoblueSkiWidget", "WebcamsAuto", "PlanPistesFigure", "StationMapCard", "SkiAreaPublicCard"]) assert.match(component, new RegExp(reused));
+  for (const reused of ["StationLegacyHero", "StationForfaitsBlocks", "StationWeather", "WebcamsAuto", "PlanPistesFigure", "StationMapCard", "SkiAreaPublicCard"]) assert.match(component, new RegExp(reused));
   assert.match(component, /resolveStationPisteMap/);
   assert.match(component, /getStationEditorialContent/);
 });
@@ -94,7 +94,7 @@ test("V3 exposes matching social metadata and one visible-breadcrumb JSON-LD tra
 test("V3 initial HTML contextualizes client-only weather and webcam widgets", () => {
   assert.match(component, /Consultez les prévisions météo et les informations d’enneigement disponibles pour \{station\.name\}/);
   assert.match(component, /Consultez les webcams disponibles pour \{station\.name\}/);
-  assert.match(component, /MeteoblueSkiWidget[^>]+headingLevel="h3"/);
+  assert.match(component, /StationWeather[^>]+headingLevel="h3"/);
   assert.match(component, /WebcamsAuto[^>]+headingLevel="h3"/);
   assert.doesNotMatch(component, /StationWebcamsBlock/);
   assert.match(component, /StationForfaitsBlocks[^>]+headingLevel="h3"/);
