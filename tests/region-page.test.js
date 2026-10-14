@@ -84,6 +84,26 @@ test('admin preserves editorial H1 on save, allows clearing and retains useful e
  tree.unmount();
 });
 
+test('SSR inserts the single existing station list at the first marker', () => {
+ for (const description_html of [
+  '<h2>Avant</h2><p>{{REGION_STATIONS}}</p><h3>Après</h3>',
+  '<p>Avant {{REGION_STATIONS}} Après {{REGION_STATIONS}}</p>',
+  '{{REGION_STATIONS}}<p>Après</p>',
+  '<p>Avant</p>{{REGION_STATIONS}}',
+ ]) {
+  const html = renderToStaticMarkup(React.createElement(page.default, { region:{name:'Alpes', slug:'alpes', description_html}, resorts:[{id:'s',name:'Station unique',slug:'unique'}] }));
+  const list = html.indexOf('region-page__stations');
+  if (description_html.includes('Avant')) assert.ok(html.indexOf('Avant') < list);
+  if (description_html.includes('Après')) assert.ok(html.indexOf('Après') > list);
+  assert.equal((html.match(/region-page__stations/g)||[]).length, 1);
+  assert.equal((html.match(/Station unique/g)||[]).length, 1);
+  assert.doesNotMatch(html, /REGION_STATIONS/);
+  const { JSDOM } = require('jsdom');
+  const doc = new JSDOM(html).window.document;
+  assert.equal(doc.querySelector('.region-page__stations').parentElement.tagName, 'MAIN');
+ }
+});
+
 test('SSR generates no H1 unless present in editorial HTML and preserves freely authored H1s', () => {
  for (const content of ['<h2>Massifs</h2><p>Texte</p>', '<h1>Premier</h1><p>Texte</p><h1>Second</h1>']) {
   const html = renderToStaticMarkup(React.createElement(page.default, { region: { name:'Alpes', description_html:content }, resorts:[] }));
