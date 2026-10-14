@@ -1,39 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { cleanRegionHtml, getRegionDescription, normalizeRegionLink } = require('../src/lib/regionHtml');
-
-test('description_html is authoritative, even when deliberately cleared', () => {
-  assert.equal(getRegionDescription({ description_html: '', seo_text: '<p>Old</p>' }), '');
-  assert.equal(getRegionDescription({ description_html: null, seo_text: 'Old' }), '');
-  assert.equal(getRegionDescription({ description_html: '<h2>New</h2>', seo_text: 'Old' }), '<h2>New</h2>');
-  assert.equal(getRegionDescription({ seo_text: '<p>Legacy</p>' }), '<p>Legacy</p>');
+const { sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent } = require('../src/lib/regionHtml');
+test('preserves all supported editorial tags and absolute links', () => {
+ const html = '<h2>Titre</h2><h3>Détail</h3><p><strong>Gras</strong><em>Italique</em><br /><a href="https://example.com/page">Lien</a></p><ul><li>A</li></ul><ol><li>B</li></ol><blockquote>Citation</blockquote>';
+ assert.equal(sanitizeRegionHtml(html), html);
 });
-test('allowed formatting survives cleaning and a simulated backend storage round trip', () => {
-  const html = '<h2>Massifs</h2><h3>Alpes</h3><p><strong>Gras</strong> <em>Italique</em><br />Neige</p><ul><li>Une station</li></ul><ol><li>Deux</li></ol><blockquote><p>Citation</p></blockquote><p><a href="/stations/test">Station</a></p>';
-  const saved = cleanRegionHtml(html);
-  const backend = JSON.parse(JSON.stringify({ seo_text: saved, description_html: saved }));
-  assert.equal(cleanRegionHtml(getRegionDescription(backend)), saved);
-  for (const tag of ['h2', 'h3', 'strong', 'em', 'br', 'ul', 'ol', 'li', 'blockquote', 'a']) assert.match(saved, new RegExp(`<${tag}[ >]`));
-  assert.match(saved, /href="https:\/\/www.snow-explorer.com\/stations\/test"/);
+test('removes active content, attributes, unsupported formats and unsafe links', () => {
+ const html = sanitizeRegionHtml('<script>alert(1)</script><h1>X</h1><p onclick="evil()"><u>U</u><s>S</s><img src=x onerror=evil()><a href="javascript:evil()">J</a><a href="//evil.com">P</a><a href="/relative">R</a></p>');
+ assert.equal(html, 'X<p>US<a>J</a><a>P</a><a>R</a></p>');
+ assert.equal(sanitizeRegionHtml('<a href="java&#x73;cript:alert(1)">X</a>'), '<a>X</a>');
 });
-test('HTML source and API HTML cannot execute scripts or dangerous links', () => {
-  const payloads = [
-    '<script>alert(1)</script><p onclick="alert(1)">Safe</p>',
-    '<img src=x onerror=alert(1)><iframe srcdoc="<script>alert(1)</script>"></iframe>',
-    '<a href="javascript:alert(1)">X</a><a href="java&#x73;cript:alert(1)">X</a>',
-    '<a href="data:text/html,test">X</a><svg><a xlink:href="javascript:alert(1)">X</a></svg>',
-    '<math><mtext><table><mglyph><style><!--</style><img title="--><img src=x onerror=alert(1)>">',
-    '<p style="background:url(javascript:alert(1))" onmouseover="alert(1)">Safe</p>',
-  ];
-  for (const payload of payloads) {
-    const safe = cleanRegionHtml(payload);
-    assert.doesNotMatch(safe, /<\/?(?:script|iframe|img|svg|math|style)\b|\son\w+=|\sstyle=|href="(?:javascript|data):/i);
-    assert.equal(cleanRegionHtml(safe), safe);
-  }
+test('explicit empty description never falls back to seo_text', () => {
+ assert.equal(regionDescription({ description_html: '', seo_text: '<p>Ancien</p>' }), '');
+ assert.equal(regionDescription({ seo_text: '<p>Ancien</p>' }), '');
+ assert.equal(hasRegionContent('<p><br /></p>'), false);
+ assert.equal(hasRegionContent('<p>&nbsp;</p>'), false);
+ assert.equal(hasRegionContent('<h2>Région</h2>'), true);
 });
-test('links accept internal paths and web URLs, rejecting unsafe protocols', () => {
-  assert.equal(normalizeRegionLink('/regions/alpes'), 'https://www.snow-explorer.com/regions/alpes');
-  assert.equal(normalizeRegionLink('http://www.snow-explorer.com/stations/test'), 'https://www.snow-explorer.com/stations/test');
-  assert.equal(normalizeRegionLink('https://example.com/page'), 'https://example.com/page');
-  for (const url of ['javascript:alert(1)', 'data:text/html,a', 'https://user:pass@example.com', 'java\nscript:alert(1)', '\\evil.com', '']) assert.equal(normalizeRegionLink(url), '');
+test('internal links become absolute, unsafe schemes are rejected', () => {
+ assert.equal(absoluteRegionLink('/stations/test'), 'https://www.snow-explorer.com/stations/test');
+ for (const href of ['javascript:alert(1)', '//evil.com', 'data:text/html,x', '', 'relative']) assert.equal(absoluteRegionLink(href), null);
+ assert.equal(absoluteRegionLink('https://example.com'), 'https://example.com/');
 });

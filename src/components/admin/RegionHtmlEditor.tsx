@@ -20,7 +20,7 @@ export default function RegionHtmlEditor({ value, onChange, disabled = false }: 
     editorProps: { attributes: { role: "textbox", "aria-label": "Description de la région", "aria-multiline": "true", class: "region-rich-text" } },
     onUpdate: ({ editor: current }) => onChange(current.isEmpty ? "" : cleanRegionHtml(current.getHTML())),
   });
-  useEffect(() => { editor?.setEditable(!disabled && !source); }, [editor, disabled, source]);
+  useEffect(() => { editor?.setEditable(!disabled && !source, false); }, [editor, disabled, source]);
   useEffect(() => {
     if (editor && !source && cleanRegionHtml(editor.getHTML()) !== cleanRegionHtml(value)) editor.commands.setContent(cleanRegionHtml(value), false);
   }, [editor, value, source]);

@@ -1,38 +1,33 @@
-const sanitizeHtml = require("sanitize-html");
-const REGION_ORIGIN = "https://www.snow-explorer.com";
-
-// An explicitly empty description is authoritative, including when seo_text is stale.
-function getRegionDescription(region) {
-  if (Object.prototype.hasOwnProperty.call(region || {}, "description_html")) {
-    return typeof region.description_html === "string" ? region.description_html : "";
-  }
-  return typeof region?.seo_text === "string" ? region.seo_text : "";
-}
-
-function normalizeRegionLink(value) {
-  const input = String(value || "").trim();
-  if (!input || /[\u0000-\u0020\u007f\\]/.test(input)) return "";
+const sanitizeHtml = require('sanitize-html');
+const REGION_ORIGIN = 'https://www.snow-explorer.com';
+function absoluteRegionLink(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const link = value.trim();
+  if (/[\u0000-\u0020\u007f\\]/.test(link)) return null;
+  if (!/^https?:\/\//i.test(link) && !/^\/(?!\/)/.test(link)) return null;
   try {
-    const url = new URL(input, REGION_ORIGIN);
-    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return "";
-    if (url.hostname === new URL(REGION_ORIGIN).hostname) url.protocol = "https:";
+    const url = new URL(link, REGION_ORIGIN);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    if (url.hostname === new URL(REGION_ORIGIN).hostname) url.protocol = 'https:';
     return url.href;
-  } catch { return ""; }
+  } catch { return null; }
 }
-
-function cleanRegionHtml(html) {
-  return sanitizeHtml(String(html || ""), {
-    allowedTags: ["p", "br", "h2", "h3", "strong", "b", "em", "i", "ul", "ol", "li", "blockquote", "a"],
-    allowedAttributes: { a: ["href", "title"] },
-    allowedSchemes: ["https", "http"],
-    allowProtocolRelative: false,
-    transformTags: {
-      a: (_tag, attributes) => {
-        const href = normalizeRegionLink(attributes.href);
-        return { tagName: "a", attribs: { ...(href ? { href } : {}), ...(attributes.title ? { title: attributes.title } : {}) } };
-      },
-    },
-  }).trim();
+function sanitizeRegionHtml(value, normalizeLinks = false) {
+  return sanitizeHtml(typeof value === 'string' ? value : '', {
+    allowedTags: ['p', 'br', 'h2', 'h3', 'strong', 'em', 'ul', 'ol', 'li', 'blockquote', 'a'],
+    allowedAttributes: { a: ['href'] }, allowedSchemes: ['http', 'https'], allowProtocolRelative: false,
+    transformTags: { a: (tagName, attributes) => {
+      const href = (normalizeLinks || /^https?:\/\//i.test(attributes.href || '')) ? absoluteRegionLink(attributes.href) : null;
+      return { tagName, attribs: href ? { href } : {} };
+    } },
+  });
 }
+function regionDescription(region) {
+  // An explicitly empty description must never resurrect historical seo_text.
+  return typeof region?.description_html === 'string' ? region.description_html : '';
+}
+function hasRegionContent(html) { return sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).replace(/&(?:nbsp|#160);/g, ' ').trim().length > 0; }
+function normalizeRegionLink(value) { return absoluteRegionLink(value) || ''; }
+function cleanRegionHtml(value) { return sanitizeRegionHtml(value, true).trim(); }
 
-module.exports = { REGION_ORIGIN, getRegionDescription, normalizeRegionLink, cleanRegionHtml };
+module.exports = { sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent, normalizeRegionLink, cleanRegionHtml };

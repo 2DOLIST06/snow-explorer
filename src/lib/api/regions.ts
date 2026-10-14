@@ -42,3 +42,18 @@ export async function fetchRegionsServer(): Promise<RegionSummary[]> {
   console.error("[regions] Unable to fetch the public region directory", failures.join("; "));
   return [];
 }
+
+/** Detail is the SEO source: directory/embedded records can omit these fields. */
+export async function fetchRegionDetailServer(id: string): Promise<RegionSummary | null> {
+  for (const base of getServerApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/regions/${encodeURIComponent(id)}`, { headers: { accept: "application/json" } });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const region = payload?.region || payload?.data || payload;
+      if (region && typeof region === "object" && !Array.isArray(region)) return region as RegionSummary;
+    } catch { /* Try the next configured backend. */ }
+  }
+  console.error("[regions] Unable to fetch region SEO detail", id);
+  return null;
+}

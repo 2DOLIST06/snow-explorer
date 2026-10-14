@@ -43,7 +43,8 @@ test('actual WYSIWYG toolbar formats text, handles links, history and source mod
   const tiptap = require('@tiptap/react');
   const Editor = load('src/components/admin/RegionHtmlEditor.tsx', { '@tiptap/react': { ...tiptap, useEditor: (...args) => { realEditor = tiptap.useEditor(...args); return realEditor; } } }).default;
   let html = '<p>Alpes</p>';
-  function Harness() { const [value, setValue] = React.useState(html); return React.createElement(Editor, { value, onChange: next => { html = next; setValue(next); } }); }
+  let disabled = false;
+  function Harness() { const [value, setValue] = React.useState(html); return React.createElement(Editor, { value, disabled, onChange: next => { html = next; setValue(next); } }); }
   const { createRoot } = require('react-dom/client');
   const root = createRoot(document.getElementById('root'));
   await act(async () => root.render(React.createElement(Harness))); await flush();
@@ -68,6 +69,11 @@ test('actual WYSIWYG toolbar formats text, handles links, history and source mod
   await click('Effacer le formatage'); assert.equal(html, '<p>Alpes</p>');
   await click('Saut de ligne'); assert.match(html, /<br/);
   await click('HTML source'); await change(document.querySelector('textarea'), '<h2>Source</h2><script>alert(1)</script><p><a href="/regions/test">Lien</a></p>');
+  const sourceBeforeSaving = html;
+  disabled = true; await act(async () => root.render(React.createElement(Harness))); await flush();
+  assert.equal(html, sourceBeforeSaving, 'disabling during save must not emit stale visual HTML');
+  disabled = false; await act(async () => root.render(React.createElement(Harness))); await flush();
+  assert.equal(html, sourceBeforeSaving, 're-enabling must not overwrite HTML source');
   await click('Éditeur visuel'); assert.match(html, /<h2>Source<\/h2>/); assert.doesNotMatch(html, /script/); assert.match(html, /https:\/\/www.snow-explorer.com\/regions\/test/);
   await click('HTML source'); await change(document.querySelector('textarea'), ''); await click('Éditeur visuel'); assert.equal(html, '');
   await act(async () => root.unmount()); dom.window.close();
@@ -78,6 +84,7 @@ test('public region SSR retains SEO and renders safe HTML before stations, inclu
   const regions = load('src/lib/regions.ts');
   const page = load('pages/regions/[slug].tsx', {
     '@/lib/regions': regions,
+    '@/lib/api/regions': { fetchRegionDetailServer: async () => ({ description_html: '<h2>Massifs</h2><p><a href="https://www.snow-explorer.com/stations/test">Station</a></p><script>alert(1)</script>' }) },
     '@/lib/api/resorts': { getServerApiBases: () => ['https://backend.test'], getServerResortsApiUrls: () => ['https://backend.test/api/resorts/'], parseResortsPayload: payload => payload },
     'next/head': { __esModule: true, default: ({ children }) => React.createElement(React.Fragment, null, children) },
     'next/link': { __esModule: true, default: ({ children, ...props }) => React.createElement('a', props, children) },
@@ -92,7 +99,7 @@ test('public region SSR retains SEO and renders safe HTML before stations, inclu
     assert.ok(html.indexOf('<h2>Massifs</h2>') < html.indexOf('region-page__stations'));
     assert.match(html, /<title>Titre personnalisé<\/title>/);
     assert.match(html, /<meta name="description" content="Description personnalisée"/);
-    assert.match(html, /<h1>Stations de ski en Alpes<\/h1>/);
+    assert.match(html, /<h1>Alpes<\/h1>/);
     assert.match(html, /href="https:\/\/www.snow-explorer.com\/regions\/alpes"/);
     assert.match(html, /aria-label="Fil d’Ariane"/);
     assert.match(html, /href="https:\/\/www.snow-explorer.com\/stations\/test"/);
