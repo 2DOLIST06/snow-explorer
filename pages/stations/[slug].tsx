@@ -185,7 +185,15 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     forfaits: stationForfaits.forfaits,
     ...(normalizedForfaits ? { normalizedForfaits } : {}),
     webcams: { enabled: false, items: [] },
-    snow: { enabled: false },
+    snow: {
+      enabled: false,
+      openingDate: cfg.snow?.openingDate ?? null,
+      closingDate: cfg.snow?.closingDate ?? null,
+      ...(cfg.snow?.season ? { season: {
+        openingDate: cfg.snow.season.openingDate ?? null,
+        closingDate: cfg.snow.season.closingDate ?? null,
+      } } : {}),
+    },
     snowpark: {
       enabled: Boolean(cfg.snowpark?.enabled),
       mapUrl: cfg.snowpark?.mapUrl || null,

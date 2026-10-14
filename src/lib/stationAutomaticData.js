@@ -14,4 +14,16 @@ function normalizeSeasonDate(value) {
   if (value !== match[1] && !Number.isFinite(Date.parse(value))) return null;
   return match[1];
 }
-module.exports = { parseCoordinate, normalizeSeasonDate };
+/** Prefer station dates, then the nested and flat legacy snow dates. */
+function resolveStationSeasonDates(station = {}, widgets = null) {
+  const snow = widgets?.snow;
+  return {
+    openDate: normalizeSeasonDate(station.season_open_date)
+      ?? normalizeSeasonDate(snow?.season?.openingDate)
+      ?? normalizeSeasonDate(snow?.openingDate),
+    closeDate: normalizeSeasonDate(station.season_close_date)
+      ?? normalizeSeasonDate(snow?.season?.closingDate)
+      ?? normalizeSeasonDate(snow?.closingDate),
+  };
+}
+module.exports = { parseCoordinate, normalizeSeasonDate, resolveStationSeasonDates };
