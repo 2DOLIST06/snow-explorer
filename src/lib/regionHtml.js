@@ -3,14 +3,23 @@ const REGION_ORIGIN = 'https://www.snow-explorer.com';
 function absoluteRegionLink(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
   const link = value.trim();
+  if (/[\u0000-\u0020\u007f\\]/.test(link)) return null;
   if (!/^https?:\/\//i.test(link) && !/^\/(?!\/)/.test(link)) return null;
-  try { const url = new URL(link, REGION_ORIGIN); return ['http:', 'https:'].includes(url.protocol) ? url.href : null; } catch { return null; }
+  try {
+    const url = new URL(link, REGION_ORIGIN);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    if (url.hostname === new URL(REGION_ORIGIN).hostname) url.protocol = 'https:';
+    return url.href;
+  } catch { return null; }
 }
-function sanitizeRegionHtml(value) {
+function sanitizeRegionHtml(value, normalizeLinks = false) {
   return sanitizeHtml(typeof value === 'string' ? value : '', {
     allowedTags: ['p', 'br', 'h2', 'h3', 'strong', 'em', 'ul', 'ol', 'li', 'blockquote', 'a'],
     allowedAttributes: { a: ['href'] }, allowedSchemes: ['http', 'https'], allowProtocolRelative: false,
-    transformTags: { a: (tagName, attributes) => ({ tagName, attribs: /^https?:\/\//i.test(attributes.href || '') && absoluteRegionLink(attributes.href) ? { href: attributes.href } : {} }) },
+    transformTags: { a: (tagName, attributes) => {
+      const href = (normalizeLinks || /^https?:\/\//i.test(attributes.href || '')) ? absoluteRegionLink(attributes.href) : null;
+      return { tagName, attribs: href ? { href } : {} };
+    } },
   });
 }
 function regionDescription(region) {
@@ -18,4 +27,7 @@ function regionDescription(region) {
   return typeof region?.description_html === 'string' ? region.description_html : '';
 }
 function hasRegionContent(html) { return sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).replace(/&(?:nbsp|#160);/g, ' ').trim().length > 0; }
-module.exports = { sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent };
+function normalizeRegionLink(value) { return absoluteRegionLink(value) || ''; }
+function cleanRegionHtml(value) { return sanitizeRegionHtml(value, true).trim(); }
+
+module.exports = { sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent, normalizeRegionLink, cleanRegionHtml };
