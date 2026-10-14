@@ -6,3 +6,7 @@ export function hasRegionContent(html: string): boolean;
 
 export function normalizeRegionLink(value: string): string;
 export function cleanRegionHtml(value: string): string;
+
+export const REGION_STATIONS: string;
+export function splitRegionDescription(value: unknown): { before: string; after: string; hasMarker: boolean };
+export function regionEditorHtml(value: string): string;

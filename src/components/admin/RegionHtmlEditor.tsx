@@ -1,8 +1,34 @@
 import { useEffect, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { cleanRegionHtml, normalizeRegionLink } from "@/lib/regionHtml";
+import { cleanRegionHtml, normalizeRegionLink, regionEditorHtml, REGION_STATIONS } from "@/lib/regionHtml";
+
+const RegionStations = Node.create({
+  name: "regionStations", group: "block", atom: true, draggable: true, selectable: true,
+  parseHTML: () => [{ tag: 'div[data-region-stations]' }],
+  renderHTML: () => ["p", {}, REGION_STATIONS],
+  addNodeView() {
+    return ({ editor, getPos }) => {
+      const dom = document.createElement("div");
+      dom.className = "region-stations-placeholder";
+      dom.contentEditable = "false";
+      const label = document.createElement("span");
+      label.textContent = "↕ Liste automatique des stations";
+      label.title = "Glissez ce bloc pour le repositionner, ou coupez-collez-le.";
+      const remove = document.createElement("button");
+      remove.type = "button"; remove.textContent = "Supprimer";
+      remove.setAttribute("aria-label", "Supprimer la liste automatique des stations");
+      remove.addEventListener("click", () => {
+        const pos = getPos();
+        if (editor.isEditable && typeof pos === "number") editor.chain().focus().deleteRange({ from: pos, to: pos + 1 }).run();
+      });
+      dom.append(label, remove);
+      return { dom, stopEvent: event => remove.contains(event.target as globalThis.Node) };
+    };
+  },
+});
 
 type Props = { value: string; onChange: (html: string) => void; disabled?: boolean };
 export default function RegionHtmlEditor({ value, onChange, disabled = false }: Props) {
@@ -13,16 +39,17 @@ export default function RegionHtmlEditor({ value, onChange, disabled = false }: 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
+      RegionStations,
       StarterKit.configure({ heading: { levels: [2, 3] }, strike: false, code: false, codeBlock: false, horizontalRule: false }),
       Link.configure({ openOnClick: false, autolink: false, linkOnPaste: false, HTMLAttributes: { target: null, rel: null } }),
     ],
-    content: cleanRegionHtml(value),
+    content: regionEditorHtml(value),
     editorProps: { attributes: { role: "textbox", "aria-label": "Description de la région", "aria-multiline": "true", class: "region-rich-text" } },
     onUpdate: ({ editor: current }) => onChange(current.isEmpty ? "" : cleanRegionHtml(current.getHTML())),
   });
   useEffect(() => { editor?.setEditable(!disabled && !source, false); }, [editor, disabled, source]);
   useEffect(() => {
-    if (editor && !source && cleanRegionHtml(editor.getHTML()) !== cleanRegionHtml(value)) editor.commands.setContent(cleanRegionHtml(value), false);
+    if (editor && !source && cleanRegionHtml(editor.getHTML()) !== cleanRegionHtml(value)) editor.commands.setContent(regionEditorHtml(value), false);
   }, [editor, value, source]);
   if (!editor) return <p>Chargement de l’éditeur…</p>;
   const button = (label: string, action: () => void, active = false, unavailable = false) =>
@@ -46,12 +73,13 @@ export default function RegionHtmlEditor({ value, onChange, disabled = false }: 
       {button("Puces", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
       {button("Liste numérotée", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
       {button("Citation", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
+      {button("Insérer les stations", () => editor.chain().focus().insertContent({ type: "regionStations" }).run())}
       {button("Lien", () => { setHref(editor.getAttributes("link").href || ""); setLinkError(""); setLinkOpen(true); }, editor.isActive("link"))}
       {button("Supprimer le lien", () => editor.chain().focus().extendMarkRange("link").unsetLink().run(), false, !editor.isActive("link"))}
       {button("Annuler", () => editor.chain().focus().undo().run(), false, !editor.can().undo())}
       {button("Rétablir", () => editor.chain().focus().redo().run(), false, !editor.can().redo())}
       {button("Effacer le formatage", () => editor.chain().focus().unsetAllMarks().clearNodes().run())}
-      <button type="button" disabled={disabled} aria-pressed={source} onClick={() => { if (source) { const html = cleanRegionHtml(value); editor.commands.setContent(html); onChange(editor.isEmpty ? "" : cleanRegionHtml(editor.getHTML())); } setSource(!source); setLinkOpen(false); }}>{source ? "Éditeur visuel" : "HTML source"}</button>
+      <button type="button" disabled={disabled} aria-pressed={source} onClick={() => { if (source) { const html = cleanRegionHtml(value); editor.commands.setContent(regionEditorHtml(html)); onChange(editor.isEmpty ? "" : cleanRegionHtml(editor.getHTML())); } setSource(!source); setLinkOpen(false); }}>{source ? "Éditeur visuel" : "HTML source"}</button>
     </div>
     {linkOpen && !source && <div className="region-editor-link" role="group" aria-label="Modifier le lien">
       <label htmlFor="region-link">Adresse du lien</label>

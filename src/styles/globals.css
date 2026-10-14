@@ -193,3 +193,7 @@
 .region-editor-source textarea{font-family:monospace;font-size:16px}
 #region-description-label{font-weight:900;margin-bottom:8px}
 @media(max-width:650px){.admin-region-editor{padding:14px}.region-rich-text{padding:12px}.region-editor-toolbar{gap:4px;padding:6px}.region-editor-toolbar button{font-size:14px;padding:8px}.region-editor-link input{min-width:0;flex-basis:100%}.admin-region-editor input,.admin-region-editor textarea{font-size:16px}}
+
+.region-stations-placeholder{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px;margin:16px 0;border:2px dashed #0284c7;border-radius:8px;background:#f0f9ff;color:#075985;cursor:grab}
+.region-stations-placeholder.ProseMirror-selectednode{outline:3px solid #0284c7}
+.region-stations-placeholder button{cursor:pointer;padding:6px 10px}
