@@ -14,7 +14,7 @@ function absoluteRegionLink(value) {
 }
 function sanitizeRegionHtml(value, normalizeLinks = false) {
   return sanitizeHtml(typeof value === 'string' ? value : '', {
-    allowedTags: ['p', 'br', 'h2', 'h3', 'strong', 'em', 'ul', 'ol', 'li', 'blockquote', 'a'],
+    allowedTags: ['p', 'br', 'h1', 'h2', 'h3', 'strong', 'em', 'ul', 'ol', 'li', 'blockquote', 'a'],
     allowedAttributes: { a: ['href'] }, allowedSchemes: ['http', 'https'], allowProtocolRelative: false,
     transformTags: { a: (tagName, attributes) => {
       const href = (normalizeLinks || /^https?:\/\//i.test(attributes.href || '')) ? absoluteRegionLink(attributes.href) : null;

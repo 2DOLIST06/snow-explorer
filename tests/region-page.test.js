@@ -20,18 +20,20 @@ function load(file, overrides = {}) {
 }
 const page = load(path.join(__dirname, '../pages/regions/[slug].tsx'));
 test('SSR emits editorial links before stations, custom metadata and safe breadcrumb JSON', () => {
- const html = renderToStaticMarkup(React.createElement(page.default, { region: { name: 'Alpes', slug:'alpes', meta_title:'Titre personnalisé', meta_description:'Description personnalisée', description_html:'<h2>Éditorial</h2><p><a href="https://example.com">Lien éditorial</a></p><script>evil()</script>' }, resorts:[] }));
+ const html = renderToStaticMarkup(React.createElement(page.default, { region: { name: 'Alpes', slug:'alpes', meta_title:'Titre personnalisé', meta_description:'Description personnalisée', description_html:'<h1>Titre libre</h1><h2>Éditorial</h2><p><a href="https://example.com">Lien éditorial</a></p><script>evil()</script>' }, resorts:[] }));
  assert.ok(html.indexOf('Lien éditorial') < html.indexOf('region-page__stations'));
  assert.match(html, /<title>Titre personnalisé<\/title>/);
  assert.match(html, /content="Description personnalisée"/);
  assert.match(html, /href="https:\/\/www.snow-explorer.com\/regions\/alpes"/);
  assert.match(html, /BreadcrumbList/);
  assert.equal((html.match(/<h1>/g) || []).length, 1);
+ assert.match(html, /<h1>Titre libre<\/h1>/);
+ assert.match(html, /<div class="region-page__title">Alpes<\/div>/);
  assert.doesNotMatch(html, /evil\(\)/);
 });
 test('empty description omits editorial section and uses default metadata', () => {
  const html = renderToStaticMarkup(React.createElement(page.default, { region: { name:'Alpes', description_html:'', seo_text:'Ancien' }, resorts:[] }));
- assert.doesNotMatch(html, /region-page__seo|Ancien/);
+ assert.doesNotMatch(html, /region-page__seo|Ancien|<h1\b/);
  assert.match(html, /Stations de ski en Alpes \| Snow Explorer/);
 });
 test('SSR fetches canonical detail while keeping historical geography and URL', async () => {
@@ -50,7 +52,7 @@ test('SSR fetches canonical detail while keeping historical geography and URL', 
 });
 
 const renderer = require('react-test-renderer');
-test('admin saves an explicitly empty description_html and retains useful errors', async () => {
+test('admin preserves editorial H1 on save, allows clearing and retains useful errors', async () => {
  const requests = [];
  let fail = false;
  const api = { adminFetch: async (url, init = {}) => {
@@ -65,6 +67,12 @@ test('admin saves an explicitly empty description_html and retains useful errors
  });
  let tree;
  await renderer.act(async () => { tree = renderer.create(React.createElement(admin.default)); });
+ const editorial = '<h1>Titre libre</h1><h2>Massifs</h2>';
+ await renderer.act(async () => { tree.root.findByProps({ 'data-editor':true }).props.onChange({ target:{ value:editorial } }); });
+ await renderer.act(async () => { tree.root.findAllByType('button').find(b => b.children.includes('Enregistrer')).props.onClick(); });
+ assert.equal(JSON.parse(requests.find(r => r.init.method === 'PATCH').init.body).description_html, editorial);
+ assert.equal(tree.root.findByProps({ 'data-editor':true }).props.value, editorial);
+ requests.length = 0;
  await renderer.act(async () => { tree.root.findByProps({ 'data-editor':true }).props.onChange({ target:{ value:'' } }); });
  await renderer.act(async () => { tree.root.findAllByType('button').find(b => b.children.includes('Enregistrer')).props.onClick(); });
  const patch = requests.find(r => r.init.method === 'PATCH');
@@ -93,5 +101,13 @@ test('SSR inserts the single existing station list at the first marker', () => {
   const { JSDOM } = require('jsdom');
   const doc = new JSDOM(html).window.document;
   assert.equal(doc.querySelector('.region-page__stations').parentElement.tagName, 'MAIN');
+ }
+});
+
+test('SSR generates no H1 unless present in editorial HTML and preserves freely authored H1s', () => {
+ for (const content of ['<h2>Massifs</h2><p>Texte</p>', '<h1>Premier</h1><p>Texte</p><h1>Second</h1>']) {
+  const html = renderToStaticMarkup(React.createElement(page.default, { region: { name:'Alpes', description_html:content }, resorts:[] }));
+  assert.ok(html.includes(content));
+  assert.equal((html.match(/<h1>/g) || []).length, (content.match(/<h1>/g) || []).length);
  }
 });

@@ -33,7 +33,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
     </Head>
     <main className="region-page">
       <nav aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span> &gt; </span><Link href="/stations">Stations</Link><span> &gt; </span><span aria-current="page">{region.name}</span></nav>
-      <header className="region-page__hero"><p className="eyebrow">Destination montagne</p><h1>{region.name}</h1><p>{resorts.length} station{resorts.length > 1 ? "s" : ""} à découvrir dans la région.</p></header>
+      <header className="region-page__hero"><p className="eyebrow">Destination montagne</p><div className="region-page__title">{region.name}</div><p>{resorts.length} station{resorts.length > 1 ? "s" : ""} à découvrir dans la région.</p></header>
       {hasRegionContent(before) && <section className="region-page__seo" aria-label={`Présentation de ${region.name}`} dangerouslySetInnerHTML={{ __html: before }} />}
       <section className="region-page__stations" aria-labelledby="region-stations-title">
         <h2 id="region-stations-title">Les stations de {region.name}</h2>

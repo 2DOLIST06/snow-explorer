@@ -52,6 +52,9 @@ test('actual WYSIWYG toolbar formats text, handles links, history and source mod
   const select = async () => { await act(async () => { const current = view(); current.dispatch(current.state.tr.setSelection(TextSelection.create(current.state.doc, 1, current.state.doc.content.size - 1))); }); };
   await select(); await click('Gras'); assert.match(html, /<strong>Alpes<\/strong>/);
   await click('Italique'); assert.match(html, /<em>/);
+  await click('H1'); assert.match(html, /<h1>/);
+  assert.equal(document.querySelector('button[aria-pressed="true"]').textContent, 'H1');
+  await click('H1'); assert.match(html, /<p>/);
   await click('H2'); assert.match(html, /<h2>/);
   await click('H3'); assert.match(html, /<h3>/);
   await click('Paragraphe'); assert.match(html, /<p>/);
@@ -68,13 +71,13 @@ test('actual WYSIWYG toolbar formats text, handles links, history and source mod
   await click('Annuler'); assert.match(html, /<a /); await click('Rétablir'); assert.doesNotMatch(html, /<a /);
   await click('Effacer le formatage'); assert.equal(html, '<p>Alpes</p>');
   await click('Saut de ligne'); assert.match(html, /<br/);
-  await click('HTML source'); await change(document.querySelector('textarea'), '<h2>Source</h2><script>alert(1)</script><p><a href="/regions/test">Lien</a></p>');
+  await click('HTML source'); await change(document.querySelector('textarea'), '<h1>Titre source</h1><h2>Source</h2><script>alert(1)</script><p><a href="/regions/test">Lien</a></p>');
   const sourceBeforeSaving = html;
   disabled = true; await act(async () => root.render(React.createElement(Harness))); await flush();
   assert.equal(html, sourceBeforeSaving, 'disabling during save must not emit stale visual HTML');
   disabled = false; await act(async () => root.render(React.createElement(Harness))); await flush();
   assert.equal(html, sourceBeforeSaving, 're-enabling must not overwrite HTML source');
-  await click('Éditeur visuel'); assert.match(html, /<h2>Source<\/h2>/); assert.doesNotMatch(html, /script/); assert.match(html, /https:\/\/www.snow-explorer.com\/regions\/test/);
+  await click('Éditeur visuel'); assert.match(html, /<h1>Titre source<\/h1>/); assert.match(html, /<h2>Source<\/h2>/); assert.doesNotMatch(html, /script/); assert.match(html, /https:\/\/www.snow-explorer.com\/regions\/test/);
   await act(async () => { realEditor.commands.setContent('<p>Avant Après</p>'); realEditor.commands.setTextSelection(7); });
   await click('Insérer les stations');
   assert.match(html, /REGION_STATIONS/);
@@ -103,12 +106,12 @@ test('public region SSR retains SEO and renders safe HTML before stations, inclu
   const regions = load('src/lib/regions.ts');
   const page = load('pages/regions/[slug].tsx', {
     '@/lib/regions': regions,
-    '@/lib/api/regions': { fetchRegionDetailServer: async () => ({ description_html: '<h2>Massifs</h2><p><a href="https://www.snow-explorer.com/stations/test">Station</a></p><script>alert(1)</script>' }) },
+    '@/lib/api/regions': { fetchRegionDetailServer: async () => ({ description_html: '<h1>Titre éditorial</h1><h2>Massifs</h2><p><a href="https://www.snow-explorer.com/stations/test">Station</a></p><script>alert(1)</script>' }) },
     '@/lib/api/resorts': { getServerApiBases: () => ['https://backend.test'], getServerResortsApiUrls: () => ['https://backend.test/api/resorts/'], parseResortsPayload: payload => payload },
     'next/head': { __esModule: true, default: ({ children }) => React.createElement(React.Fragment, null, children) },
     'next/link': { __esModule: true, default: ({ children, ...props }) => React.createElement('a', props, children) },
   });
-  const region = { id: 'alpes', slug: 'alpes', name: 'Alpes', meta_title: 'Titre personnalisé', meta_description: 'Description personnalisée', description_html: '<h2>Massifs</h2><p><a href="/stations/test">Station</a></p><script>alert(1)</script>', seo_text: 'Obsolète' };
+  const region = { id: 'alpes', slug: 'alpes', name: 'Alpes', meta_title: 'Titre personnalisé', meta_description: 'Description personnalisée', description_html: '<h1>Titre éditorial</h1><h2>Massifs</h2><p><a href="/stations/test">Station</a></p><script>alert(1)</script>', seo_text: 'Obsolète' };
   const resorts = [{ id: 'test', name: 'Station test', slug: 'test', is_active: true, region }];
   const originalFetch = global.fetch;
   try {
@@ -118,12 +121,14 @@ test('public region SSR retains SEO and renders safe HTML before stations, inclu
     assert.ok(html.indexOf('<h2>Massifs</h2>') < html.indexOf('region-page__stations'));
     assert.match(html, /<title>Titre personnalisé<\/title>/);
     assert.match(html, /<meta name="description" content="Description personnalisée"/);
-    assert.match(html, /<h1>Alpes<\/h1>/);
+    assert.match(html, /<h1>Titre éditorial<\/h1>/);
+    assert.equal((html.match(/<h1>/g) || []).length, 1);
+    assert.match(html, /<div class="region-page__title">Alpes<\/div>/);
     assert.match(html, /href="https:\/\/www.snow-explorer.com\/regions\/alpes"/);
     assert.match(html, /aria-label="Fil d’Ariane"/);
     assert.match(html, /href="https:\/\/www.snow-explorer.com\/stations\/test"/);
     assert.doesNotMatch(html, /<script>|Obsolète/);
     const empty = renderToStaticMarkup(React.createElement(page.default, { ...result.props, region: { ...region, description_html: '' } }));
-    assert.doesNotMatch(empty, /region-page__seo|Obsolète|Massifs/);
+    assert.doesNotMatch(empty, /region-page__seo|Obsolète|Massifs|<h1\b/);
   } finally { global.fetch = originalFetch; }
 });
