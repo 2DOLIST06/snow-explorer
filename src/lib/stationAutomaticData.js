@@ -7,6 +7,13 @@ function parseCoordinate(value, limit) {
 }
 function normalizeSeasonDate(value) {
   if (typeof value !== "string") return null;
+  // The API also serializes SQL dates as RFC 1123 / HTTP dates.
+  const httpDate = /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), (\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/.exec(value);
+  if (httpDate) {
+    if (Number(httpDate[4]) > 23 || Number(httpDate[5]) > 59 || Number(httpDate[6]) > 59) return null;
+    const month = String(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(httpDate[2]) + 1).padStart(2, '0');
+    return normalizeSeasonDate(`${httpDate[3]}-${month}-${httpDate[1]}`);
+  }
   const match = /^(\d{4}-\d{2}-\d{2})(?:T.*)?$/.exec(value);
   if (!match) return null;
   const date = new Date(match[1] + "T00:00:00Z");
