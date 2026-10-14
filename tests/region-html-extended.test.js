@@ -9,11 +9,11 @@ test('description_html is authoritative, even when deliberately cleared', () => 
   assert.equal(getRegionDescription({ seo_text: '<p>Legacy</p>' }), '');
 });
 test('allowed formatting survives cleaning and a simulated backend storage round trip', () => {
-  const html = '<h2>Massifs</h2><h3>Alpes</h3><p><strong>Gras</strong> <em>Italique</em><br />Neige</p><ul><li>Une station</li></ul><ol><li>Deux</li></ol><blockquote><p>Citation</p></blockquote><p><a href="/stations/test">Station</a></p>';
+  const html = '<h1>Destination</h1><h2>Massifs</h2><h3>Alpes</h3><p><strong>Gras</strong> <em>Italique</em><br />Neige</p><ul><li>Une station</li></ul><ol><li>Deux</li></ol><blockquote><p>Citation</p></blockquote><p><a href="/stations/test">Station</a></p>';
   const saved = cleanRegionHtml(html);
   const backend = JSON.parse(JSON.stringify({ seo_text: saved, description_html: saved }));
   assert.equal(cleanRegionHtml(getRegionDescription(backend)), saved);
-  for (const tag of ['h2', 'h3', 'strong', 'em', 'br', 'ul', 'ol', 'li', 'blockquote', 'a']) assert.match(saved, new RegExp(`<${tag}[ >]`));
+  for (const tag of ['h1', 'h2', 'h3', 'strong', 'em', 'br', 'ul', 'ol', 'li', 'blockquote', 'a']) assert.match(saved, new RegExp(`<${tag}[ >]`));
   assert.match(saved, /href="https:\/\/www.snow-explorer.com\/stations\/test"/);
 });
 test('HTML source and API HTML cannot execute scripts or dangerous links', () => {

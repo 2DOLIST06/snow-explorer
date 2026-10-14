@@ -13,7 +13,7 @@ export default function RegionHtmlEditor({ value, onChange, disabled = false }: 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] }, strike: false, code: false, codeBlock: false, horizontalRule: false }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, strike: false, code: false, codeBlock: false, horizontalRule: false }),
       Link.configure({ openOnClick: false, autolink: false, linkOnPaste: false, HTMLAttributes: { target: null, rel: null } }),
     ],
     content: cleanRegionHtml(value),
@@ -38,6 +38,7 @@ export default function RegionHtmlEditor({ value, onChange, disabled = false }: 
   return <div className="region-html-editor">
     <div className="region-editor-toolbar" role="group" aria-label="Mise en forme de la description">
       {button("Paragraphe", () => editor.chain().focus().setParagraph().run(), editor.isActive("paragraph"))}
+      {button("H1", () => editor.chain().focus().toggleHeading({ level: 1 }).run(), editor.isActive("heading", { level: 1 }))}
       {button("H2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive("heading", { level: 2 }))}
       {button("H3", () => editor.chain().focus().toggleHeading({ level: 3 }).run(), editor.isActive("heading", { level: 3 }))}
       {button("Gras", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
