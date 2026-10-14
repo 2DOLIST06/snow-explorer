@@ -206,7 +206,8 @@ test('PDF proxy rechecks current bulletin and does not serve stale assets or ups
 });
 test('integration is V3 only, separate from weather, with no direct provider calls or credentials', () => {
   const page = fs.readFileSync('src/components/stations/StationV3Page.tsx', 'utf8');
-  assert.match(page, /<StationWeather[^>]*\/>\s*<StationAvalancheRisk/);
+  assert.match(page, /<StationWeatherTabs/);
+  assert.match(fs.readFileSync('src/components/weather/StationWeatherTabs.tsx', 'utf8'), /<StationAvalancheRisk/);
   for (const file of ['pages/meteo.tsx', 'pages/stations/[slug]/snowpark.tsx', 'src/components/weather/StationWeather.tsx']) assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /StationAvalancheRisk|DPBRA/);
   for (const file of ['src/lib/api/avalanche.ts', 'src/components/avalanche/StationAvalancheRisk.tsx', 'pages/api/stations/[slug]/avalanche-risk.ts', 'pages/api/stations/[slug]/avalanche-risk/pdf.ts']) assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /public-api\.meteofrance\.fr|apikey|METEOFRANCE.*KEY|\bany\b/);
   const forecast = fs.readFileSync('src/lib/api/weather.ts', 'utf8');

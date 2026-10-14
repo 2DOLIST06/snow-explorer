@@ -74,7 +74,7 @@ test('station sections select automatic components despite disabled widgets and 
     assert.equal(find(camTree, (n) => n.type === 'iframe'), null);
     const weather = find(tree, (n) => n.type?.name === 'Weather');
     const weatherTree = weather.type(weather.props);
-    const auto = find(weatherTree, (n) => n.type === stubs.get('@/components/weather/StationWeather'));
+    const auto = find(weatherTree, (n) => n.type === stubs.get('@/components/weather/StationWeatherTabs'));
     assert.equal(auto.props.latitude, null);
     assert.equal(auto.props.longitude, null);
     assert.equal(find(weatherTree, (n) => n.type === 'iframe'), null);

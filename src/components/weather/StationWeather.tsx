@@ -96,13 +96,18 @@ export function ForecastConditions({ resource, headingLevel = 'h3' }: { resource
   </section>;
 }
 
-function StationWeatherContent({ slug, name, latitude, longitude, headingLevel = 'h3' }: StationWeatherProps) {
+export function useStationWeatherResources({ slug, latitude, longitude }: StationWeatherProps) {
   const lat = parseCoordinate(latitude, 90);
   const lon = parseCoordinate(longitude, 180);
   const loadObservations = useCallback((signal: AbortSignal) => fetchStationWeather(slug, signal), [slug]);
   const loadForecast = useCallback((signal: AbortSignal) => lat === null || lon === null ? Promise.reject(new Error('Missing coordinates')) : fetchWeatherForecast(lat, lon, signal), [lat, lon]);
   const observations = useWeatherResource(loadObservations);
   const forecasts = useWeatherResource(loadForecast);
+  return { observations, forecasts };
+}
+
+function StationWeatherContent({ name, headingLevel = 'h3', ...props }: StationWeatherProps) {
+  const { observations, forecasts } = useStationWeatherResources({ name, ...props });
   return <div className={styles.weather} aria-label={`Météo à ${name}`}>
     <ObservedConditions resource={observations} headingLevel={headingLevel} />
     <ForecastConditions resource={forecasts} headingLevel={headingLevel} />
