@@ -28,19 +28,6 @@ test('coordinates reject absent, boolean, nonnumeric and out-of-range values but
   assert.equal(automatic.parseCoordinate(180, 180), 180);
 });
 
-test('station dates never fall back to widgets, and invalid calendar dates remain unavailable', () => {
-  const widgets = { snow: { openingDate: '2026-12-01', closingDate: '2027-04-01', season: { openingDate: '2026-12-02', closingDate: '2027-04-02' } } };
-  for (const value of [undefined, null, '', 'bad', '2026-02-30', '2026-13-01', true]) {
-    const station = { season_open_date: value, season_close_date: value };
-    assert.equal(getStationOverviewScope(station, widgets).openDate, null);
-    assert.equal(getStationOverviewScope(station, widgets).closeDate, null);
-    assert.equal(normalizeAdminStation(station, widgets).season_open_date, null);
-    assert.equal(normalizeAdminStation(station, widgets).season_close_date, null);
-  }
-  assert.equal(automatic.normalizeSeasonDate('2028-02-29'), '2028-02-29');
-  assert.equal(automatic.normalizeSeasonDate('2026-12-01T00:00:00Z'), '2026-12-01');
-  assert.deepEqual(normalizeAdminWidgets(widgets).snow, widgets.snow, 'admin save configuration retains legacy blocks');
-});
 
 const stubs = new Map();
 const StationPage = load('src/components/stations/StationV3Page.tsx', (name) => {

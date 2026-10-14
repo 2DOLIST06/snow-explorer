@@ -1,4 +1,4 @@
-const { normalizeSeasonDate } = require("./stationAutomaticData");
+const { resolveStationSeasonDates } = require("./stationAutomaticData");
 const firstDefined = (...values) => values.find((value) => value !== null && value !== undefined);
 const { nonEmptyString, resolveStationPisteMap } = require("./stationPisteMap");
 
@@ -14,6 +14,7 @@ const sumDefinedNumbers = (values) => {
  * which is already displayed publicly is not reported as missing.
  */
 function normalizeAdminStation(resort = {}, widgets = {}) {
+  const dates = resolveStationSeasonDates(resort, widgets);
   const colors = widgets?.pistes?.colors || {};
   const lifts = widgets?.remontees || {};
 
@@ -23,8 +24,8 @@ function normalizeAdminStation(resort = {}, widgets = {}) {
     department: firstDefined(resort.department, null),
     altitude_min_m: firstDefined(resort.altitude_min_m, resort.altitude_base_m, null),
     altitude_max_m: firstDefined(resort.altitude_max_m, resort.altitude_top_m, null),
-    season_open_date: normalizeSeasonDate(resort.season_open_date),
-    season_close_date: normalizeSeasonDate(resort.season_close_date),
+    season_open_date: dates.openDate,
+    season_close_date: dates.closeDate,
     pistes_count: firstDefined(
       resort.pistes_count,
       sumDefinedNumbers([colors.green, colors.blue, colors.red, colors.black]),
