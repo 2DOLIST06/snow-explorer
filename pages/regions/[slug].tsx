@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getServerResortsApiUrls, parseResortsPayload } from "@/lib/api/resorts";
 import { fetchRegionDetailServer } from "@/lib/api/regions";
-import { sanitizeRegionHtml, regionDescription, hasRegionContent } from "@/lib/regionHtml";
+import { splitRegionDescription, regionDescription, hasRegionContent } from "@/lib/regionHtml";
 import { isRegionMatch, regionSlug, type RegionSummary } from "@/lib/regions";
 
 type Resort = { id: string; name: string; slug: string; is_active?: boolean | null; region?: RegionSummary };
@@ -14,7 +14,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
   const slug = regionSlug(region);
   const title = region.meta_title?.trim() || `Stations de ski en ${region.name} | Snow Explorer`;
   const description = region.meta_description?.trim() || `Découvrez les stations de ski de la région ${region.name}, leurs pistes, webcams, météo et informations pratiques.`;
-  const html = sanitizeRegionHtml(regionDescription(region));
+  const { before, after } = splitRegionDescription(regionDescription(region));
   const canonical = `https://www.snow-explorer.com/regions/${slug}`;
   const breadcrumbJsonLd = {
     "@context": "https://schema.org", "@type": "BreadcrumbList",
@@ -34,7 +34,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
     <main className="region-page">
       <nav aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span> &gt; </span><Link href="/stations">Stations</Link><span> &gt; </span><span aria-current="page">{region.name}</span></nav>
       <header className="region-page__hero"><p className="eyebrow">Destination montagne</p><h1>{region.name}</h1><p>{resorts.length} station{resorts.length > 1 ? "s" : ""} à découvrir dans la région.</p></header>
-      {hasRegionContent(html) && <section className="region-page__seo" aria-label={`Présentation de ${region.name}`} dangerouslySetInnerHTML={{ __html: html }} />}
+      {hasRegionContent(before) && <section className="region-page__seo" aria-label={`Présentation de ${region.name}`} dangerouslySetInnerHTML={{ __html: before }} />}
       <section className="region-page__stations" aria-labelledby="region-stations-title">
         <h2 id="region-stations-title">Les stations de {region.name}</h2>
         <div className="station-results-grid">{resorts.map((resort) => <article key={resort.id} className="station-result-card">
@@ -42,6 +42,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
           <Link href={`/stations/${resort.slug}`} className="station-result-card__link">Voir la station <ArrowRight size={16} /></Link>
         </article>)}</div>
       </section>
+      {hasRegionContent(after) && <section className="region-page__seo" aria-label={`Suite de la présentation de ${region.name}`} dangerouslySetInnerHTML={{ __html: after }} />}
     </main>
   </>;
 };

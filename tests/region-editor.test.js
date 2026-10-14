@@ -75,6 +75,25 @@ test('actual WYSIWYG toolbar formats text, handles links, history and source mod
   disabled = false; await act(async () => root.render(React.createElement(Harness))); await flush();
   assert.equal(html, sourceBeforeSaving, 're-enabling must not overwrite HTML source');
   await click('Éditeur visuel'); assert.match(html, /<h2>Source<\/h2>/); assert.doesNotMatch(html, /script/); assert.match(html, /https:\/\/www.snow-explorer.com\/regions\/test/);
+  await act(async () => { realEditor.commands.setContent('<p>Avant Après</p>'); realEditor.commands.setTextSelection(7); });
+  await click('Insérer les stations');
+  assert.match(html, /REGION_STATIONS/);
+  assert.match(document.querySelector('.region-stations-placeholder').textContent, /Liste automatique des stations/);
+  assert.equal(realEditor.state.doc.content.content.filter(node => node.type.name === 'regionStations').length, 1);
+  await click('HTML source'); await click('Éditeur visuel');
+  assert.equal(document.querySelectorAll('.region-stations-placeholder').length, 1);
+  await click('Supprimer'); assert.doesNotMatch(html, /REGION_STATIONS/);
+  await click('Insérer les stations');
+  const marker = realEditor.state.doc.content.content.find(node => node.type.name === 'regionStations');
+  assert.equal(marker.type.spec.draggable, true);
+  await act(async () => {
+    let position;
+    realEditor.state.doc.forEach((node, offset) => { if (node.type.name === 'regionStations') position = offset; });
+    realEditor.commands.deleteRange({ from: position, to: position + 1 });
+    realEditor.commands.insertContentAt(realEditor.state.doc.content.size, { type: 'regionStations' });
+  });
+  assert.equal((html.match(/REGION_STATIONS/g) || []).length, 1);
+  assert.ok(html.indexOf('Après') < html.indexOf('REGION_STATIONS'));
   await click('HTML source'); await change(document.querySelector('textarea'), ''); await click('Éditeur visuel'); assert.equal(html, '');
   await act(async () => root.unmount()); dom.window.close();
 });

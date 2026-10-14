@@ -30,4 +30,37 @@ function hasRegionContent(html) { return sanitizeHtml(html, { allowedTags: [], a
 function normalizeRegionLink(value) { return absoluteRegionLink(value) || ''; }
 function cleanRegionHtml(value) { return sanitizeRegionHtml(value, true).trim(); }
 
-module.exports = { sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent, normalizeRegionLink, cleanRegionHtml };
+const REGION_STATIONS = '{{REGION_STATIONS}}';
+// Split sanitized HTML while closing/reopening ancestors, including inline markers.
+function splitAtMarker(html) {
+  const index = html.indexOf(REGION_STATIONS);
+  if (index < 0) return { before: html, after: '', hasMarker: false };
+  const before = html.slice(0, index);
+  const stack = [];
+  for (const match of before.matchAll(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi)) {
+    if (match[0].startsWith('</')) stack.pop();
+    else if (match[1] !== 'br') stack.push({ tag: match[1], html: match[0] });
+  }
+  return {
+    before: before + [...stack].reverse().map(item => `</${item.tag}>`).join(''),
+    after: stack.map(item => item.html).join('') + html.slice(index + REGION_STATIONS.length),
+    hasMarker: true,
+  };
+}
+function splitRegionDescription(value) {
+  // Remove tokens in attributes as well: a public URL must never leak the marker.
+  const html = sanitizeRegionHtml(value).replace(/<[^>]*>/g, tag => tag.split(REGION_STATIONS).join(''));
+  const parts = splitAtMarker(html);
+  return { ...parts, after: parts.after.split(REGION_STATIONS).join('') };
+}
+function regionEditorHtml(value) {
+  let remaining = cleanRegionHtml(value).replace(/<p>\s*\{\{REGION_STATIONS\}\}\s*<\/p>/g, REGION_STATIONS);
+  let html = '';
+  while (remaining.includes(REGION_STATIONS)) {
+    const parts = splitAtMarker(remaining);
+    html += parts.before + '<div data-region-stations="true"></div>';
+    remaining = parts.after;
+  }
+  return html + remaining;
+}
+module.exports = { REGION_STATIONS, splitRegionDescription, regionEditorHtml, sanitizeRegionHtml, absoluteRegionLink, regionDescription, hasRegionContent, normalizeRegionLink, cleanRegionHtml };
