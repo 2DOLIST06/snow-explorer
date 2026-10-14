@@ -38,3 +38,21 @@ test('server-rendered station props retain both legacy date formats with snow wi
   assert.match(source, /openingDate: cfg\.snow\.season\.openingDate/);
   assert.match(source, /closingDate: cfg\.snow\.season\.closingDate/);
 });
+
+
+test('Aillon-Margeriaz HTTP dates from the API reach public and admin station dates', () => {
+  const station = {
+    slug: 'aillon-margeriaz',
+    season_open_date: 'Sat, 19 Dec 2026 00:00:00 GMT',
+    season_close_date: 'Mon, 29 Mar 2027 00:00:00 GMT',
+  };
+  const scope = getStationOverviewScope(station);
+  assert.equal(scope.openDate, '2026-12-19');
+  assert.equal(scope.closeDate, '2027-03-29');
+  const admin = normalizeAdminStation(station);
+  assert.equal(admin.season_open_date, '2026-12-19');
+  assert.equal(admin.season_close_date, '2027-03-29');
+  for (const invalid of ['Tue, 30 Feb 2027 00:00:00 GMT', 'Sat, 19 Dec 2026 24:00:00 GMT', 'Sat, 19 Dec 2026 00:60:00 GMT']) {
+    assert.equal(automatic.normalizeSeasonDate(invalid), null);
+  }
+});
