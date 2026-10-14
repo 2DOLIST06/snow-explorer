@@ -152,3 +152,27 @@
 .ski-areas-hero>p:last-child{max-width:900px;margin-top:16px;color:#dbeafe;line-height:1.7}
 @media(max-width:700px){.directory-editorial{grid-template-columns:1fr;padding:24px 20px}}
 .station-directions{margin-top:16px;max-width:100%;min-height:44px;text-align:center;white-space:normal}.station-directions:focus-visible{outline:3px solid var(--accent);outline-offset:3px}@media(max-width:640px){.station-directions{width:100%}}
+
+/* Region CMS: touch-sized controls and the same readable HTML on both surfaces. */
+.region-html-editor{min-width:0;border:1px solid #94a3b8;border-radius:10px;overflow:hidden;background:#fff}
+.region-editor-toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-bottom:1px solid var(--line);background:#f1f5f9}
+.region-editor-toolbar button,.region-editor-link button{min-height:44px;padding:8px 12px;border:1px solid #94a3b8;border-radius:6px;background:#fff;color:#0f172a;font:inherit;cursor:pointer}
+.region-editor-toolbar button[aria-pressed=true]{background:#0c4a6e;color:#fff;border-color:#0c4a6e}
+.region-html-editor button:disabled{opacity:.45;cursor:default}
+.region-html-editor button:focus-visible,.region-rich-text:focus-visible{outline:3px solid #0284c7;outline-offset:2px}
+.region-rich-text{min-height:320px;padding:18px;outline:none;overflow-wrap:anywhere;line-height:1.7}
+.region-rich-text p,.region-page__seo p{margin:0 0 14px}
+.region-rich-text h2,.region-page__seo h2{font-size:1.8rem;margin:22px 0 12px}
+.region-rich-text h3,.region-page__seo h3{font-size:1.35rem;margin:18px 0 10px}
+.region-rich-text ul,.region-page__seo ul{list-style:disc;padding-left:26px;margin:12px 0}
+.region-rich-text ol,.region-page__seo ol{list-style:decimal;padding-left:26px;margin:12px 0}
+.region-rich-text blockquote,.region-page__seo blockquote{border-left:4px solid #0284c7;padding-left:18px;margin:16px 0;color:#475569}
+.region-rich-text a,.region-page__seo a{color:#0369a1;text-decoration:underline;overflow-wrap:anywhere}
+.region-editor-link{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:#f8fafc}
+.region-editor-link label,.region-editor-link p{width:100%}
+.region-editor-link input{flex:1;min-width:180px}
+.region-editor-source{padding:12px}
+.region-editor-source textarea{font-family:monospace;font-size:16px}
+.region-page__seo{margin:0 0 28px;overflow-wrap:anywhere}
+#region-description-label{font-weight:900;margin-bottom:8px}
+@media(max-width:650px){.admin-region-editor{padding:14px}.region-rich-text{padding:12px}.region-editor-toolbar{gap:4px;padding:6px}.region-editor-toolbar button{font-size:14px;padding:8px}.region-editor-link input{min-width:0;flex-basis:100%}.admin-region-editor input,.admin-region-editor textarea{font-size:16px}}

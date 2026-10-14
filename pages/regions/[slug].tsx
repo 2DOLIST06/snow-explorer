@@ -5,6 +5,8 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { getServerApiBases, getServerResortsApiUrls, parseResortsPayload } from "@/lib/api/resorts";
 import { isRegionMatch, regionSlug, type RegionSummary } from "@/lib/regions";
 
+import { cleanRegionHtml, getRegionDescription } from "@/lib/regionHtml";
+
 type Resort = { id: string; name: string; slug: string; is_active?: boolean | null; region?: RegionSummary };
 type Props = { region: RegionSummary & { name: string }; resorts: Resort[] };
 
@@ -12,8 +14,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
   const slug = regionSlug(region);
   const title = region.meta_title?.trim() || `Stations de ski en ${region.name} | Snow Explorer`;
   const description = region.meta_description?.trim() || `Découvrez les stations de ski de la région ${region.name}, leurs pistes, webcams, météo et informations pratiques.`;
-  const seoText = region.seo_text || region.description_html || "";
-  const paragraphs = seoText.split(/\n\s*\n|<\/?p[^>]*>/i).map((value) => value.replace(/<[^>]+>/g, "").trim()).filter(Boolean);
+  const descriptionHtml = cleanRegionHtml(getRegionDescription(region));
   const canonical = `https://www.snow-explorer.com/regions/${slug}`;
 
   return <>
@@ -24,6 +25,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
     <main className="region-page">
       <nav aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span> &gt; </span><Link href="/stations">Stations</Link><span> &gt; </span><span aria-current="page">{region.name}</span></nav>
       <header className="region-page__hero"><p className="eyebrow">Destination montagne</p><h1>Stations de ski en {region.name}</h1><p>{resorts.length} station{resorts.length > 1 ? "s" : ""} à découvrir dans la région.</p></header>
+      {descriptionHtml && <section className="region-page__seo" aria-label="Description de la région" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />}
       <section className="region-page__stations" aria-labelledby="region-stations-title">
         <h2 id="region-stations-title">Les stations de {region.name}</h2>
         <div className="station-results-grid">{resorts.map((resort) => <article key={resort.id} className="station-result-card">
@@ -31,7 +33,7 @@ const RegionPage: NextPage<Props> = ({ region, resorts }) => {
           <Link href={`/stations/${resort.slug}`} className="station-result-card__link">Voir la station <ArrowRight size={16} /></Link>
         </article>)}</div>
       </section>
-      {paragraphs.length > 0 && <section className="region-page__seo"><h2>Skier en {region.name}</h2>{paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}</section>}
+
     </main>
   </>;
 };
