@@ -20,7 +20,9 @@ exactement au nom de station (accents/casse normalisés, séparation par
 deux-points, tiret entouré d'espaces ou barre verticale). La ville seule ne
 sert pas de correspondance. S'il ne reste aucune correspondance valide,
 le bloc affiche les deux premières candidates de proximité, ou une seule
-s'il n'y en a qu'une. Il ne complète pas une sélection ayant déjà une correspondance.
+s'il n'y en a qu'une. Si une seule webcam correspond au nom de station,
+le bloc la conserve en premier et ajoute la première autre candidate disponible,
+sans doublon. Les sélections de deux à quatre correspondances restent inchangées.
 
 La présentation utilise toute la largeur pour une webcam, deux colonnes pour
 deux à quatre webcams sur tablette/ordinateur, une colonne sur mobile.
