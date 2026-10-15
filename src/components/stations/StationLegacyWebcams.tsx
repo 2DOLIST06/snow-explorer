@@ -1,5 +1,5 @@
 import { parseCoordinate } from "@/lib/stationAutomaticData";
-import { nearbyWebcams, featuredWebcams, formatCapture } from "../../lib/stationWebcams";
+import { selectWebcams, featuredWebcams, formatCapture } from "../../lib/stationWebcams";
 import React, { useEffect, useRef, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
@@ -35,7 +35,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
         });
         if (!response.ok) throw new Error("Webcams indisponibles");
         const data = await response.json();
-        if (!controller.signal.aborted) setCams(nearbyWebcams(data.webcams, usedLat, usedLon));
+        if (!controller.signal.aborted) setCams(selectWebcams(data.webcams, name, usedLat, usedLon));
       } catch {
         if (!controller.signal.aborted) setErr(true);
       } finally {
@@ -84,7 +84,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     </>}
     <p className="webcam-source">Images : <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">Windy.com</a></p>
     {open && <div className="webcam-overlay" onClick={() => setOpen(false)}>
-      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams à proximité de ${name}`} tabIndex={-1}
+      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams de ${name}`} tabIndex={-1}
         onClick={event => event.stopPropagation()} onKeyDown={event => {
           if (event.key === "Escape") setOpen(false);
           if (event.key === "Tab") {
@@ -101,7 +101,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
           <img className="webcam-large" src={active.preview} alt={active.title} onError={() => unavailable(active.id)} />
           <figcaption>{metadata(active)}</figcaption>
         </figure>}
-        <p className="webcam-gallery-note">Webcams à proximité · rayon de 30 km</p>
+        <p className="webcam-gallery-note">Webcams identifiées pour {name}</p>
         <div className={`webcam-grid${valid.length === 1 ? " webcam-grid-single" : ""}`}>{valid.map(card)}</div>
         <p className="webcam-source">Images : <a href="https://www.windy.com/webcams">Windy.com</a></p>
       </div>

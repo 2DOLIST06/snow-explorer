@@ -63,6 +63,8 @@ test("sitemap dates, validation, static URLs, and deduplication are safe", () =>
     { id: "", slug: " " },
   ];
   const entries = getSitemapEntries(resorts, regions);
+  assert.equal(entries.some(entry => entry.url === "https://www.snow-explorer.com/webcams"), true);
+  assert.equal(entries.some(entry => /\/webcams\//.test(entry.url)), false, "unverified webcam details are not in the sitemap");
   const station = entries.find((entry) => entry.url.endsWith("/stations/auron"));
   const region = entries.find((entry) => entry.url.endsWith("/regions/alpes"));
 

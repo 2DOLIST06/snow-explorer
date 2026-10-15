@@ -50,20 +50,20 @@ test('grid renders 0, 1, 2, 3, 4 and 5 webcams, more opens same gallery and brok
       return require(name);
     });
     for (const name of ['Méribel', 'Station sans titre']) for (const count of [0, 1, 2, 3, 4, 5]) {
-      const limit = name === 'Méribel' ? 4 : 2;
+      const limit = name === 'Méribel' ? 4 : 0;
       global.fetch = async () => ({ ok: true, json: async () => ({ webcams: Array.from({ length: count }, (_, id) => cam(String(id))) }) });
       let tree;
       await renderer.act(async () => { tree = renderer.create(React.createElement(WebcamsAuto, { name, lat: 45.4, lon: 6.5 })); });
       assert.equal(tree.root.findAllByType('time').length, 0, 'missing capture date is hidden');
       const cards = () => tree.root.findAll(n => n.type === 'button' && n.props.className === 'webcam-card');
       assert.equal(cards().length, Math.min(count, limit));
-      if (count) {
+      if (count && limit) {
         const grid = tree.root.find(n => n.type === 'div' && String(n.props.className).startsWith('webcam-grid'));
         assert.equal(grid.props.className.includes('webcam-grid-single'), count === 1);
       }
       const more = tree.root.findAll(n => n.type === 'button' && n.children.includes('Voir plus de webcams'));
-      assert.equal(more.length, count > limit ? 1 : 0);
-      if (count === 5) {
+      assert.equal(more.length, limit && count > limit ? 1 : 0);
+      if (count === 5 && limit) {
         await renderer.act(async () => more[0].props.onClick());
         assert.equal(tree.root.findAll(n => n.props.role === 'dialog').length, 1);
         assert.equal(cards().length, limit + count);
@@ -75,7 +75,7 @@ test('grid renders 0, 1, 2, 3, 4 and 5 webcams, more opens same gallery and brok
     }
   } finally { global.fetch = oldFetch; global.window = oldWindow; global.document = oldDocument; }
 });
-test('loading and failed requests have explicit states and retry; image failure allows proximity fallback', async () => {
+test('loading and failed requests have explicit states and retry; image failure never admits a neighbour', async () => {
   const oldFetch = global.fetch, oldWindow = global.window;
   global.window = { setInterval: () => 0, clearInterval: () => {} };
   let reject;
@@ -96,18 +96,15 @@ test('loading and failed requests have explicit states and retry; image failure 
     assert.deepEqual(retry.children, ['Réessayer']);
     global.fetch = async () => ({ ok: true, json: async () => ({ webcams: [cam('1'), cam('2', { title: 'Courchevel : Sommet' })] }) });
     await renderer.act(async () => retry.props.onClick());
-    assert.equal(tree.root.findAllByType('img').length, 2);
-    await renderer.act(async () => tree.root.findAllByType('img')[0].props.onError());
     assert.equal(tree.root.findAllByType('img').length, 1);
-    assert.equal(tree.root.findByType('img').props.alt, 'Courchevel : Sommet');
-    await renderer.act(async () => tree.root.findByType('img').props.onError());
+    await renderer.act(async () => tree.root.findAllByType('img')[0].props.onError());
     assert.equal(tree.root.findAllByType('img').length, 0);
     assert.match(JSON.stringify(tree.toJSON()), /Images des webcams indisponibles/);
     await renderer.act(async () => tree.unmount());
   } finally { global.fetch = oldFetch; global.window = oldWindow; }
 });
 
-test('featured selection adds a second nearby camera to a single match; gallery keeps all nearby valid results', () => {
+test('featured selection never adds neighbours or falls back when no name matches', () => {
   const nearby = nearbyWebcams([
     cam('neighbour', { title: 'Courchevel : Sommet' }),
     cam('station'), cam('other', { title: 'Sommet local' }),
@@ -115,18 +112,18 @@ test('featured selection adds a second nearby camera to a single match; gallery 
     cam('broken', { preview: null }),
   ], 45.4, 6.5);
   assert.equal(nearby.length, 3);
-  assert.deepEqual(featuredWebcams(nearby, 'Méribel').map(cam => cam.id), ['station', nearby.find(cam => cam.id !== 'station').id]);
-  assert.deepEqual(featuredWebcams(nearby, 'Sans correspondance').map(cam => cam.id), nearby.slice(0, 2).map(cam => cam.id));
+  assert.deepEqual(featuredWebcams(nearby, 'Méribel').map(cam => cam.id), ['station']);
+  assert.deepEqual(featuredWebcams(nearby, 'Sans correspondance').map(cam => cam.id), []);
   assert.equal(featuredWebcams([], 'Sans correspondance').length, 0);
 });
 
-test('single-match completion keeps the match first, avoids duplicates, and leaves larger selections unchanged', () => {
+test('single match stays alone and larger matching selections are limited to four', () => {
   const match = cam('station');
   const other = cam('nearby', { title: 'Sommet' });
-  assert.deepEqual(featuredWebcams([other, match], 'Méribel'), [match, other]);
+  assert.deepEqual(featuredWebcams([other, match], 'Méribel'), [match]);
   assert.deepEqual(featuredWebcams([match], 'Méribel'), [match]);
   const deduplicated = nearbyWebcams([match, { ...match }, other], 45.4, 6.5);
-  assert.deepEqual(featuredWebcams(deduplicated, 'Méribel').map(cam => cam.id), ['station', 'nearby']);
+  assert.deepEqual(featuredWebcams(deduplicated, 'Méribel').map(cam => cam.id), ['station']);
   for (const count of [2, 3, 4, 5]) {
     const matches = Array.from({ length: count }, (_, i) => cam(String(i)));
     assert.deepEqual(featuredWebcams([other, ...matches], 'Méribel'), matches.slice(0, 4));
