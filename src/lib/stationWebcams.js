@@ -35,7 +35,11 @@ function selectWebcams(list, name, lat, lon) {
 }
 function featuredWebcams(cams, name) {
   const matching = cams.filter(cam => matchesStation(cam, name));
-  return matching.slice(0, 4);
+  if (matching.length === 1) {
+    const second = cams.find(cam => cam.id !== matching[0].id);
+    return second ? [matching[0], second] : matching;
+  }
+  return matching.length ? matching.slice(0, 4) : cams.slice(0, 2);
 }
 function formatCapture(time) {
   return time ? new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }).format(time) : null;

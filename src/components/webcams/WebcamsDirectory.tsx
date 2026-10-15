@@ -60,7 +60,7 @@ export default function WebcamsDirectory({ initialStations, station, unavailable
         </aside>
         <section ref={contentRef} className="weather-content" aria-label={station ? title : "Consulter les webcams"}>
           {station ? <>
-            <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>{station.name}</h2></div><Link href={`/stations/${encodeURIComponent(station.slug)}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></div>
+            <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>{station.name}</h2></div><Link href={`/stations/${encodeURIComponent(station.slug)}`} className="btn btn--secondary">Voir la station de ski {station.name} <ArrowRight size={17} /></Link></div>
             <WebcamsAuto key={station.slug} name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h2" />
             <p><Link href="/webcams" className="btn btn--secondary">Retour à la liste des webcams</Link></p>
           </> : <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Ouvrez une station dans la liste pour consulter ses webcams. Leur disponibilité est vérifiée à l’ouverture.</span></div>}
@@ -71,6 +71,7 @@ export default function WebcamsDirectory({ initialStations, station, unavailable
       .webcams-directory .station-choice a { display:block; border:1px solid var(--line); background:#fff; border-radius:14px; padding:12px; color:inherit; text-decoration:none; }
       .webcams-directory .station-choice a:hover, .webcams-directory .station-choice a[aria-current="page"] { border-color:var(--accent); background:#f0fbfd; }
       .webcams-directory .station-choice a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+      .webcams-directory .weather-content__station .btn { white-space:normal; text-align:center; }
       .webcams-directory .weather-content > p { padding:12px; margin-top:16px; }
     `}</style>
   </>;
