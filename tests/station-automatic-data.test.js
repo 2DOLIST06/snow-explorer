@@ -77,12 +77,16 @@ test('Windy effects make no request for invalid coordinates and use explicit zer
         const requests = [];
         global.fetch = async (url) => { requests.push(url); return { ok: true, json: async () => ({ webcams: [], daily: {} }) }; };
         const component = load(`src/components/stations/${file}.tsx`, (name) => {
-          if (name === 'react') return { ...React, useEffect: (effect) => effects.push(effect), useState: (value) => [value, () => {}] };
+          if (name === 'react') return { ...React, useRef: () => ({ current: null }), useEffect: (effect) => effects.push(effect), useState: (value) => [value, () => {}] };
           if (name === '@/lib/stationAutomaticData') return automatic;
+          if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
           return require(name);
         })[exportName];
         component({ name: 'Station', lat, lon: 0 });
+        const oldWindow = global.window;
+        global.window = { setInterval: () => 0, clearInterval: () => {} };
         effects.forEach((effect) => effect());
+        global.window = oldWindow;
         await new Promise(setImmediate);
         assert.equal(requests.length, lat === 0 || lat === '0' ? 1 : 0, `${file}: ${String(lat)}`);
         if (requests.length) assert.match(requests[0], file.includes('Webcams') ? /lat=0&lon=0&radiusKm=30/ : /latitude=0&longitude=0/);

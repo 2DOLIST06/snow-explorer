@@ -79,7 +79,7 @@ function Weather({ station }: { station: any }) {
 
 function Webcams({ station }: { station: any }) {
   return <section className="v3-floor" aria-labelledby="v3-webcams-title">
-    <SectionHeading id="v3-webcams-title" eyebrow="En direct" title={`Webcams de ${station.name}`} />
+    <SectionHeading id="v3-webcams-title" eyebrow="En images" title={`Webcams de ${station.name}`} />
     {editorial(getStationEditorialContent(station, "webcams"))}
     <p className="v3-highlight">Consultez les webcams disponibles pour {station.name}.</p>
     <div className="v3-media-stage"><WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
