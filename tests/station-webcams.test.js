@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const ts = require('typescript');
 const React = require('react');
 const renderer = require('react-test-renderer');
-const { selectWebcams, captureTime, formatCapture } = require('../src/lib/stationWebcams');
+const { nearbyWebcams, featuredWebcams, selectWebcams, captureTime, formatCapture } = require('../src/lib/stationWebcams');
 const cam = (id, extra = {}) => ({ id, title: 'Méribel : Altiport', lat: 45.4, lon: 6.5, preview: 'https://images.example/cam.jpg', ...extra });
 const select = list => selectWebcams(list, 'Méribel', 45.4, 6.5);
 function load(file, resolve) {
@@ -49,28 +49,33 @@ test('grid renders 0, 1, 2, 3, 4 and 5 webcams, more opens same gallery and brok
       if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
       return require(name);
     });
-    for (const count of [0, 1, 2, 3, 4, 5]) {
+    for (const name of ['Méribel', 'Station sans titre']) for (const count of [0, 1, 2, 3, 4, 5]) {
+      const limit = name === 'Méribel' ? 4 : 2;
       global.fetch = async () => ({ ok: true, json: async () => ({ webcams: Array.from({ length: count }, (_, id) => cam(String(id))) }) });
       let tree;
-      await renderer.act(async () => { tree = renderer.create(React.createElement(WebcamsAuto, { name: 'Méribel', lat: 45.4, lon: 6.5 })); });
+      await renderer.act(async () => { tree = renderer.create(React.createElement(WebcamsAuto, { name, lat: 45.4, lon: 6.5 })); });
       assert.equal(tree.root.findAllByType('time').length, 0, 'missing capture date is hidden');
       const cards = () => tree.root.findAll(n => n.type === 'button' && n.props.className === 'webcam-card');
-      assert.equal(cards().length, Math.min(count, 4));
+      assert.equal(cards().length, Math.min(count, limit));
+      if (count) {
+        const grid = tree.root.find(n => n.type === 'div' && String(n.props.className).startsWith('webcam-grid'));
+        assert.equal(grid.props.className.includes('webcam-grid-single'), count === 1);
+      }
       const more = tree.root.findAll(n => n.type === 'button' && n.children.includes('Voir plus de webcams'));
-      assert.equal(more.length, count > 4 ? 1 : 0);
+      assert.equal(more.length, count > limit ? 1 : 0);
       if (count === 5) {
         await renderer.act(async () => more[0].props.onClick());
         assert.equal(tree.root.findAll(n => n.props.role === 'dialog').length, 1);
-        assert.equal(cards().length, 9);
+        assert.equal(cards().length, limit + count);
         await renderer.act(async () => tree.root.findByProps({ role: 'dialog' }).props.onKeyDown({ key: 'Escape' }));
         await renderer.act(async () => tree.root.findAllByType('img')[0].props.onError());
-        assert.equal(cards().length, 4);
+        assert.equal(cards().length, limit);
       }
       await renderer.act(async () => tree.unmount());
     }
   } finally { global.fetch = oldFetch; global.window = oldWindow; global.document = oldDocument; }
 });
-test('loading and failed requests have explicit states and retry; image failure never substitutes neighbours', async () => {
+test('loading and failed requests have explicit states and retry; image failure allows proximity fallback', async () => {
   const oldFetch = global.fetch, oldWindow = global.window;
   global.window = { setInterval: () => 0, clearInterval: () => {} };
   let reject;
@@ -93,8 +98,24 @@ test('loading and failed requests have explicit states and retry; image failure 
     await renderer.act(async () => retry.props.onClick());
     assert.equal(tree.root.findAllByType('img').length, 1);
     await renderer.act(async () => tree.root.findByType('img').props.onError());
+    assert.equal(tree.root.findAllByType('img').length, 1);
+    assert.equal(tree.root.findByType('img').props.alt, 'Courchevel : Sommet');
+    await renderer.act(async () => tree.root.findByType('img').props.onError());
     assert.equal(tree.root.findAllByType('img').length, 0);
     assert.match(JSON.stringify(tree.toJSON()), /Images des webcams indisponibles/);
     await renderer.act(async () => tree.unmount());
   } finally { global.fetch = oldFetch; global.window = oldWindow; }
+});
+
+test('featured selection only falls back with zero matches; gallery keeps all nearby valid results', () => {
+  const nearby = nearbyWebcams([
+    cam('neighbour', { title: 'Courchevel : Sommet' }),
+    cam('station'), cam('other', { title: 'Sommet local' }),
+    cam('distant', { title: 'Sommet éloigné', lat: 48 }),
+    cam('broken', { preview: null }),
+  ], 45.4, 6.5);
+  assert.equal(nearby.length, 3);
+  assert.deepEqual(featuredWebcams(nearby, 'Méribel').map(cam => cam.id), ['station']);
+  assert.deepEqual(featuredWebcams(nearby, 'Sans correspondance').map(cam => cam.id), nearby.slice(0, 2).map(cam => cam.id));
+  assert.equal(featuredWebcams([], 'Sans correspondance').length, 0);
 });

@@ -8,24 +8,35 @@ Aucun polygone de station ou de secteur local, ni association Windy vérifiée,
 n'a été trouvé dans les types, les appels ou les données accessibles du frontend.
 Les relations aux grands domaines ne définissent pas un secteur local.
 
-## Sélection conservatrice
-Le rayon de recherche existant de 30 km reste un ensemble de candidats, jamais
-une preuve d'appartenance. Une webcam doit avoir un identifiant Windy, une URL
-HTTPS d'image actuelle, des coordonnées valides et un sujet de titre exactement
-égal au nom de la station (accents/casse normalisés, séparation par deux-points,
-tiret entouré d'espaces ou barre verticale). La ville seule n'est pas une preuve.
-Les titres d'autres stations et les simples sous-chaînes sont exclus.
-Les doublons gardent la capture datée la plus récente, puis le classement utilise
-distance au centre et fraîcheur. La grille prend les quatre premières ; la galerie
-réutilise exactement le même ensemble. Les erreurs de chargement retirent l'image
-et permettent aux candidates suivantes de remonter.
+## Sélection du bloc et galerie
+Le rayon de recherche existant de 30 km et le classement par distance restent
+inchangés. Les candidates doivent avoir un identifiant Windy, une URL HTTPS
+d'image actuelle et des coordonnées valides ; les statuts explicitement
+inactifs sont exclus. Les doublons gardent la capture datée la plus récente.
+La distance prime sur la fraîcheur dans le classement.
 
-Limite : il s'agit d'une association textuelle prudente, pas d'une délimitation
-géographique certifiée. Les sommets ou secteurs nommés sans le nom de station
-sont volontairement omis. Un titre Windy erroné ne peut pas être détecté ici.
-Une couverture exhaustive et une garantie géographique exigeraient des
-associations vérifiées ou des périmètres locaux fiables dans les données source.
-Aucune de ces données n'est inventée par cette modification.
+Le bloc privilégie jusqu'à quatre webcams dont le sujet du titre correspond
+exactement au nom de station (accents/casse normalisés, séparation par
+deux-points, tiret entouré d'espaces ou barre verticale). La ville seule ne
+sert pas de correspondance. S'il ne reste aucune correspondance valide,
+le bloc affiche les deux premières candidates de proximité, ou une seule
+s'il n'y en a qu'une. Il ne complète pas une sélection ayant déjà une correspondance.
+
+La présentation utilise toute la largeur pour une webcam, deux colonnes pour
+deux à quatre webcams sur tablette/ordinateur, une colonne sur mobile.
+Quatre webcams occupent donc deux rangées de deux images en format 16:9.
+Les cartes contiennent l'image et sa légende dans un même cadre sans débordement.
+
+« Voir plus de webcams » apparaît dès qu'il reste des candidates hors du bloc.
+La galerie contient tous les résultats valides dans les 30 km, sans filtre
+sur le nom, comme le comportement de proximité initial. Le périmètre est
+indiqué dans la galerie. Les erreurs d'images retirent les candidates défaillantes
+et recalculent la sélection, y compris le repli si la dernière correspondance échoue.
+
+Limite : aucun périmètre local fiable n'est disponible dans ce checkout.
+Les résultats de repli et la galerie peuvent inclure des stations voisines.
+Une correspondance de titre n'est pas une certification géographique.
+Aucun périmètre ni aucune donnée d'appartenance n'est inventé.
 
 ## Windy et cache
 La clé reste dans WEBCAMS_API_KEY côté serveur. Aucun nouvel endpoint ni lecteur

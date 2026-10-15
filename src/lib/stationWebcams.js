@@ -7,15 +7,11 @@ function captureTime(value, now = Date.now()) {
     typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? Date.parse(value) : NaN;
   return Number.isFinite(time) && time > 0 && time <= now ? time : null;
 }
-function selectWebcams(list, name, lat, lon) {
-  const station = normalize(name);
+function nearbyWebcams(list, lat, lon) {
   const unique = new Map();
   for (const cam of Array.isArray(list) ? list : []) {
     if (cam?.status && cam.status !== 'active') continue;
     if (!cam || cam.id == null || !String(cam.id).trim() || !/^https:\/\//.test(cam.preview || '')) continue;
-    // A named subject, not a substring or a city shared with another resort.
-    const subject = normalize((cam.title || '').split(/\s+[-–—|:]\s*|:/)[0]);
-    if (!station || subject !== station) continue;
     const clat = parseCoordinate(cam.lat, 90), clon = parseCoordinate(cam.lon, 180);
     if (clat === null || clon === null) continue;
     const radians = Math.PI / 180;
@@ -29,7 +25,19 @@ function selectWebcams(list, name, lat, lon) {
   }
   return [...unique.values()].sort((a, b) => a.distance - b.distance || (b.capturedAt || 0) - (a.capturedAt || 0) || a.id.localeCompare(b.id));
 }
+function matchesStation(cam, name) {
+  const station = normalize(name);
+  const subject = normalize((cam.title || '').split(/\s+[-–—|:]\s*|:/)[0]);
+  return Boolean(station) && subject === station;
+}
+function selectWebcams(list, name, lat, lon) {
+  return nearbyWebcams(list, lat, lon).filter(cam => matchesStation(cam, name));
+}
+function featuredWebcams(cams, name) {
+  const matching = cams.filter(cam => matchesStation(cam, name));
+  return matching.length ? matching.slice(0, 4) : cams.slice(0, 2);
+}
 function formatCapture(time) {
   return time ? new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }).format(time) : null;
 }
-module.exports = { selectWebcams, captureTime, formatCapture };
+module.exports = { nearbyWebcams, featuredWebcams, selectWebcams, captureTime, formatCapture };
