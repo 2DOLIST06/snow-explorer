@@ -60,7 +60,9 @@ test('directory uses existing search, dedicated links and shared grid once; deta
     assert.equal(tree.root.findByProps({ name: 'robots' }).props.content, 'noindex,follow');
     assert.equal(tree.root.findByProps({ rel: 'canonical' }).props.href, 'https://www.snow-explorer.com/webcams/meribel');
     assert.equal(tree.root.findByType('h1').children.join(''), 'Webcams Méribel');
-    assert.ok(tree.root.findAllByType('a').some(link => link.props.href === '/stations/meribel'));
+    const stationLink = tree.root.findAllByType('a').find(link => link.props.href === '/stations/meribel');
+    assert.ok(stationLink);
+    assert.equal(stationLink.children.filter(child => typeof child === 'string').join('').trim(), 'Voir la station de ski Méribel');
     assert.ok(tree.root.findAllByType('a').some(link => link.props.href === '/webcams'));
     assert.ok(matchesSearch('Méribel Savoie', 'meribel'));
     await renderer.act(async () => tree.unmount());

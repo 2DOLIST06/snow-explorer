@@ -15,21 +15,25 @@ d'image actuelle et des coordonnées valides ; les statuts explicitement
 inactifs sont exclus. Les doublons gardent la capture datée la plus récente.
 La distance prime sur la fraîcheur dans le classement.
 
-Le composant partagé privilégie jusqu'à quatre webcams dont le sujet du titre
-correspond exactement au nom de station (accents/casse normalisés, séparation
-par deux-points, tiret entouré d'espaces ou barre verticale).
-La ville seule ne sert pas de correspondance. Aucun repli sur des webcams
-sans correspondance n'est autorisé, même si une seule webcam reste disponible.
+Le bloc et les pages dédiées utilisent exactement le même composant WebcamsAuto.
+Il privilégie jusqu'à quatre correspondances du nom de station dans le titre.
+Si une seule correspondance est disponible, il la conserve en premier et
+ajoute la première autre candidate valide, sans doublon. Sans correspondance,
+les deux premières candidates de proximité sont affichées si disponibles.
 
-La grille garde son style : pleine largeur pour une webcam, deux colonnes pour
-deux à quatre webcams sur tablette/ordinateur, une colonne sur mobile.
-« Voir plus de webcams » ouvre toutes les correspondances valides du même
-ensemble filtré, sans ajouter les stations voisines.
+« Voir plus de webcams » apparaît si d'autres candidates valides existent.
+La galerie affiche tous les résultats valides dans le rayon initial de 30 km,
+sans filtre de nom. Elle annonce ce périmètre. Les erreurs d'image retirent
+les candidates concernées et recalculent la sélection. Ce fonctionnement est
+commun aux fiches et aux pages dédiées, sans nouvel appel à l'ouverture de la galerie.
 
-Limite : aucun périmètre local fiable n'est disponible dans ce checkout.
-L'association par titre reste conservatrice et peut omettre des sommets qui ne
-citent pas la station. Elle ne certifie pas un libellé Windy erroné.
-Aucun périmètre ni aucune donnée d'appartenance n'est inventé.
+La grille conserve le style existant : pleine largeur pour une webcam si
+aucune deuxième n'est disponible, deux colonnes pour deux à quatre webcams
+sur tablette/ordinateur, une colonne sur mobile.
+
+Limite : aucun périmètre local fiable n'est disponible. Le complément, le repli
+et la galerie peuvent inclure des stations voisines dans les 30 km.
+Le libellé Windy ne certifie pas l'appartenance. Aucune donnée n'est inventée.
 
 ## Rubrique Webcams
 Routes : /webcams et /webcams/[slug]. Les anciennes URL
@@ -74,7 +78,7 @@ Les dates absentes, futures ou textuelles sans fuseau sont masquées.
 La rubrique ajoute deux routes, un annuaire partagé, un chargeur serveur,
 une entrée du header et l'URL d'index au sitemap. Les pages Météo/Plans et
 les métadonnées des fiches stations restent inchangées. Seule la sélection
-du composant Webcams partagé est resserrée pour exclure les voisines.
+du composant Webcams partagé est commune aux fiches et aux pages dédiées.
 Le service backend distant n'a pas besoin d'un nouvel endpoint : le proxy Next
 existant est enrichi de location et lastUpdated, avec no-store et délai maximal.
 Les tests sont synthétiques et ne prétendent pas vérifier des stations réelles
@@ -82,7 +86,12 @@ ou la disponibilité réseau des services Windy en production.
 
 Validation navigateur locale : catalogue et images synthétiques, Chromium
 1440/1024/390 px. Recherche, navigation desktop/mobile, retour à l'annuaire,
-grille 2/1 colonnes, galerie de cinq correspondances avec exclusion d'une
-voisine, absence de débordement, chargement, erreur/retry, aucune webcam,
+grille 2/1 colonnes, galerie et contrôle du périmètre de proximité, absence de débordement, chargement, erreur/retry, aucune webcam,
 slug inconnu (404), catalogue vide (503). Aucun appel Windy sur l'index
 ni à l'ouverture de la galerie. Pas de validation Windy en production.
+
+Le lien vers la fiche utilise l'ancre « Voir la station de ski [Nom] ».
+
+Contrôle complémentaire Chromium desktop/mobile : une correspondance complétée
+par une deuxième candidate, galerie complète sans requête supplémentaire,
+ancre station nominative et absence de débordement.
