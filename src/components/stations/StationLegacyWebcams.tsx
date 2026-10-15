@@ -1,5 +1,5 @@
 import { parseCoordinate } from "@/lib/stationAutomaticData";
-import { selectWebcams, formatCapture } from "../../lib/stationWebcams";
+import { nearbyWebcams, featuredWebcams, formatCapture } from "../../lib/stationWebcams";
 import React, { useEffect, useRef, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
@@ -35,7 +35,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
         });
         if (!response.ok) throw new Error("Webcams indisponibles");
         const data = await response.json();
-        if (!controller.signal.aborted) setCams(selectWebcams(data.webcams, name, usedLat, usedLon));
+        if (!controller.signal.aborted) setCams(nearbyWebcams(data.webcams, usedLat, usedLon));
       } catch {
         if (!controller.signal.aborted) setErr(true);
       } finally {
@@ -57,6 +57,8 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
   }, [open]);
 
   const valid = cams.filter(cam => !failed.includes(cam.id));
+  const featured: Webcam[] = featuredWebcams(valid, name);
+  const hasMore = valid.some(cam => !featured.some(item => item.id === cam.id));
   const active = valid.find(cam => cam.id === activeId);
   const unavailable = (id: string) => setFailed(previous => previous.includes(id) ? previous : [...previous, id]);
   const metadata = (cam: Webcam) => <span className="webcam-meta">
@@ -77,12 +79,12 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     {!loading && err && <p role="status">Webcams indisponibles. <button type="button" onClick={() => setRetry(value => value + 1)}>Réessayer</button></p>}
     {!loading && !err && !valid.length && <p role="status">{cams.length ? "Images des webcams indisponibles." : "Aucune webcam identifiée pour cette station."}</p>}
     {!loading && !err && valid.length > 0 && <>
-      <div className="webcam-grid">{valid.slice(0, 4).map(card)}</div>
-      {valid.length > 4 && <button type="button" className="webcam-more" onClick={() => { setActiveId(null); setOpen(true); }}>Voir plus de webcams</button>}
+      <div className={`webcam-grid${featured.length === 1 ? " webcam-grid-single" : ""}`}>{featured.map(card)}</div>
+      {hasMore && <button type="button" className="webcam-more" onClick={() => { setActiveId(null); setOpen(true); }}>Voir plus de webcams</button>}
     </>}
     <p className="webcam-source">Images : <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">Windy.com</a></p>
     {open && <div className="webcam-overlay" onClick={() => setOpen(false)}>
-      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams de ${name}`} tabIndex={-1}
+      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams à proximité de ${name}`} tabIndex={-1}
         onClick={event => event.stopPropagation()} onKeyDown={event => {
           if (event.key === "Escape") setOpen(false);
           if (event.key === "Tab") {
@@ -99,25 +101,29 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
           <img className="webcam-large" src={active.preview} alt={active.title} onError={() => unavailable(active.id)} />
           <figcaption>{metadata(active)}</figcaption>
         </figure>}
-        <div className="webcam-grid">{valid.map(card)}</div>
+        <p className="webcam-gallery-note">Webcams à proximité · rayon de 30 km</p>
+        <div className={`webcam-grid${valid.length === 1 ? " webcam-grid-single" : ""}`}>{valid.map(card)}</div>
         <p className="webcam-source">Images : <a href="https://www.windy.com/webcams">Windy.com</a></p>
       </div>
     </div>}
-    <style jsx>{`
-      .station-webcams { width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#fff; color:#374151; }
-      .webcam-grid { display:grid; grid-template-columns:1fr; gap:12px; }
-      .webcam-card { min-width:0; padding:0; text-align:left; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff; color:inherit; cursor:pointer; }
-      .webcam-card img { display:block; width:100%; aspect-ratio:16/10; object-fit:cover; }
-      .webcam-meta { display:flex; flex-direction:column; gap:4px; padding:10px; font-size:13px; }
-      .webcam-meta time { font-size:12px; }
-      .webcam-more { margin:12px 0; padding:10px 16px; border:1px solid #2563eb; border-radius:8px; background:#fff; color:#1d4ed8; font-weight:600; cursor:pointer; }
-      .webcam-source { font-size:12px; margin:10px 0 0; }
-      .webcam-overlay { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:12px; }
-      .webcam-dialog { width:min(1100px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; padding:12px; }
-      .webcam-large { display:block; width:100%; max-height:62vh; object-fit:contain; }
-      figure { margin:0 0 12px; }
-      @media(min-width:640px) { .webcam-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-      @media(min-width:1024px) { .webcam-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+    <style jsx global>{`
+      .station-webcams { box-sizing:border-box; width:100%; min-width:0; padding:16px; border:1px solid #d8e1e8; border-radius:16px; background:#fff; color:#374151; }
+      .station-webcams .webcam-grid { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:16px; }
+      .station-webcams .webcam-card { box-sizing:border-box; display:flex; flex-direction:column; width:100%; min-width:0; padding:0; text-align:left; border:1px solid #d8e1e8; border-radius:14px; overflow:hidden; background:#fff; color:inherit; cursor:pointer; box-shadow:0 2px 8px rgba(15,23,42,.05); }
+      .station-webcams .webcam-card:hover { border-color:#94a3b8; box-shadow:0 4px 14px rgba(15,23,42,.1); }
+      .station-webcams .webcam-card:focus-visible { outline:3px solid #2563eb; outline-offset:3px; }
+      .station-webcams .webcam-card img { display:block; flex:none; width:100%; max-width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; }
+      .station-webcams .webcam-meta { box-sizing:border-box; display:flex; flex-direction:column; gap:5px; width:100%; min-width:0; padding:14px 16px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+      .station-webcams .webcam-meta strong { font-size:15px; color:#172b3a; }
+      .station-webcams .webcam-meta time { font-size:12px; color:#64748b; }
+      .station-webcams .webcam-more { margin:16px 0 0; padding:11px 18px; border:1px solid #2563eb; border-radius:10px; background:#fff; color:#1d4ed8; font-weight:600; cursor:pointer; }
+      .station-webcams .webcam-source, .station-webcams .webcam-gallery-note { font-size:12px; color:#64748b; margin:12px 0; }
+      .station-webcams .webcam-overlay { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:12px; }
+      .station-webcams .webcam-dialog { box-sizing:border-box; width:min(1100px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:16px; padding:20px; }
+      .station-webcams .webcam-dialog > .webcam-more { margin:0 0 16px; }
+      .station-webcams .webcam-large { display:block; width:100%; max-height:62vh; object-fit:contain; border-radius:10px; }
+      .station-webcams figure { margin:0 0 16px; }
+      @media(min-width:640px) { .station-webcams .webcam-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .station-webcams .webcam-grid-single { grid-template-columns:minmax(0,1fr); } }
     `}</style>
   </section>;
 };
