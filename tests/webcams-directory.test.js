@@ -69,7 +69,7 @@ test('directory uses existing search, dedicated links and shared grid once; deta
   } finally { global.window = oldWindow; }
 });
 
-test('singular webcam page renders SEO in initial HTML before any selection', () => {
+test('webcams landing route renders SEO in initial HTML before any selection', () => {
   const { renderToStaticMarkup } = require('react-dom/server');
   const { JSDOM } = require('jsdom');
   const resolve = name => {
@@ -81,7 +81,7 @@ test('singular webcam page renders SEO in initial HTML before any selection', ()
     if (name === '@/lib/webcamPages') return { getWebcamsPageProps: () => null };
     return require(name);
   };
-  const Page = load('pages/webcam.tsx', resolve).default;
+  const Page = load('pages/webcams/index.tsx', resolve).default;
   for (const initialStations of [stations, []]) {
     const html = renderToStaticMarkup(React.createElement(Page, { initialStations, station: null }));
     const doc = new JSDOM(html).window.document;
@@ -89,7 +89,7 @@ test('singular webcam page renders SEO in initial HTML before any selection', ()
     assert.equal(doc.querySelector('h1').textContent, 'Webcams des stations de ski en France');
     assert.equal(doc.querySelector('title').textContent, 'Webcams stations de ski en France : neige et pistes');
     assert.equal(doc.querySelector('meta[name="description"]').content, "Consultez les webcams des stations de ski en France. Observez l'enneigement, la visibilité et les pistes dans les Alpes, les Pyrénées et les autres massifs.");
-    assert.equal(doc.querySelector('link[rel="canonical"]').href, 'https://www.snow-explorer.com/webcam');
+    assert.equal(doc.querySelector('link[rel="canonical"]').href, 'https://www.snow-explorer.com/webcams');
     assert.equal(doc.querySelectorAll('article h2').length, 4);
     assert.equal(doc.querySelectorAll('article h3').length, 5);
     assert.equal(doc.querySelectorAll('article a').length, 1);
