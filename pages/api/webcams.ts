@@ -11,10 +11,9 @@ function bboxFrom(lat: number, lon: number, km: number) {
   };
 }
 
-function mapWebcam(c: any) {
+export function mapWebcam(c: any) {
   const preview =
     c?.images?.current?.preview ||
-    c?.images?.daylight?.preview ||
     c?.images?.current?.icon ||
     null;
 
@@ -31,23 +30,27 @@ function mapWebcam(c: any) {
     null;
 
   return {
+    status: c?.status ?? null,
     id: c?.webcamId ?? c?.id ?? null,
-    title: c?.title || c?.location?.city || "Webcam",
+    title: c?.title || "Webcam",
     preview,
     embed,
     link,
+    location: c?.location?.city || null,
+    lastUpdated: c?.lastUpdated ?? null,
     lat: c?.location?.latitude ?? null,
     lon: c?.location?.longitude ?? null,
   };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader("Cache-Control", "no-store");
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
   const radiusKm = Number(req.query.radiusKm || 35);
   const apiKey = process.env.WEBCAMS_API_KEY;
 
-  if (!apiKey || Number.isNaN(lat) || Number.isNaN(lon)) {
+  if (!apiKey || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || !Number.isFinite(radiusKm) || radiusKm <= 0 || radiusKm > 35 || !req.query.lat || !req.query.lon) {
     return res.status(400).json({ error: "lat, lon et WEBCAMS_API_KEY requis", webcams: [] });
   }
 
@@ -65,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const url1 = `https://api.windy.com/webcams/api/v3/webcams?${p1.toString()}`;
-    const r1 = await fetch(url1, { headers });
+    const r1 = await fetch(url1, { headers, cache: "no-store", signal: AbortSignal.timeout(15000) });
 
     if (r1.ok) {
       const j1 = await r1.json();
@@ -94,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const url2 = `https://api.windy.com/webcams/api/v3/webcams?${p2.toString()}`;
-    const r2 = await fetch(url2, { headers });
+    const r2 = await fetch(url2, { headers, cache: "no-store", signal: AbortSignal.timeout(15000) });
 
     if (!r2.ok) {
       const body = await r2.text().catch(() => "");

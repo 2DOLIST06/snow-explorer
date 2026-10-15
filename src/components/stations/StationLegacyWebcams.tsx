@@ -1,310 +1,123 @@
 import { parseCoordinate } from "@/lib/stationAutomaticData";
-import React, { useEffect, useState } from "react";
+import { selectWebcams, formatCapture } from "../../lib/stationWebcams";
+import React, { useEffect, useRef, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
-
-const Card: React.FC<React.PropsWithChildren<{ title?: string; style?: React.CSSProperties; headingLevel?: HeadingLevel }>> = ({ title, style, headingLevel = "h2", children }) => {
-  const Heading = headingLevel;
-  return (
-  <section style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12, ...style }}>
-    {title ? <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</Heading> : null}
-    <div>{children}</div>
-  </section>
-  );
-};
-
+type Webcam = { id: string; title: string; preview: string; location?: string; capturedAt: number | null };
 export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel }> = ({
-  name,
-  lat,
-  lon,
-  headingLevel = "h2",
+  name, lat, lon, headingLevel = "h2",
 }) => {
-  const [cams, setCams] = useState<any[]>([]);
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
+  const [cams, setCams] = useState<Webcam[]>([]);
+  const [failed, setFailed] = useState<string[]>([]);
+  const [err, setErr] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number>(0);
-  const [showAll, setShowAll] = useState<boolean>(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const dialog = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const Heading = headingLevel;
 
   useEffect(() => {
-    let aborted = false;
+    const controller = new AbortController();
     setOpen(false);
+    setCams([]);
+    setFailed([]);
+    setActiveId(null);
+    setLoading(true);
+    setErr(false);
     (async () => {
       try {
-        setLoading(true);
-        setErr(null);
-        const usedLat = parseCoordinate(lat, 90);
-        const usedLon = parseCoordinate(lon, 180);
-        if (usedLat === null || usedLon === null) {
-          setErr("Coordonnées indisponibles.");
-          setCams([]);
-          return;
-        }
-        const r = await fetch(`/api/webcams?lat=${usedLat}&lon=${usedLon}&radiusKm=30`, {
-          headers: { accept: "application/json" },
+        const usedLat = parseCoordinate(lat, 90), usedLon = parseCoordinate(lon, 180);
+        if (usedLat === null || usedLon === null) throw new Error("Coordonnées indisponibles");
+        const response = await fetch(`/api/webcams?lat=${usedLat}&lon=${usedLon}&radiusKm=30`, {
+          headers: { accept: "application/json" }, cache: "no-store", signal: controller.signal,
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const j = await r.json();
-        if (aborted) return;
-        const list: any[] = Array.isArray(j?.webcams) ? j.webcams : [];
-
-        // tri par distance
-        const withDist = list.map((c) => {
-          const clat = Number(c?.lat);
-          const clon = Number(c?.lon);
-          if (Number.isFinite(clat) && Number.isFinite(clon)) {
-            const dLat = (clat - usedLat) * (Math.PI / 180);
-            const dLon = (clon - usedLon) * (Math.PI / 180);
-            const a =
-              Math.sin(dLat / 2) ** 2 +
-              Math.cos((usedLat * Math.PI) / 180) * Math.cos((clat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-            const cang = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return { ...c, _distKm: 6371 * cang };
-          }
-          return { ...c, _distKm: Number.POSITIVE_INFINITY };
-        });
-        withDist.sort((a, b) => (a._distKm || 9e9) - (b._distKm || 9e9));
-        const in30 = withDist.filter((c) => Number.isFinite(c._distKm) && c._distKm <= 30);
-        setCams(in30);
-        setActiveIndex(0);
-      } catch (e: any) {
-        if (aborted) return;
-        setErr(e?.message || "Erreur webcams");
-        setCams([]);
+        if (!response.ok) throw new Error("Webcams indisponibles");
+        const data = await response.json();
+        if (!controller.signal.aborted) setCams(selectWebcams(data.webcams, name, usedLat, usedLon));
+      } catch {
+        if (!controller.signal.aborted) setErr(true);
       } finally {
-        if (!aborted) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     })();
-    return () => { aborted = true; };
-  }, [name, lat, lon]);
+    // Renew expiring Windy image URLs; never persist them in browser storage.
+    const renewal = window.setInterval(() => setRetry(value => value + 1), 4 * 60 * 1000);
+    return () => { controller.abort(); window.clearInterval(renewal); };
+  }, [name, lat, lon, retry]);
 
-  const MAX_STRIP = 6;
-  const hasActive = cams[activeIndex];
-  const activeTitle = hasActive?.title || "Webcam";
-  const activePreview = hasActive?.preview || null;
+  useEffect(() => {
+    if (!open) return;
+    opener.current = document.activeElement as HTMLElement;
+    dialog.current?.focus();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; opener.current?.focus(); };
+  }, [open]);
 
-  return (
-    <Card title="Webcam" headingLevel={headingLevel} style={{ width: "100%" }}>
-      {loading && <div style={{ fontSize: 13, color: "#4b5563" }}>Chargement…</div>}
-      {err && !loading && <div style={{ fontSize: 13, color: "#dc2626" }}>Webcams : {err}</div>}
-      {!loading && !err && cams.length === 0 && (
-        <div style={{ fontSize: 13, color: "#4b5563" }}>Aucune webcam trouvée à proximité.</div>
-      )}
+  const valid = cams.filter(cam => !failed.includes(cam.id));
+  const active = valid.find(cam => cam.id === activeId);
+  const unavailable = (id: string) => setFailed(previous => previous.includes(id) ? previous : [...previous, id]);
+  const metadata = (cam: Webcam) => <span className="webcam-meta">
+    <strong>{cam.title || "Webcam"}</strong>
+    {cam.location && <span>{cam.location}</span>}
+    {cam.capturedAt && <time dateTime={new Date(cam.capturedAt).toISOString()}>Dernière image : {formatCapture(cam.capturedAt)} (Paris)</time>}
+  </span>;
+  const card = (cam: Webcam) => <button type="button" className="webcam-card" key={cam.id}
+    onClick={() => { setActiveId(cam.id); setOpen(true); }} aria-label={`Agrandir ${cam.title}`}>
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src={cam.preview} alt={cam.title} loading="lazy" onError={() => unavailable(cam.id)} />
+    {metadata(cam)}
+  </button>;
 
-      {!loading && !err && cams.length > 0 && (
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            overflow: "hidden",
-            borderRadius: 10,
-            background: "#cbd5e1",
-            border: "1px solid #cbd5e1",
-            cursor: "pointer",
-          }}
-          onClick={() => setOpen(true)}
-          aria-label="Voir la webcam en grand"
-        >
+  return <section className="station-webcams" aria-busy={loading}>
+    <Heading style={{ margin: "0 0 8px", fontSize: 16 }}>Webcams</Heading>
+    {loading && <p role="status">Chargement des webcams…</p>}
+    {!loading && err && <p role="status">Webcams indisponibles. <button type="button" onClick={() => setRetry(value => value + 1)}>Réessayer</button></p>}
+    {!loading && !err && !valid.length && <p role="status">{cams.length ? "Images des webcams indisponibles." : "Aucune webcam identifiée pour cette station."}</p>}
+    {!loading && !err && valid.length > 0 && <>
+      <div className="webcam-grid">{valid.slice(0, 4).map(card)}</div>
+      {valid.length > 4 && <button type="button" className="webcam-more" onClick={() => { setActiveId(null); setOpen(true); }}>Voir plus de webcams</button>}
+    </>}
+    <p className="webcam-source">Images : <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">Windy.com</a></p>
+    {open && <div className="webcam-overlay" onClick={() => setOpen(false)}>
+      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams de ${name}`} tabIndex={-1}
+        onClick={event => event.stopPropagation()} onKeyDown={event => {
+          if (event.key === "Escape") setOpen(false);
+          if (event.key === "Tab") {
+            const buttons = dialog.current?.querySelectorAll<HTMLElement>('button, a[href]');
+            if (!buttons?.length) return;
+            const first = buttons[0], last = buttons[buttons.length - 1];
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+          }
+        }}>
+        <button type="button" className="webcam-more" onClick={() => setOpen(false)}>Fermer</button>
+        {active && <figure>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={activePreview} alt={activeTitle} style={{ width: "100%", height: "auto", display: "block" }} />
-          <div
-            style={{
-              position: "absolute",
-              right: 8,
-              bottom: 8,
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: "1px solid #cbd5e1",
-              background: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              lineHeight: "32px",
-            }}
-          >
-            ⤢
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginTop: 8, fontSize: 11, color: "#4b5563" }}>Source : Windy Webcams API (attribution requise)</div>
-
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "relative",
-              width: "min(1100px,96vw)",
-              maxHeight: "92vh",
-              background: "#fff",
-              borderRadius: 12,
-              padding: 12,
-              overflow: "auto",
-            }}
-          >
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="Fermer"
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                border: "1px solid #cbd5e1",
-                background: "#fff",
-                fontSize: 18,
-                lineHeight: "30px",
-                textAlign: "center",
-                cursor: "pointer",
-              }}
-            >
-              ×
-            </button>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{activeTitle}</h3>
-              {cams.length > MAX_STRIP && (
-                <button
-                  onClick={() => setShowAll((v) => !v)}
-                  style={{
-                    height: 36,
-                    padding: "0 12px",
-                    borderRadius: 8,
-                    border: "1px solid #cbd5e1",
-                    background: "#fff",
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
-                >
-                  {showAll ? "Revenir à la galerie" : "Voir plus de webcams"}
-                </button>
-              )}
-            </div>
-
-            <div style={{ border: "1px solid #cbd5e1", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activePreview}
-                alt={activeTitle}
-                style={{ width: "100%", maxHeight: "62vh", objectFit: "contain", display: "block", background: "#fff" }}
-              />
-            </div>
-
-            {!showAll ? (
-              <div
-                style={{
-                  marginTop: 12,
-                  display: "grid",
-                  gridAutoFlow: "column",
-                  gridAutoColumns: "minmax(140px, 1fr)",
-                  gap: 10,
-                  overflowX: "auto",
-                  paddingBottom: 4,
-                }}
-              >
-                {cams.slice(0, MAX_STRIP).map((c: any, idx: number) => {
-                  const title = c?.title || "Webcam";
-                  const hasImg = Boolean(c?.preview);
-                  const isActive = idx === activeIndex;
-                  return (
-                    <div
-                      key={c.id ?? c.webcamId ?? `strip-${idx}`}
-                      onClick={() => setActiveIndex(idx)}
-                      style={{
-                        border: isActive ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        background: "#fff",
-                      }}
-                      aria-label={`Afficher ${title}`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {hasImg ? (
-                        <img
-                          src={c.preview}
-                          alt={title}
-                          style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }}
-                        />
-                      ) : null}
-                      <div
-                        style={{
-                          padding: 8,
-                          fontSize: 12,
-                          color: "#374151",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {title}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div
-                style={{
-                  marginTop: 12,
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))",
-                  gap: 12,
-                }}
-              >
-                {cams.map((c: any, idx: number) => {
-                  const title = c?.title || "Webcam";
-                  const hasImg = Boolean(c?.preview);
-                  return (
-                    <div
-                      key={`all-${c.id ?? c.webcamId ?? idx}`}
-                      onClick={() => {
-                        setActiveIndex(idx);
-                        setShowAll(false);
-                      }}
-                      style={{
-                        border: "1px solid #cbd5e1",
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        background: "#fff",
-                        cursor: "pointer",
-                      }}
-                      aria-label={`Afficher ${title}`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {hasImg ? (
-                        <img
-                          src={c.preview}
-                          alt={title}
-                          style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }}
-                        />
-                      ) : null}
-                      <div style={{ padding: 8, fontSize: 12, color: "#374151" }}>{title}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </Card>
-  );
+          <img className="webcam-large" src={active.preview} alt={active.title} onError={() => unavailable(active.id)} />
+          <figcaption>{metadata(active)}</figcaption>
+        </figure>}
+        <div className="webcam-grid">{valid.map(card)}</div>
+        <p className="webcam-source">Images : <a href="https://www.windy.com/webcams">Windy.com</a></p>
+      </div>
+    </div>}
+    <style jsx>{`
+      .station-webcams { width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#fff; color:#374151; }
+      .webcam-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+      .webcam-card { min-width:0; padding:0; text-align:left; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff; color:inherit; cursor:pointer; }
+      .webcam-card img { display:block; width:100%; aspect-ratio:16/10; object-fit:cover; }
+      .webcam-meta { display:flex; flex-direction:column; gap:4px; padding:10px; font-size:13px; }
+      .webcam-meta time { font-size:12px; }
+      .webcam-more { margin:12px 0; padding:10px 16px; border:1px solid #2563eb; border-radius:8px; background:#fff; color:#1d4ed8; font-weight:600; cursor:pointer; }
+      .webcam-source { font-size:12px; margin:10px 0 0; }
+      .webcam-overlay { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:12px; }
+      .webcam-dialog { width:min(1100px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; padding:12px; }
+      .webcam-large { display:block; width:100%; max-height:62vh; object-fit:contain; }
+      figure { margin:0 0 12px; }
+      @media(min-width:640px) { .webcam-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+      @media(min-width:1024px) { .webcam-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+    `}</style>
+  </section>;
 };
