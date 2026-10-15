@@ -6,9 +6,9 @@ import type { Resort } from "@/lib/api/resorts";
 import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 import { WebcamsAuto } from "@/components/stations/StationLegacyWebcams";
 
-export type WebcamsDirectoryProps = { initialStations: Resort[]; station: Resort | null; unavailable?: boolean };
+export type WebcamsDirectoryProps = { initialStations: Resort[]; station: Resort | null; unavailable?: boolean; seo?: { title: string; heading: string; description: string; introduction: string; canonical: string; content: React.ReactNode } };
 
-export default function WebcamsDirectory({ initialStations, station, unavailable = false }: WebcamsDirectoryProps) {
+export default function WebcamsDirectory({ initialStations, station, unavailable = false, seo }: WebcamsDirectoryProps) {
   const [query, setQuery] = useState("");
   const [mobilePickerOpen, setMobilePickerOpen] = useState(!station);
   const pickerRef = useRef<HTMLElement>(null);
@@ -35,14 +35,14 @@ export default function WebcamsDirectory({ initialStations, station, unavailable
   const canonical = `https://www.snow-explorer.com/webcams${station ? `/${encodeURIComponent(station.slug)}` : ""}`;
   return <>
     <Head>
-      <title>{`${title} | Snow Explorer`}</title>
-      <meta name="description" content={station ? `Consultez les images des webcams identifiées pour ${station.name} sur Snow Explorer.` : "Recherchez une station de ski et consultez ses webcams disponibles sur Snow Explorer."} />
-      <link rel="canonical" href={canonical} />
+      <title>{seo?.title ?? `${title} | Snow Explorer`}</title>
+      <meta name="description" content={seo?.description ?? (station ? `Consultez les images des webcams identifiées pour ${station.name} sur Snow Explorer.` : "Recherchez une station de ski et consultez ses webcams disponibles sur Snow Explorer.")} />
+      <link rel="canonical" href={seo?.canonical ?? canonical} />
       {(station || unavailable || !initialStations.length) && <meta name="robots" content="noindex,follow" />}
     </Head>
-    <main className="weather-page webcams-directory">
+    <main className={`weather-page webcams-directory${seo ? " webcams-directory--seo" : ""}`}>
       <section className="weather-page__hero">
-        <div><p className="eyebrow">En images</p><h1>{title}</h1><p>Recherchez une station pour consulter ses webcams disponibles et agrandir les images.</p></div>
+        <div><p className="eyebrow">En images</p><h1>{seo?.heading ?? title}</h1><p>{seo?.introduction ?? "Recherchez une station pour consulter ses webcams disponibles et agrandir les images."}</p></div>
       </section>
       <section className="weather-layout">
         <aside ref={pickerRef} className={`station-picker${station && !mobilePickerOpen ? " station-picker--collapsed" : ""}`} aria-label="Choisir une station">
@@ -66,8 +66,18 @@ export default function WebcamsDirectory({ initialStations, station, unavailable
           </> : <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Ouvrez une station dans la liste pour consulter ses webcams. Leur disponibilité est vérifiée à l’ouverture.</span></div>}
         </section>
       </section>
+      {seo?.content}
     </main>
     <style jsx global>{`
+      .webcams-directory--seo .weather-page__hero { grid-template-columns:minmax(0,1fr); margin-bottom:20px; }
+      .webcams-directory--seo .weather-page__hero h1 { line-height:1.1; }
+      .webcams-directory--seo .weather-page__hero p:not(.eyebrow) { max-width:80ch; }
+      .webcams-directory .webcams-seo { max-width:75ch; margin:40px auto 0; line-height:1.7; overflow-wrap:break-word; }
+      .webcams-directory .webcams-seo h2 { margin:32px 0 12px; color:var(--brand); line-height:1.3; }
+      .webcams-directory .webcams-seo h3 { margin:24px 0 10px; color:var(--brand); line-height:1.3; }
+      .webcams-directory .webcams-seo p { margin:0 0 16px; }
+      .webcams-directory .webcams-seo a { color:var(--accent-2); text-decoration:underline; text-underline-offset:3px; }
+      .webcams-directory .webcams-seo a:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
       .webcams-directory .station-choice a { display:block; border:1px solid var(--line); background:#fff; border-radius:14px; padding:12px; color:inherit; text-decoration:none; }
       .webcams-directory .station-choice a:hover, .webcams-directory .station-choice a[aria-current="page"] { border-color:var(--accent); background:#f0fbfd; }
       .webcams-directory .station-choice a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
