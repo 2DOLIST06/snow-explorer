@@ -18,28 +18,35 @@ const block = { enabled: true, title: 'Découvrir la montagne', items: [
   { id: 'rich', enabled: true, type: 'rich', html: '<h3>Randonnée</h3>' },
   { id: 'embed', enabled: true, type: 'embed', html: '<div id="partner"></div><script src="https://partner.test/widget.js"></script>', origins: [] },
 ] };
-test('public SSR contains ordered safe content and never runs a widget before consent', () => {
+test('public SSR contains ordered safe content without an inline consent prompt', () => {
   const html = renderToStaticMarkup(React.createElement(Block, { block }));
   assert.ok(html.indexOf('alt="Montagne"') < html.indexOf('<h3>Randonnée</h3>'));
   assert.match(html, /rel="sponsored noopener noreferrer"/); assert.doesNotMatch(html, /<iframe|<script/);
   assert.equal(renderToStaticMarkup(React.createElement(Block, { block: { ...block, enabled: false } })), '');
   assert.equal(renderToStaticMarkup(React.createElement(Block, { block: { ...block, items: [] } })), '');
 });
-test('widget consent, revocation and station unmount clean document and message listener', () => {
+test('widget loads independently of cookie preferences and unmount cleans its listener', () => {
   const previous = global.window; const listeners = new Set();
   global.window = { addEventListener: (_name, cb) => listeners.add(cb), removeEventListener: (_name, cb) => listeners.delete(cb) };
   let view;
   try {
     act(() => { view = create(React.createElement(Block, { block })); });
-    assert.equal(view.root.findAllByType('iframe').length, 0);
-    act(() => view.root.findByType('button').props.onClick());
+    assert.equal(view.root.findAllByType('button').length, 0);
     assert.equal(view.root.findByType('iframe').props.sandbox, 'allow-scripts allow-popups'); assert.equal(listeners.size, 1);
     assert.match(view.root.findByType('iframe').props.srcDoc, /https:\/\/partner.test\/widget.js/);
-    act(() => view.root.findByType('button').props.onClick());
-    assert.equal(view.root.findAllByType('iframe').length, 0); assert.equal(listeners.size, 0);
-    act(() => view.root.findByType('button').props.onClick()); assert.equal(listeners.size, 1);
+    act(() => view.update(React.createElement(Block, { block })));
+    assert.equal(view.root.findAllByType('iframe').length, 1); assert.equal(listeners.size, 1);
+    act(() => view.update(React.createElement(Block, { block })));
+    assert.equal(listeners.size, 1);
     act(() => view.unmount()); assert.equal(listeners.size, 0);
   } finally { if (view) act(() => view.unmount()); global.window = previous; }
+});
+test('GetYourGuide always preserves its independent destination link', () => {
+  const href = 'https://www.getyourguide.com/courchevel-l201172/?partner_id=32QOCNG&cmp=A%2FB';
+  const gyg = { ...block, items: [{ id:'gyg', type:'embed', enabled:true, origins:[], html:`<div data-gyg-widget="activities"><span>Powered by <a href="${href.replaceAll('&','&amp;')}" target="_blank">GetYourGuide</a></span></div>` }] };
+  const html = renderToStaticMarkup(React.createElement(Block,{block:gyg}));
+  assert.match(html,/Découvrir la montagne/); assert.match(html,/GetYourGuide/);
+  assert.match(html,/partner_id=32QOCNG&amp;cmp=A%2FB/); assert.doesNotMatch(html,/<iframe|<script|data-gyg-widget/);
 });
 test('reloaded pending batch retains explicit initial launch and replacement wording', async () => {
   for (const mode of ['add', 'replace']) {

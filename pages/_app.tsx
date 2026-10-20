@@ -1,3 +1,4 @@
+import { CookiePreferencesProvider } from "@/contexts/CookiePreferencesContext";
 import Footer from "@/components/layout/Footer";
 import ProHeader from "@/components/layout/ProHeader";
 import "@/styles/globals.css";
@@ -13,10 +14,10 @@ export default function App({ Component, pageProps }: AppProps) {
   const stationDirectory = pageProps.stationDirectory ?? pageProps.initialStations;
 
   return (
-    <>
+    <CookiePreferencesProvider publicPage={showHeader}>
       {showHeader && <ProHeader initialStations={stationDirectory} />}
       <AdminAuthProvider>{router.pathname.startsWith("/admin") ? <AdminRoute>{router.pathname !== "/admin/login" && <AdminBar />}<Component {...pageProps} /></AdminRoute> : <Component {...pageProps} />}</AdminAuthProvider>
       {showFooter && <Footer />}
-    </>
+    </CookiePreferencesProvider>
   );
 }
