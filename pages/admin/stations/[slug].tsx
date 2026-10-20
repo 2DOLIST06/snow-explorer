@@ -13,6 +13,7 @@ import {
   normalizePisteMapUrl,
   syncLegacyPisteMapUrls,
 } from "@/lib/adminStation";
+import StationActivitiesEditor from "@/components/admin/StationActivitiesEditor";
 import StationSkiAreas from "@/components/admin/StationSkiAreas";
 
 
@@ -2361,6 +2362,7 @@ const removeForfaitRow = (rowIdx: number) => {
 >
   <SkiPassEditor stationSlug={slug} />
 </SectionCard>
+<StationActivitiesEditor key={slug} slug={slug} />
 <StationSkiAreas stationId={String(resort.id || slug)} />
           </div>
         </div>

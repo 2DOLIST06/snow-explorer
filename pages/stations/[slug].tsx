@@ -1,5 +1,6 @@
 import type { GetServerSideProps, NextPage } from "next";
 
+import type { ActivitiesBlock } from "@/types/activities";
 import StationV3Page from "@/components/stations/StationV3Page";
 import { fetchStationWidgetsConfig } from "@/lib/api/stations";
 import { fetchActiveResortsServer, getDepartmentResorts } from "@/lib/api/resorts";
@@ -60,6 +61,7 @@ type Resort = {
 
 interface Props {
   resort: Resort;
+  activities: ActivitiesBlock | null;
   cfg: StationWidgetsConfig | null;
   departmentStations: import("@/types/skiArea").StationOption[];
 }
@@ -67,8 +69,8 @@ interface Props {
 // Widget piste colors remain disabled; V3 uses the station's canonical color data.
 const SHOW_PISTE_COLOR_DETAILS = false;
 
-const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations }) => (
-  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} />
+const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations, activities }) => (
+  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} activities={activities} />
 );
 
 /* =========================
@@ -248,7 +250,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     vertical_drop_m: resort.vertical_drop_m ?? null,
   };
 
-  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations } };
+  let activities: ActivitiesBlock | null = null;
+  try {
+    const response = await fetch(`${getStationApiBase()}/api/stations/${encodeURIComponent(slug)}/activities`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (response.ok) activities = await response.json();
+  } catch { console.error("[station activities] unavailable", slug); }
+  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations, activities } };
 };
 
 export default ResortPage;

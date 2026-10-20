@@ -13,8 +13,8 @@ const { getStationPresentation, getStationPisteDetails, getStationOverviewScope 
 
 test("V3 keeps every primary section in one reorderable page", () => {
   assert.match(component, /const DEFAULT_ORDER[^;]+apercu[^;]+meteo-neige[^;]+webcams[^;]+forfaits[^;]+plan-des-pistes[^;]+localisation-acces/);
-  assert.match(component, /setOrder\(\[section, \.\.\.DEFAULT_ORDER\.filter/);
-  assert.match(component, /order\.map\(\(section\)/);
+  assert.match(component, /setOrder\(\[section, \.\.\.availableOrder\.filter/);
+  assert.match(component, /order \|\| availableOrder/);
   assert.match(component, /type="button" aria-pressed=/);
   assert.doesNotMatch(component, /router\.push|window\.location|href=.*meteo-neige/);
 });

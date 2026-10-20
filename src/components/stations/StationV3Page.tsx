@@ -1,3 +1,6 @@
+import ActivitiesBlock from "@/components/activities/ActivitiesBlock";
+import { activeActivityItems } from "@/lib/activities";
+import type { ActivitiesBlock as Activities } from "@/types/activities";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import Head from "next/head";
 import Link from "next/link";
@@ -18,11 +21,11 @@ import { resolveStationPisteMap } from "@/lib/stationPisteMap";
 import { getStationOverviewScope, getStationPresentation } from "@/lib/stationOverview";
 
 const ORIGIN = "https://www.snow-explorer.com";
-type StationV3Section = StationPageSection | "localisation-acces";
+type StationV3Section = StationPageSection | "localisation-acces" | "activites";
 
 const DEFAULT_ORDER: StationV3Section[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes", "localisation-acces"];
-const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "localisation-acces": "Localisation et accès" };
-const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "localisation-acces": "Accès" };
+const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "activites": "Activités à faire", "localisation-acces": "Localisation et accès" };
+const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "activites": "Activités", "localisation-acces": "Accès" };
 
 const text = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : "";
 const usefulNumber = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -115,8 +118,10 @@ function LocationAccess({ station }: { station: any }) {
   </section>;
 }
 
-export default function StationV3Page({ station, widgets, departmentStations = [] }: { station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
-  const [order, setOrder] = useState(DEFAULT_ORDER);
+export default function StationV3Page({ station, widgets, departmentStations = [], activities }: { activities?: Activities | null; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
+  const availableOrder = activeActivityItems(activities).length ? [...DEFAULT_ORDER, "activites" as const] : DEFAULT_ORDER;
+  const [order, setOrder] = useState<StationV3Section[] | null>(null);
+  useEffect(() => { setOrder(null); setSelected("apercu"); }, [station.slug]);
   const [selected, setSelected] = useState<StationV3Section>("apercu");
   const navigationRef = useRef<HTMLElement>(null);
   const [navigationEdges, setNavigationEdges] = useState({ left: false, right: false });
@@ -127,6 +132,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
     webcams: <Webcams station={station} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
     "plan-des-pistes": <PisteMap station={station} widgets={widgets} />,
     "localisation-acces": <LocationAccess station={station} />,
+    activites: <ActivitiesBlock key={station.slug} block={activities} />,
   };
   useEffect(() => {
     const navigation = navigationRef.current;
@@ -149,7 +155,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
 
   const select = (section: StationV3Section) => {
     setSelected(section);
-    setOrder([section, ...DEFAULT_ORDER.filter((item) => item !== section)]);
+    setOrder([section, ...availableOrder.filter((item) => item !== section)]);
     window.requestAnimationFrame(() => {
       const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
       navigationRef.current?.scrollIntoView({ behavior, block: "start" });
@@ -177,13 +183,14 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   </Head>
     <StationLegacyHero station={station} />
     <div className={`v3-navigation-shell${navigationEdges.left ? " has-left-overflow" : ""}${navigationEdges.right ? " has-right-overflow" : ""}`}>
-      <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{DEFAULT_ORDER.map((section) => <button key={section} data-section={section} type="button" aria-pressed={selected === section} aria-label={V3_SECTION_LABELS[section]} onClick={() => select(section)}><span className="v3-label-desktop">{V3_SECTION_LABELS[section]}</span><span className="v3-label-mobile" aria-hidden="true">{V3_SECTION_MOBILE_LABELS[section]}</span></button>)}</nav>
+      <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{availableOrder.map((section) => <button key={section} data-section={section} type="button" aria-pressed={selected === section} aria-label={V3_SECTION_LABELS[section]} onClick={() => select(section)}><span className="v3-label-desktop">{V3_SECTION_LABELS[section]}</span><span className="v3-label-mobile" aria-hidden="true">{V3_SECTION_MOBILE_LABELS[section]}</span></button>)}</nav>
     </div>
     <main className="v3-page"><nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/stations">Stations</Link><span aria-hidden="true">›</span><span aria-current="page">{station.name}</span></nav>
-      <div className="v3-floors">{order.map((section) => <div key={section} className="v3-floor-slot">{sections[section]}</div>)}</div>
+      <div className="v3-floors">{(order || availableOrder).filter(section => availableOrder.includes(section) && (order !== null || section !== "activites")).map((section) => <div key={section} className="v3-floor-slot">{sections[section]}</div>)}</div>
       <div className="v3-complementary">{Array.isArray(station.ski_areas) ? station.ski_areas.filter((area: any) => area?.status === "published").map((area: any) => <SkiAreaPublicCard key={area.id} area={area} compact />) : null}
         {!station.ski_areas?.length && departmentStations.length ? <section className="ski-area-public-card"><header><p className="eyebrow">À proximité</p><h2>Autres stations du même département</h2></header><StationCards stations={departmentStations} /></section> : null}
       </div>
+      {order === null && sections.activites}
     </main>
     <style jsx global>{`.v3-navigation-shell{position:sticky;top:var(--site-header-visible-height,0px);z-index:50;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line,#d8e1e8);backdrop-filter:blur(12px);transition:top .24s ease-out}.v3-navigation{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:11px max(16px,calc((100vw - 1180px)/2));scroll-margin-top:var(--site-header-visible-height,0px)}.v3-navigation-shell::before,.v3-navigation-shell::after{position:absolute;z-index:1;top:0;bottom:0;width:34px;pointer-events:none;opacity:0;content:"";transition:opacity .18s ease}.v3-navigation-shell::before{left:0;background:linear-gradient(90deg,rgba(255,255,255,.98),rgba(255,255,255,0))}.v3-navigation-shell::after{right:0;background:linear-gradient(270deg,rgba(255,255,255,.98),rgba(255,255,255,0))}.v3-navigation-shell.has-left-overflow::before,.v3-navigation-shell.has-right-overflow::after{opacity:1}.v3-label-mobile{display:none}.v3-navigation button{flex:0 0 auto;min-height:44px;padding:10px 16px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--brand,#12314b);font:inherit;font-weight:800;white-space:nowrap;cursor:pointer}.v3-navigation button[aria-pressed=true]{border-color:#0b6c9e;background:#0b6c9e;color:#fff}.v3-navigation button:focus-visible{outline:3px solid #38bdf8;outline-offset:2px}.v3-page{max-width:1180px;margin:auto;padding:22px 20px 70px;color:#132b3e}.v3-breadcrumb{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;color:#536b7d;font-size:.88rem}.v3-floors,.v3-complementary{display:grid;gap:24px}.v3-floor-slot{display:block}.v3-floor{padding:clamp(20px,4vw,42px);overflow:hidden;border:1px solid #d9e3eb;border-radius:22px;background:#fff;box-shadow:0 12px 30px rgba(18,49,75,.06)}.v3-floor--tint{background:#f3f7fa}.v3-section-heading{max-width:780px;margin-bottom:24px}.v3-section-heading>p{margin:0 0 7px;color:#0b6c9e;font-size:.76rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.v3-section-heading h2{margin:0;color:#132b3e;font-size:clamp(1.55rem,3vw,2.35rem);line-height:1.15}.v3-section-heading>span{display:block;margin-top:9px;color:#536b7d;line-height:1.6}.v3-overview-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);gap:18px;align-items:start}.v3-overview-sidebar{display:grid;gap:18px;justify-items:stretch}.v3-station-logo.station-overview-card__logo{display:grid;place-items:center;width:100%;height:160px;margin:0;padding:18px;border:1px solid #d9e3eb;border-radius:15px;background:#fff;box-sizing:border-box}.v3-station-logo img{width:100%;height:100%;min-height:0;object-fit:contain}.v3-story{font-size:1.06rem;line-height:1.75}.v3-story>p:first-child{margin-top:0}.v3-editorial{max-width:880px;line-height:1.75}.v3-editorial>:first-child{margin-top:0}.v3-editorial>:last-child{margin-bottom:0}.v3-season{display:grid;gap:7px;padding:18px;border-radius:15px;background:#e5eef4}.v3-season strong{color:#0b6c9e;text-transform:uppercase;letter-spacing:.08em}.v3-scope{display:flex;width:max-content;max-width:100%;overflow-x:auto;margin-top:25px;padding:4px;border:1px solid #cbd9e3;border-radius:12px;background:#eef3f7}.v3-scope button{flex:0 0 auto;padding:9px 14px;border:0;border-radius:9px;background:transparent;color:#29465d;font:inherit;font-weight:800;cursor:pointer}.v3-scope button[aria-pressed=true]{background:#0b6c9e;color:#fff;box-shadow:0 2px 7px rgba(11,108,158,.22)}.v3-scope button:focus-visible{outline:3px solid #38bdf8;outline-offset:1px}.v3-ski-area-link{display:inline-block;margin-top:20px;color:#0b6c9e;font-weight:800}.v3-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:25px 0 0}.v3-stat-grid div{display:flex;min-height:105px;flex-direction:column;justify-content:flex-end;padding:16px;border:1px solid #d9e3eb;border-radius:15px;background:#fff}.v3-stat-grid dt{order:2;color:#536b7d;font-size:.82rem}.v3-stat-grid dd{margin:0 0 4px;color:#132b3e;font-size:1.65rem;font-weight:900}.v3-pistes{margin-top:25px}.v3-pistes h3{margin-bottom:12px}.v3-pistes dl{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0}.v3-piste{padding:15px;border-left:7px solid #64748b;border-radius:12px;background:#f5f7f9}.v3-piste--green{border-color:#299447}.v3-piste--blue{border-color:#2477c8}.v3-piste--red{border-color:#d43b3b}.v3-piste--black{border-color:#202b35}.v3-piste dt{color:#536b7d}.v3-piste dd{margin:3px 0 0;font-size:1.4rem;font-weight:900}.v3-highlight,.v3-empty{padding:18px;border:1px solid #d9e3eb;border-radius:14px;background:#fff;color:#536b7d}.v3-widget-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:20px}.v3-widget-grid>*:first-child:last-child{grid-column:1/-1}.v3-media-stage{display:grid;gap:16px}.v3-media-stage iframe{width:100%;min-height:360px;border:0;border-radius:14px}.v3-passes{display:grid;gap:18px;overflow-x:auto;margin-top:20px}.v3-piste-map{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:20px;align-items:start}.v3-piste-map>figure{margin:0}.v3-piste-map aside{padding:20px;border-radius:16px;background:#eef3f7}.v3-piste-map aside h3{margin-top:0}.v3-piste-map aside dl{display:grid;gap:3px;margin:0}.v3-piste-map aside dl div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #d1dce4}.v3-piste-map aside dd{margin:0;font-weight:900}.v3-complementary{margin-top:24px}.v3-location{padding:clamp(20px,4vw,36px);border-radius:22px;background:#eaf1f5}.v3-location .station-map-card{height:430px}.v3-location .station-map-card>h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:760px){.v3-navigation{scrollbar-width:none;padding-inline:12px}.v3-navigation::-webkit-scrollbar{display:none}.v3-label-desktop{display:none}.v3-label-mobile{display:inline}.v3-page{padding:16px 12px 50px}.v3-floor{padding:22px 16px;border-radius:17px}.v3-overview-grid,.v3-widget-grid,.v3-piste-map{grid-template-columns:1fr}.v3-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v3-pistes dl{grid-template-columns:repeat(2,1fr)}.v3-media-stage iframe{min-height:280px}.v3-location{padding:16px}.v3-location .station-map-card{height:380px}}@media(max-width:420px){.v3-stat-grid{grid-template-columns:1fr 1fr}.v3-stat-grid div{min-height:90px;padding:12px}.v3-stat-grid dd{font-size:1.35rem}}@media(min-width:761px){.v3-navigation-shell::before,.v3-navigation-shell::after{display:none}}@media(prefers-reduced-motion:reduce){.v3-navigation-shell{transition:none}.v3-navigation{scroll-behavior:auto}}`}</style>
   </>;
