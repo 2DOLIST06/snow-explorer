@@ -25,8 +25,8 @@ const ORIGIN = "https://www.snow-explorer.com";
 type StationV3Section = StationPageSection | "localisation-acces" | "activites";
 
 const DEFAULT_ORDER: StationV3Section[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes", "localisation-acces"];
-const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "activites": "Activités à faire", "localisation-acces": "Localisation et accès" };
-const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "activites": "Activités", "localisation-acces": "Accès" };
+const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "activites": "Activités à faire", "localisation-acces": "Accès & hébergement" };
+const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "activites": "Activités", "localisation-acces": "Accès & hébergement" };
 
 const text = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : "";
 const usefulNumber = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -114,10 +114,10 @@ function LocationAccess({ station }: { station: any }) {
   const directionsUrl = stationDirectionsUrl(station);
   const lodgingUrl = stationLodgingUrl(station);
   return <section className="v3-location" aria-labelledby="v3-location-title">
-    <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation et accès à ${station.name}`} />
+    <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation, accès et hébergement à ${station.name}`} />
     <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
     {directionsUrl ? <a className="btn btn--primary station-directions" href={directionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir le trajet sur Google Maps</a> : null}
-    {lodgingUrl ? <div style={{ marginTop: 16 }}><a className="btn btn--primary station-directions" style={{ marginTop: 0 }} href={lodgingUrl} target="_blank" rel="sponsored noopener noreferrer"><Hotel size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir les hébergements à proximité</a><p style={{ marginTop: 8, fontSize: ".85rem" }}>Sur Booking.com · Lien affilié</p></div> : null}
+    {lodgingUrl ? <div style={{ marginTop: 16, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px" }}><a className="btn btn--primary station-directions" style={{ marginTop: 0 }} href={lodgingUrl} target="_blank" rel="sponsored noopener noreferrer"><Hotel size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir les hébergements à proximité</a><span style={{ fontSize: ".85rem" }}>Booking.com · Lien partenaire</span></div> : null}
   </section>;
 }
 
