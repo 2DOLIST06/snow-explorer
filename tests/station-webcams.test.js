@@ -58,6 +58,7 @@ test('Windy v3 lastUpdatedOn survives mapping and renders dates in cards and the
   let tree;
   try {
     const { WebcamsAuto } = load('src/components/stations/StationLegacyWebcams.tsx', name => {
+      if (name === '@/lib/stationName') return require('../src/lib/stationName');
       if (name === '@/lib/stationAutomaticData') return require('../src/lib/stationAutomaticData');
       if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
       return require(name);
@@ -85,6 +86,7 @@ test('grid renders 0, 1, 2, 3, 4 and 5 webcams, more opens same gallery and brok
   global.document = { activeElement: null, body: { style: {} } };
   try {
     const { WebcamsAuto } = load('src/components/stations/StationLegacyWebcams.tsx', name => {
+      if (name === '@/lib/stationName') return require('../src/lib/stationName');
       if (name === '@/lib/stationAutomaticData') return require('../src/lib/stationAutomaticData');
       if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
       return require(name);
@@ -122,6 +124,7 @@ test('loading and failed requests have explicit states and retry; image failure 
   global.fetch = () => new Promise((_, fail) => { reject = fail; });
   try {
     const { WebcamsAuto } = load('src/components/stations/StationLegacyWebcams.tsx', name => {
+      if (name === '@/lib/stationName') return require('../src/lib/stationName');
       if (name === '@/lib/stationAutomaticData') return require('../src/lib/stationAutomaticData');
       if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
       return require(name);

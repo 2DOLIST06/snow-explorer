@@ -15,6 +15,7 @@ function loadTypescript(path, resolve = require) {
 
 const coordinates = loadTypescript("src/types/stationMap.ts");
 const { stationDirectionsUrl } = loadTypescript("src/components/maps/StationMapCard.tsx", (name) => {
+  if (name === "@/lib/stationName") return require("../src/lib/stationName");
   if (name === "@/types/stationMap") return coordinates;
   if (name === "./StationMapDynamic") return {};
   return require(name);

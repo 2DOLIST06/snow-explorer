@@ -1,3 +1,4 @@
+import { stationNameAt } from "@/lib/stationName";
 import React, { useCallback } from 'react';
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Sun, Thermometer } from 'lucide-react';
 import { parseCoordinate } from '@/lib/stationAutomaticData';
@@ -108,7 +109,7 @@ export function useStationWeatherResources({ slug, latitude, longitude }: Statio
 
 function StationWeatherContent({ name, headingLevel = 'h3', ...props }: StationWeatherProps) {
   const { observations, forecasts } = useStationWeatherResources({ name, ...props });
-  return <div className={styles.weather} aria-label={`Météo à ${name}`}>
+  return <div className={styles.weather} aria-label={`Météo ${stationNameAt(name)}`}>
     <ObservedConditions resource={observations} headingLevel={headingLevel} />
     <ForecastConditions resource={forecasts} headingLevel={headingLevel} />
   </div>;

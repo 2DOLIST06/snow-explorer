@@ -1,3 +1,4 @@
+import { stationNameOf } from "@/lib/stationName";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import { nearbyWebcams, featuredWebcams, formatCapture } from "../../lib/stationWebcams";
 import React, { useEffect, useRef, useState } from "react";
@@ -84,7 +85,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     </>}
     <p className="webcam-source">Images : <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">Windy.com</a></p>
     {open && <div className="webcam-overlay" onClick={() => setOpen(false)}>
-      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams à proximité de ${name}`} tabIndex={-1}
+      <div className="webcam-dialog" ref={dialog} role="dialog" aria-modal="true" aria-label={`Webcams à proximité ${stationNameOf(name)}`} tabIndex={-1}
         onClick={event => event.stopPropagation()} onKeyDown={event => {
           if (event.key === "Escape") setOpen(false);
           if (event.key === "Tab") {
