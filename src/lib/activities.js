@@ -20,6 +20,30 @@ function activeActivityItems(block) {
     item.type === "embed" && Boolean(item.html?.trim())
   ));
 }
+// Extract only ordinary HTTPS anchors, never external resources or scripts.
+// Keep the stored destination exactly as supplied, including affiliate params.
+function activityEmbedLinksHtml(html) {
+  const links = [], seen = new Set();
+  const attr = value => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  sanitize(html || "", {
+    allowedTags: ["a"], allowedAttributes: { a: ["href", "target"] },
+    allowedSchemes: ["https"], allowProtocolRelative: false,
+    nonTextTags: ["script", "style", "iframe", "textarea", "noscript", "template"],
+    exclusiveFilter: frame => {
+      if (frame.tag === "a" && https(frame.attribs.href) && !seen.has(frame.attribs.href)) {
+        const href = frame.attribs.href;
+        seen.add(href);
+        const label = sanitize(frame.text || "Voir les activités", { allowedTags: [], allowedAttributes: {} });
+        links.push(`<a href="${attr(href)}" target="${frame.attribs.target === "_self" ? "_self" : "_blank"}" rel="sponsored noopener noreferrer">${label}</a>`);
+      }
+      return true;
+    },
+  });
+  return links.join(" ");
+}
+function visibleActivityItems(block, widgetsAllowed) {
+  return activeActivityItems(block).filter(item => item.type !== "embed" || widgetsAllowed || Boolean(activityEmbedLinksHtml(item.html)));
+}
 function widgetDocument(item, nonce, token) {
   const origins = new Set((item.origins || []).filter(https).map(value => new URL(value).origin));
   let gygPartnerId = null;
@@ -54,4 +78,4 @@ function widgetDocument(item, nonce, token) {
   const escape = value => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${escape(csp)}"><style>html,body{margin:0;width:100%;font:16px/1.5 system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}img{height:auto}iframe{width:100%;border:0}a{color:#0b6c9e}</style></head><body><script nonce="${escape(nonce)}">${runtime}</script>${html}${bootstrap}</body></html>`;
 }
-module.exports = { cleanActivityHtml, activeActivityItems, widgetDocument };
+module.exports = { cleanActivityHtml, activeActivityItems, activityEmbedLinksHtml, visibleActivityItems, widgetDocument };

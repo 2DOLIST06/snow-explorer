@@ -110,3 +110,16 @@ test('unavailable cookie storage keeps refusal in memory and reports that it was
     assert.match(document.querySelector('.cookie-storage-error').textContent, /n’a pas conservé/);
   } finally { env.cleanup(); }
 });
+
+test('ordinary GetYourGuide links remain clickable when preferences are refused and after reload', async () => {
+  const href = 'https://www.getyourguide.com/courchevel-l201172/?partner_id=32QOCNG&cmp=A%2FB';
+  const linkBlock = { ...block, items:[{...block.items[0],html:`<div data-gyg-widget="activities"><a href="${href.replaceAll('&','&amp;')}">GetYourGuide</a></div>`}] };
+  const env = setup(preferencesCookie({externalContent:false,analytics:false},true));
+  try {
+    await act(async()=>env.root.render(React.createElement(CookiePreferencesProvider,{publicPage:true},React.createElement(Block,{block:linkBlock}))));
+    const link = document.querySelector('.activity-partner-links a');
+    assert.ok(document.querySelector('.activities-block')); assert.equal(link.getAttribute('href'),href);
+    assert.equal(link.target,'_blank'); assert.equal(link.rel,'sponsored noopener noreferrer');
+    assert.equal(document.querySelector('iframe, script[src]'),null);
+  } finally { env.cleanup(); }
+});

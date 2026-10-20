@@ -45,6 +45,15 @@ test('widget loads directly and global refusal or unmount cleans document and li
     act(() => view.unmount()); assert.equal(listeners.size, 0);
   } finally { if (view) act(() => view.unmount()); global.window = previous; }
 });
+test('refusing a GetYourGuide widget preserves the card and its independent destination link', () => {
+  const href = 'https://www.getyourguide.com/courchevel-l201172/?partner_id=32QOCNG&cmp=A%2FB';
+  const gyg = { ...block, items: [{ id:'gyg', type:'embed', enabled:true, origins:[], html:`<div data-gyg-widget="activities"><span>Powered by <a href="${href.replaceAll('&','&amp;')}" target="_blank">GetYourGuide</a></span></div>` }] };
+  preferenceState = { ready:true, preferences:{externalContent:false,analytics:false} };
+  const html = renderToStaticMarkup(React.createElement(Block,{block:gyg}));
+  assert.match(html,/Découvrir la montagne/); assert.match(html,/GetYourGuide/);
+  assert.match(html,/partner_id=32QOCNG&amp;cmp=A%2FB/); assert.doesNotMatch(html,/<iframe|<script|data-gyg-widget/);
+  preferenceState = { ready:true, preferences:{externalContent:true,analytics:false} };
+});
 test('reloaded pending batch retains explicit initial launch and replacement wording', async () => {
   for (const mode of ['add', 'replace']) {
     const router = { query: { lot: 'batch' }, pathname: '/admin/activites', replace: async () => {} };

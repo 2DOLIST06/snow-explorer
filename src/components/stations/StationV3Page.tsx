@@ -1,6 +1,6 @@
 import { useCookiePreferences } from "@/contexts/CookiePreferencesContext";
 import ActivitiesBlock from "@/components/activities/ActivitiesBlock";
-import { activeActivityItems } from "@/lib/activities";
+import { visibleActivityItems } from "@/lib/activities";
 import type { ActivitiesBlock as Activities } from "@/types/activities";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import Head from "next/head";
@@ -121,7 +121,7 @@ function LocationAccess({ station }: { station: any }) {
 
 export default function StationV3Page({ station, widgets, departmentStations = [], activities }: { activities?: Activities | null; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
   const { ready, preferences } = useCookiePreferences();
-  const hasActivities = activeActivityItems(activities).some(item => item.type !== "embed" || (ready && preferences.externalContent));
+  const hasActivities = visibleActivityItems(activities, ready && preferences.externalContent).length > 0;
   const availableOrder = hasActivities ? [...DEFAULT_ORDER, "activites" as const] : DEFAULT_ORDER;
   const [order, setOrder] = useState<StationV3Section[] | null>(null);
   const displayedOrder = [...(order || availableOrder), ...availableOrder.filter(section => order && !order.includes(section))];
