@@ -4,4 +4,3 @@ export function activeActivityItems(block: ActivitiesBlock | null | undefined): 
 export function widgetDocument(item: Extract<ActivityItem, { type: "embed" }>, nonce: string, token: string): string;
 
 export function activityEmbedLinksHtml(html: string): string;
-export function visibleActivityItems(block: ActivitiesBlock | null | undefined, widgetsAllowed: boolean): ActivityItem[];

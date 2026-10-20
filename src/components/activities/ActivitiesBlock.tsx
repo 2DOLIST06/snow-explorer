@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useCookiePreferences } from "@/contexts/CookiePreferencesContext";
-import { activityEmbedLinksHtml, visibleActivityItems, cleanActivityHtml, widgetDocument } from "@/lib/activities";
+import { activityEmbedLinksHtml, activeActivityItems, cleanActivityHtml, widgetDocument } from "@/lib/activities";
 import type { ActivitiesBlock as Block, ActivityItem } from "@/types/activities";
 
 function AffiliateWidget({ item }: { item: Extract<ActivityItem, { type: "embed" }> }) {
-  const { ready, preferences } = useCookiePreferences();
-  const allowed = ready && preferences.externalContent;
   const [doc, setDoc] = useState("");
   const [height, setHeight] = useState(350);
   const [error, setError] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
-    if (!allowed) { setDoc(""); return; }
     setError(false);
     const token = crypto.randomUUID();
     setDoc(widgetDocument(item, crypto.randomUUID(), token));
@@ -22,19 +18,17 @@ function AffiliateWidget({ item }: { item: Extract<ActivityItem, { type: "embed"
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [allowed, item]);
+  }, [item]);
   const links = activityEmbedLinksHtml(item.html);
-  if (!allowed && !links) return null;
   return <div className="activity-widget">
-    {allowed && doc && <iframe ref={frame} title="Activité proposée par un partenaire" srcDoc={doc} sandbox="allow-scripts allow-popups" referrerPolicy="no-referrer" style={{ width: "100%", height, border: 0 }} />}
+    {doc && <iframe ref={frame} title="Activité proposée par un partenaire" srcDoc={doc} sandbox="allow-scripts allow-popups" referrerPolicy="no-referrer" style={{ width: "100%", height, border: 0 }} />}
     {links && <div className="activity-partner-links" dangerouslySetInnerHTML={{ __html: links }} />}
-    {allowed && error && <p role="status">Le partenaire n’a pas pu charger tout le contenu. Réessayez en rechargeant la page.</p>}
+    {error && <p role="status">Le partenaire n’a pas pu charger tout le contenu. Réessayez en rechargeant la page.</p>}
   </div>;
 }
 
 export default function ActivitiesBlock({ block }: { block?: Block | null }) {
-  const { ready, preferences } = useCookiePreferences();
-  const items = visibleActivityItems(block, ready && preferences.externalContent);
+  const items = activeActivityItems(block);
   if (!items.length || !block) return null;
   return <section className="v3-floor activities-block" aria-labelledby="activities-heading">
     <header className="v3-section-heading"><p>À découvrir</p><h2 id="activities-heading">{block.title || "Activités à faire"}</h2></header>

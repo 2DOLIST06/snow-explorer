@@ -1,4 +1,4 @@
-export type CookiePreferences = { externalContent: boolean; analytics: boolean };
+export type CookiePreferences = { optionalCookies: boolean };
 export const COOKIE_NAME: string;
 export const COOKIE_MAX_AGE: number;
 export const DEFAULT_PREFERENCES: CookiePreferences;

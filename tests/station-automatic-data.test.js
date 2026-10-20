@@ -32,7 +32,6 @@ test('coordinates reject absent, boolean, nonnumeric and out-of-range values but
 const stubs = new Map();
 const StationPage = load('src/components/stations/StationV3Page.tsx', (name) => {
   if (name === 'react') return { ...React, useState: (v) => [v, () => {}], useEffect: () => {}, useRef: () => ({ current: null }) };
-  if (name === '@/contexts/CookiePreferencesContext') return { useCookiePreferences: () => ({ ready: true, preferences: { externalContent: true } }) };
   if (name === '@/lib/activities') return require('../src/lib/activities');
   if (name === '@/lib/stationAutomaticData') return automatic;
   if (name === '@/lib/stationContent') return { SECTION_LABELS: {}, stationLocation: () => '', getStationEditorialContent: () => '', getStationSectionData: () => ({}) };

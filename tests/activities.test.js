@@ -51,7 +51,7 @@ test('GetYourGuide container bootstraps its loader once inside the isolated docu
 });
 
 test('embed fallback exposes only ordinary HTTPS links without scripts, remote resources or rewritten tracking', () => {
-  const { activityEmbedLinksHtml, visibleActivityItems } = require('../src/lib/activities');
+  const { activityEmbedLinksHtml } = require('../src/lib/activities');
   const href = 'https://www.getyourguide.com/courchevel-l201172/?partner_id=32QOCNG&cmp=A%2FB&x=1&x=2';
   const code = `<div data-gyg-widget="activities"><span>Powered by <a target="_blank" href="${href.replaceAll('&', '&amp;')}" onclick="bad()"><strong>GetYourGuide</strong></a></span></div><script>bad()</script><img src="https://tracker.test/pixel"><iframe src="https://tracker.test/frame"></iframe><a href="javascript:bad()">Bad</a><a href="//tracker.test">Bad</a>`;
   const doc = new JSDOM(activityEmbedLinksHtml(code)).window.document;
@@ -60,8 +60,6 @@ test('embed fallback exposes only ordinary HTTPS links without scripts, remote r
   assert.equal(doc.querySelector('a').textContent, 'GetYourGuide');
   assert.equal(doc.querySelector('a').rel, 'sponsored noopener noreferrer');
   assert.equal(doc.querySelector('script,img,iframe,[onclick]'), null);
-  assert.equal(visibleActivityItems({enabled:true,items:[{...embed,html:code}]},false).length,1);
-  assert.equal(visibleActivityItems({enabled:true,items:[embed]},false).length,0);
 });
 
 test('fallback ignores links inside script, iframe fallback, templates and unsafe markup', () => {

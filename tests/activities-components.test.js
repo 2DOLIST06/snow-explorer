@@ -12,8 +12,7 @@ function load(file, stubs = {}) {
   new Function('require', 'module', 'exports', source)(name => name in stubs ? stubs[name] : name.startsWith('@/') ? require(path.resolve('src', name.slice(2))) : require(name), module, module.exports);
   return module.exports;
 }
-let preferenceState = { ready: true, preferences: { externalContent: true, analytics: false } };
-const Block = load('src/components/activities/ActivitiesBlock.tsx', { '@/contexts/CookiePreferencesContext': { useCookiePreferences: () => preferenceState } }).default;
+const Block = load('src/components/activities/ActivitiesBlock.tsx').default;
 const block = { enabled: true, title: 'Découvrir la montagne', items: [
   { id: 'image', enabled: true, type: 'image', src: 'https://cdn.test/photo.png', alt: 'Montagne', href: 'https://partner.test/?x=1&ref=A%2FB', newTab: true },
   { id: 'rich', enabled: true, type: 'rich', html: '<h3>Randonnée</h3>' },
@@ -26,33 +25,28 @@ test('public SSR contains ordered safe content without an inline consent prompt'
   assert.equal(renderToStaticMarkup(React.createElement(Block, { block: { ...block, enabled: false } })), '');
   assert.equal(renderToStaticMarkup(React.createElement(Block, { block: { ...block, items: [] } })), '');
 });
-test('widget loads directly and global refusal or unmount cleans document and listener', () => {
+test('widget loads independently of cookie preferences and unmount cleans its listener', () => {
   const previous = global.window; const listeners = new Set();
   global.window = { addEventListener: (_name, cb) => listeners.add(cb), removeEventListener: (_name, cb) => listeners.delete(cb) };
   let view;
   try {
-    preferenceState = { ready: true, preferences: { externalContent: true, analytics: false } };
     act(() => { view = create(React.createElement(Block, { block })); });
     assert.equal(view.root.findAllByType('button').length, 0);
     assert.equal(view.root.findByType('iframe').props.sandbox, 'allow-scripts allow-popups'); assert.equal(listeners.size, 1);
     assert.match(view.root.findByType('iframe').props.srcDoc, /https:\/\/partner.test\/widget.js/);
-    preferenceState = { ready: true, preferences: { externalContent: false, analytics: false } };
     act(() => view.update(React.createElement(Block, { block })));
-    assert.equal(view.root.findAllByType('iframe').length, 0); assert.equal(listeners.size, 0);
-    preferenceState = { ready: true, preferences: { externalContent: true, analytics: false } };
+    assert.equal(view.root.findAllByType('iframe').length, 1); assert.equal(listeners.size, 1);
     act(() => view.update(React.createElement(Block, { block })));
     assert.equal(listeners.size, 1);
     act(() => view.unmount()); assert.equal(listeners.size, 0);
   } finally { if (view) act(() => view.unmount()); global.window = previous; }
 });
-test('refusing a GetYourGuide widget preserves the card and its independent destination link', () => {
+test('GetYourGuide always preserves its independent destination link', () => {
   const href = 'https://www.getyourguide.com/courchevel-l201172/?partner_id=32QOCNG&cmp=A%2FB';
   const gyg = { ...block, items: [{ id:'gyg', type:'embed', enabled:true, origins:[], html:`<div data-gyg-widget="activities"><span>Powered by <a href="${href.replaceAll('&','&amp;')}" target="_blank">GetYourGuide</a></span></div>` }] };
-  preferenceState = { ready:true, preferences:{externalContent:false,analytics:false} };
   const html = renderToStaticMarkup(React.createElement(Block,{block:gyg}));
   assert.match(html,/Découvrir la montagne/); assert.match(html,/GetYourGuide/);
   assert.match(html,/partner_id=32QOCNG&amp;cmp=A%2FB/); assert.doesNotMatch(html,/<iframe|<script|data-gyg-widget/);
-  preferenceState = { ready:true, preferences:{externalContent:true,analytics:false} };
 });
 test('reloaded pending batch retains explicit initial launch and replacement wording', async () => {
   for (const mode of ['add', 'replace']) {

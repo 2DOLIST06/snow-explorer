@@ -24,17 +24,16 @@ export default function CookieBanner({ settings, preferences, onSave, onCustomiz
   }, [settings]);
   return <div className={settings ? "cookie-settings-backdrop" : "cookie-banner-position"}>
     <section ref={root} className="cookie-panel" role={settings ? "dialog" : "region"} aria-modal={settings ? true : undefined} aria-labelledby="cookie-panel-title" aria-describedby="cookie-panel-description">
-      <div className="cookie-panel-heading"><h2 id="cookie-panel-title">{settings ? "Mes préférences cookies" : "Cookies et contenus partenaires"}</h2>{settings && <button type="button" onClick={onClose} aria-label="Fermer les préférences cookies">×</button>}</div>
-      <p id="cookie-panel-description">Les widgets partenaires, dont GetYourGuide, affichent des activités via un service externe. Vous pouvez désactiver ces intégrations tout en conservant leurs liens. L’analyse GetYourGuide sur l’ensemble du site est une option distincte.</p>
+      <div className="cookie-panel-heading"><h2 id="cookie-panel-title">{settings ? "Mes préférences cookies" : "Cookies Snow Explorer"}</h2>{settings && <button type="button" onClick={onClose} aria-label="Fermer les préférences cookies">×</button>}</div>
+      <p id="cookie-panel-description">Vos préférences concernent les cookies propres à Snow Explorer. Les cookies nécessaires restent actifs. Aucun cookie facultatif Snow Explorer n’est installé actuellement.</p>
       <p><a href="/cookies">Consulter la politique relative aux cookies</a>. Vous pouvez modifier votre choix à tout moment avec « Gérer mes cookies » en bas de page.</p>
       {settings && <div className="cookie-categories">
         <label><input type="checkbox" checked disabled /><span><strong>Fonctionnement nécessaire</strong><small>Préférences cookies et sécurité de l’administration. Toujours actif.</small></span></label>
-        <label><input type="checkbox" checked={draft.externalContent} onChange={e => setDraft({ ...draft, externalContent: e.target.checked })} /><span><strong>Contenus partenaires</strong><small>Widgets d’activités, dont GetYourGuide. Désactiver retire les intégrations ; leurs liens restent accessibles.</small></span></label>
-        <label><input type="checkbox" checked={draft.analytics} onChange={e => setDraft({ ...draft, analytics: e.target.checked })} /><span><strong>Mesure des conversions GetYourGuide</strong><small>Active l’analyse des liens et widgets sur l’ensemble du site, en plus du chargeur utilisé par les widgets. Un retrait recharge la page.</small></span></label>
+        <label><input type="checkbox" checked={draft.optionalCookies} onChange={e => setDraft({ optionalCookies: e.target.checked })} /><span><strong>Cookies facultatifs Snow Explorer</strong><small>Aucun n’est installé actuellement. Votre préférence est mémorisée.</small></span></label>
       </div>}
       <div className="cookie-panel-actions">
-        <button type="button" onClick={() => onSave({ externalContent: false, analytics: false })}>Tout refuser</button>
-        <button type="button" onClick={() => onSave({ externalContent: true, analytics: true })}>Tout accepter</button>
+        <button type="button" onClick={() => onSave({ optionalCookies: false })}>Tout refuser</button>
+        <button type="button" onClick={() => onSave({ optionalCookies: true })}>Tout accepter</button>
         {settings ? <button type="button" className="cookie-primary" onClick={() => onSave(draft)}>Enregistrer mes choix</button> : <button type="button" className="cookie-primary" onClick={onCustomize}>Personnaliser</button>}
       </div>
     </section>
