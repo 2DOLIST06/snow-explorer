@@ -1,3 +1,4 @@
+import { stationNameAt } from "@/lib/stationName";
 import Head from "next/head";
 import type { GetServerSideProps, NextPage } from "next";
 import Link from "next/link";
@@ -117,7 +118,7 @@ const ForfaitsPage: NextPage<Props> = ({ initialStations }) => {
             {!selected && !loading && <div className="passes-welcome"><span><Ticket size={30} /></span><p className="eyebrow">Tarifs en un coup d’œil</p><h2>Choisissez une station</h2><p>Sélectionnez une station pour consulter les informations disponibles sur les forfaits.</p></div>}
             {loading && <div className="skeleton-panel skeleton-panel--large"><div /><div /><div /></div>}
             {loadError && !loading && <div className="notice notice--warning" role="alert"><strong>Forfaits indisponibles</strong><span>Impossible de charger les tarifs de {mobileSelection?.name || "cette station"}. Réessayez en sélectionnant à nouveau la station.</span></div>}
-            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits à {selected.name}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{visibility.any ? <><StationForfaitsBlock
+            {selected && <div className="passes-result"><header><div><p className="eyebrow">Tarifs publiés</p><h2>Forfaits {stationNameAt(selected.name)}</h2><p>{selected.region?.name || selected.department?.name || "Station de ski"}</p></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></header>{visibility.any ? <><StationForfaitsBlock
               enabled={visibility.legacy}
               columns={selected.forfaits?.columns || []}
               items={selected.forfaits?.items || []}

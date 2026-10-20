@@ -1,3 +1,4 @@
+import { stationNameAt } from "@/lib/stationName";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
@@ -61,7 +62,7 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
           </div>
         </aside>
         <section ref={contentRef} className="weather-content">
-          {selected && <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>Météo à {selected.name}</h2></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></div>}
+          {selected && <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>Météo {stationNameAt(selected.name)}</h2></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></div>}
           {!selected && <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Sélectionnez une station pour consulter ses conditions météo et ses prévisions.</span></div>}{selected && <StationWeather slug={selected.slug} name={selected.name} latitude={lat} longitude={lon} />}
         </section>
       </section>
