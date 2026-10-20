@@ -39,6 +39,46 @@ test('endpoint preserves only current capture metadata, never creation or daylig
   assert.equal(mapped.location, 'Altiport');
   assert.equal(mapped.title, 'Webcam', 'city cannot become the webcam subject');
 });
+test('Windy v3 lastUpdatedOn survives mapping and renders dates in cards and the enlarged gallery', async () => {
+  const { mapWebcam } = load('pages/api/webcams.ts', require);
+  const timestamp = '2024-07-01T12:00:00.000Z';
+  const mapped = mapWebcam({
+    webcamId: 7, title: 'Méribel : Altiport', status: 'active',
+    lastUpdatedOn: timestamp, lastUpdated: '2024-01-01T12:00:00Z',
+    images: { current: { preview: 'https://images.example/cam.jpg' } },
+    location: { latitude: 45.4, longitude: 6.5, city: 'Les Allues' },
+  });
+  assert.equal(mapped.lastUpdated, timestamp);
+  assert.equal(nearbyWebcams([mapped], 45.4, 6.5)[0].capturedAt, Date.parse(timestamp));
+  assert.equal(mapWebcam({ lastUpdated: 1700000000 }).lastUpdated, 1700000000);
+  const oldFetch = global.fetch, oldWindow = global.window, oldDocument = global.document;
+  global.window = { setInterval: () => 0, clearInterval: () => {} };
+  global.document = { activeElement: null, body: { style: {} } };
+  global.fetch = async () => ({ ok: true, json: async () => ({ webcams: [mapped] }) });
+  let tree;
+  try {
+    const { WebcamsAuto } = load('src/components/stations/StationLegacyWebcams.tsx', name => {
+      if (name === '@/lib/stationAutomaticData') return require('../src/lib/stationAutomaticData');
+      if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
+      return require(name);
+    });
+    await renderer.act(async () => { tree = renderer.create(React.createElement(WebcamsAuto, { name: 'Méribel', lat: 45.4, lon: 6.5 })); });
+    const checkTimes = count => {
+      const times = tree.root.findAllByType('time');
+      assert.equal(times.length, count);
+      for (const time of times) {
+        assert.equal(time.props.dateTime, timestamp);
+        assert.match(time.children.join(''), /01\/07\/2024.*14:00.*Paris/);
+      }
+    };
+    checkTimes(1);
+    await renderer.act(async () => tree.root.findByProps({ className: 'webcam-card' }).props.onClick());
+    checkTimes(3);
+  } finally {
+    if (tree) await renderer.act(async () => tree.unmount());
+    global.fetch = oldFetch; global.window = oldWindow; global.document = oldDocument;
+  }
+});
 test('grid renders 0, 1, 2, 3, 4 and 5 webcams, more opens same gallery and broken images backfill', async () => {
   const oldFetch = global.fetch, oldWindow = global.window, oldDocument = global.document;
   global.window = { setInterval: () => 0, clearInterval: () => {} };

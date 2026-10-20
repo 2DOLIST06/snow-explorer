@@ -37,7 +37,8 @@ export function mapWebcam(c: any) {
     embed,
     link,
     location: c?.location?.city || null,
-    lastUpdated: c?.lastUpdated ?? null,
+    // Windy v3 names this field lastUpdatedOn; keep the frontend contract stable.
+    lastUpdated: c?.lastUpdatedOn ?? c?.lastUpdated ?? null,
     lat: c?.location?.latitude ?? null,
     lon: c?.location?.longitude ?? null,
   };
