@@ -1,8 +1,9 @@
 # Hébergements des stations
 
 Le composant `StationLodgingOptions` affiche un panneau natif `details` fermé par défaut.
-Le bouton « Voir les logements disponibles » révèle deux liens externes : Booking
-(hôtels) et Abritel (appartements et chalets), avec une mention « Lien partenaire »
+Le bouton « Voir les logements disponibles » révèle la question « Quel type de logement cherchez-vous ? »
+et deux liens « Voir les hôtels » (Booking) et « Voir les appartements » (Abritel),
+avec une mention « Lien partenaire »
 pour chacun. Aucun script de widget ni appel réseau n'est ajouté avant le clic.
 
 ## Destinations et suivi

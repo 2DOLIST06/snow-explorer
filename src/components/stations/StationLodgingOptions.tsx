@@ -11,13 +11,13 @@ export default function StationLodgingOptions({ station }: { station: Destinatio
   return <details className="station-lodging">
     <summary className="btn btn--primary"><Hotel size={18} aria-hidden="true" />Voir les logements disponibles</summary>
     <div className="station-lodging-options">
-      <p>Où souhaitez-vous chercher votre hébergement ?</p>
+      <p>Quel type de logement cherchez-vous ?</p>
       <div className="station-lodging-option">
-        <a href={bookingUrl} target="_blank" rel="sponsored noopener noreferrer"><Hotel size={18} aria-hidden="true" />Voir les hôtels avec Booking</a>
+        <a href={bookingUrl} target="_blank" rel="sponsored noopener noreferrer"><Hotel size={18} aria-hidden="true" />Voir les hôtels</a>
         <span>Lien partenaire</span>
       </div>
       <div className="station-lodging-option">
-        <a href={abritelUrl} target="_blank" rel="sponsored noopener noreferrer"><House size={18} aria-hidden="true" />Voir les appartements et chalets avec Abritel</a>
+        <a href={abritelUrl} target="_blank" rel="sponsored noopener noreferrer"><House size={18} aria-hidden="true" />Voir les appartements</a>
         <span>Lien partenaire</span>
       </div>
     </div>
