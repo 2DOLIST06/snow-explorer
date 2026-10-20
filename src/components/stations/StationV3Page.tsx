@@ -4,8 +4,8 @@ import type { ActivitiesBlock as Activities } from "@/types/activities";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import Head from "next/head";
 import Link from "next/link";
-import { Hotel, MapPin } from "lucide-react";
-import { stationLodgingUrl } from "@/lib/stationLodging";
+import { MapPin } from "lucide-react";
+import StationLodgingOptions from "@/components/stations/StationLodgingOptions";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StationWidgetsConfig } from "@/types/station";
 import type { StationOption } from "@/types/skiArea";
@@ -112,12 +112,11 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
 
 function LocationAccess({ station }: { station: any }) {
   const directionsUrl = stationDirectionsUrl(station);
-  const lodgingUrl = stationLodgingUrl(station);
   return <section className="v3-location" aria-labelledby="v3-location-title">
     <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation, accès et hébergement à ${station.name}`} />
     <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
     {directionsUrl ? <a className="btn btn--primary station-directions" href={directionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir le trajet sur Google Maps</a> : null}
-    {lodgingUrl ? <div style={{ marginTop: 16, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px" }}><a className="btn btn--primary station-directions" style={{ marginTop: 0 }} href={lodgingUrl} target="_blank" rel="sponsored noopener noreferrer"><Hotel size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir les hébergements à proximité</a><span style={{ fontSize: ".85rem" }}>Booking.com · Lien partenaire</span></div> : null}
+    <StationLodgingOptions station={station} />
   </section>;
 }
 
