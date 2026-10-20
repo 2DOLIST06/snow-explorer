@@ -1,3 +1,4 @@
+import { stationNameOf } from "@/lib/stationName";
 // src/pages/stations/[slug]/snowpark.tsx
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
@@ -237,7 +238,7 @@ const SnowparkPage: NextPage<Props> = ({ slug, resort, cfg }) => {
   }
 
   const title = `${resort.name} – Snowpark${resort.region?.name ? " • " + resort.region.name : ""}`;
-  const metaDesc = `Snowpark de ${resort.name}${resort.region?.name ? " (" + resort.region.name + ")" : ""} : plan, météo, webcams.`;
+  const metaDesc = `Snowpark ${stationNameOf(resort.name)}${resort.region?.name ? " (" + resort.region.name + ")" : ""} : plan, météo, webcams.`;
   const cover =
     (cfg as any)?.snowpark?.cover || resort.cover_image_url || "https://d38x6kuhd141c9.cloudfront.net/page-accueil-ski.jpg";
 

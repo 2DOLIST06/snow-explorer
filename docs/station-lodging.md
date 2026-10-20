@@ -1,8 +1,9 @@
 # Hébergements des stations
 
 Le composant `StationLodgingOptions` affiche un panneau natif `details` fermé par défaut.
-Le bouton « Voir les logements disponibles » révèle deux liens externes : Booking
-(hôtels) et Abritel (appartements et chalets), avec une mention « Lien partenaire »
+Le bouton « Voir les logements disponibles » révèle la question « Quel type de logement cherchez-vous ? »
+et deux liens « Voir les hôtels » (Booking) et « Voir les appartements » (Abritel),
+avec une mention « Lien partenaire »
 pour chacun. Aucun script de widget ni appel réseau n'est ajouté avant le clic.
 
 ## Destinations et suivi
@@ -31,3 +32,21 @@ réservation ni l'enregistrement des commissions dans Partnerize.
 
 Tests : encodage et campagnes des deux liens pour cinq stations, noms absents,
 rendu du panneau et des mentions, absence de widget et de requête réseau.
+
+## Titres et noms automatiques des stations
+
+`stationNameAt` et `stationNameOf` centralisent les contractions françaises
+pour les affichages publics : au/du Lac Blanc, aux/des Gets, à/de La Plagne,
+à/de l’Alpe d’Huez, d’Avoriaz. Les noms enregistrés, slugs, contenus éditoriaux
+et recherches chez les partenaires ne sont pas modifiés.
+
+Les H2 Présentation, Forfaits de ski et Localisation, accès et hébergement
+sont raccourcis. Les titres météo, webcams et plan des pistes conservent le
+nom avec la préposition adaptée. La règle est également utilisée dans les
+cartes, textes alternatifs, fenêtres de webcams, météo et plans, ainsi que
+dans les métadonnées automatiques des snowparks.
+
+Pour H et Y, la prononciation ne peut pas être déduite de la première lettre :
+le génitif utilise la formulation neutre « de la station [nom] ». La fonction
+ne tente pas de deviner un article absent du nom enregistré, ni de réécrire
+les appellations.

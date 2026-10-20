@@ -27,7 +27,7 @@ test("the piste map page keeps the shared station selection experience", () => {
   assert.match(page, /className="passes-layout"/);
   assert.match(page, /<h2>Choisissez une station<\/h2>/);
   assert.match(page, /setSelected\(station\)/);
-  assert.match(page, /Plan des pistes de \{selected\.name\}/);
+  assert.match(page, /Plan des pistes \{stationNameOf\(selected\.name\)\}/);
 });
 
 test("selection never refetches the resort collection and uses its plan projection first", () => {

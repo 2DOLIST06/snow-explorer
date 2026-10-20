@@ -1,3 +1,4 @@
+import { stationNameAt, stationNameOf } from "@/lib/stationName";
 import ActivitiesBlock from "@/components/activities/ActivitiesBlock";
 import { activeActivityItems } from "@/lib/activities";
 import type { ActivitiesBlock as Activities } from "@/types/activities";
@@ -54,7 +55,7 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
   return <section className="v3-floor v3-floor--overview" aria-labelledby="v3-overview-title">
     <div className="v3-overview-grid">
       <div>
-      <SectionHeading id="v3-overview-title" eyebrow="La station" title={`Présentation de ${station.name}`} />
+      <SectionHeading id="v3-overview-title" eyebrow="La station" title="Présentation" />
       <div className="v3-story">{descriptionParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}{editorial(getStationEditorialContent(station, "apercu"))}</div>
       </div>
       {(text(station.logo_url) || hasSeason) ? <div className="v3-overview-sidebar">
@@ -74,7 +75,7 @@ function Weather({ station }: { station: any }) {
   const lat = parseCoordinate(station.latitude, 90);
   const lon = parseCoordinate(station.longitude, 180);
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-weather-title">
-    <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement à ${station.name}`} intro="Prévisions et informations neige disponibles pour la station." />
+    <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
     <StationWeatherTabs slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
@@ -83,7 +84,7 @@ function Weather({ station }: { station: any }) {
 
 function Webcams({ station }: { station: any }) {
   return <section className="v3-floor" aria-labelledby="v3-webcams-title">
-    <SectionHeading id="v3-webcams-title" eyebrow="En images" title={`Webcams de ${station.name}`} />
+    <SectionHeading id="v3-webcams-title" eyebrow="En images" title={`Webcams ${stationNameOf(station.name)}`} />
     {editorial(getStationEditorialContent(station, "webcams"))}
     <p className="v3-highlight">Consultez les webcams disponibles pour {station.name}.</p>
     <div className="v3-media-stage"><WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
@@ -92,7 +93,7 @@ function Webcams({ station }: { station: any }) {
 
 function SkiPasses({ station, widgets }: { station: any; widgets: StationWidgetsConfig | null }) {
   return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-forfaits-title">
-    <SectionHeading id="v3-forfaits-title" eyebrow="Tarifs" title={`Forfaits de ski à ${station.name}`} intro="Saisons, périodes et catégories publiées par la station." />
+    <SectionHeading id="v3-forfaits-title" eyebrow="Tarifs" title="Forfaits de ski" intro="Saisons, périodes et catégories publiées par la station." />
     {editorial(getStationEditorialContent(station, "forfaits"))}
     <div className="v3-passes">{hasStationForfaits(widgets) ? <StationForfaitsBlocks widgets={widgets} headingLevel="h3" /> : <p className="v3-empty">Forfaits non disponibles pour cette station.</p>}</div>
   </section>;
@@ -104,7 +105,7 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
   const colors = station.pistes_colors ?? widgets?.pistes?.colors ?? {};
   const facts = [["Pistes", station.pistes_count], ["Remontées", station.lifts_count], ["Vertes", colors.green], ["Bleues", colors.blue], ["Rouges", colors.red], ["Noires", colors.black]].filter(([, value]) => usefulNumber(value));
   return <section className="v3-floor" aria-labelledby="v3-map-title">
-    <SectionHeading id="v3-map-title" eyebrow="Le domaine" title={`Plan des pistes de ${station.name}`} />
+    <SectionHeading id="v3-map-title" eyebrow="Le domaine" title={`Plan des pistes ${stationNameOf(station.name)}`} />
     {editorial(getStationEditorialContent(station, "plan-des-pistes"))}
     <div className="v3-piste-map">{available ? <PlanPistesFigure name={station.name} small={map.smallMapUrl || map.largeMapUrl} large={map.largeMapUrl} officialUrl={map.officialMapUrl} caption={map.caption} headingLevel="h3" /> : <p className="v3-empty">Plan des pistes non disponible pour cette station.</p>}{facts.length ? <aside><h3>En un coup d’œil</h3><dl>{facts.map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{formatNumber(value)}</dd></div>)}</dl></aside> : null}</div>
   </section>;
@@ -113,7 +114,7 @@ function PisteMap({ station, widgets }: { station: any; widgets: StationWidgetsC
 function LocationAccess({ station }: { station: any }) {
   const directionsUrl = stationDirectionsUrl(station);
   return <section className="v3-location" aria-labelledby="v3-location-title">
-    <SectionHeading id="v3-location-title" eyebrow="Localisation" title={`Localisation, accès et hébergement à ${station.name}`} />
+    <SectionHeading id="v3-location-title" eyebrow="Localisation" title="Localisation, accès et hébergement" />
     <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
     {directionsUrl ? <a className="btn btn--primary station-directions" href={directionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir le trajet sur Google Maps</a> : null}
     <StationLodgingOptions station={station} />

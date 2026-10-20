@@ -1,3 +1,4 @@
+import { stationNameOf } from "@/lib/stationName";
 import React, { useEffect, useState } from "react";
 import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
 
@@ -49,7 +50,7 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={`Voir le plan des pistes de ${name}`}
+          aria-label={`Voir le plan des pistes ${stationNameOf(name)}`}
           style={{ border: 0, borderRadius: 999, padding: "13px 22px", background: "#0369a1", color: "#fff", boxShadow: "0 6px 18px rgba(3,105,161,0.25)", cursor: "pointer", fontSize: 15, fontWeight: 800 }}
         >
           Voir le plan des pistes
@@ -114,7 +115,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
       return <GenericOfficialMap name={name} officialMapUrl={officialMap.sourceUrl} />;
     }
 
-    const iframeTitle = `Plan des pistes officiel de ${name}`;
+    const iframeTitle = `Plan des pistes officiel ${stationNameOf(name)}`;
     const iframeProps = {
       src: officialMap.embedUrl,
       title: iframeTitle,
@@ -146,7 +147,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           <button
             type="button"
             onClick={() => setOpen(true)}
-            aria-label={`Agrandir le plan des pistes de ${name}`}
+            aria-label={`Agrandir le plan des pistes ${stationNameOf(name)}`}
             style={{ position: "absolute", top: 10, right: 10, border: "1px solid #cbd5e1", borderRadius: 999, padding: "8px 12px", background: "rgba(255,255,255,0.96)", boxShadow: "0 4px 14px rgba(15,23,42,0.15)", cursor: "zoom-in", fontWeight: 700 }}
           >
             Agrandir le plan
@@ -192,9 +193,9 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
         <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>
           Plan des pistes
         </Heading>
-        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes de ${name}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
+        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes ${stationNameOf(name)}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={`Plan des pistes de ${name}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
+          <img src={src} alt={`Plan des pistes ${stationNameOf(name)}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
         </button>
         {caption ? (
           <figcaption
@@ -253,7 +254,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={big}
-              alt={`Plan des pistes de ${name}`}
+              alt={`Plan des pistes ${stationNameOf(name)}`}
               style={{ maxWidth: "96vw", maxHeight: "86vh", objectFit: "contain", borderRadius: 8 }}
             />
             {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}

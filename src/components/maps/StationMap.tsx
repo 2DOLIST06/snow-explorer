@@ -1,3 +1,4 @@
+import { stationNameOf } from "@/lib/stationName";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import type { StationMapItem } from "@/types/stationMap";
@@ -56,7 +57,7 @@ function escapeHtml(value: string): string {
 
 function infoWindowHtml(station: StationMapItem): string {
   const place = station.department || station.region;
-  return `<article class="station-map-info">${station.logo ? `<img src="${escapeHtml(station.logo)}" alt="Logo de ${escapeHtml(station.name)}" loading="lazy" />` : ""}<div><strong>${escapeHtml(station.name)}</strong>${place ? `<span>${escapeHtml(place)}</span>` : ""}<a href="/stations/${encodeURIComponent(station.slug)}">Voir la station →</a></div></article>`;
+  return `<article class="station-map-info">${station.logo ? `<img src="${escapeHtml(station.logo)}" alt="Logo ${escapeHtml(stationNameOf(station.name))}" loading="lazy" />` : ""}<div><strong>${escapeHtml(station.name)}</strong>${place ? `<span>${escapeHtml(place)}</span>` : ""}<a href="/stations/${encodeURIComponent(station.slug)}">Voir la station →</a></div></article>`;
 }
 
 export default function StationMap({ stations, mode, ariaLabel, resizeSignal }: Props) {
@@ -153,7 +154,7 @@ export default function StationMap({ stations, mode, ariaLabel, resizeSignal }: 
     return () => window.cancelAnimationFrame(frame);
   }, [mode, resizeSignal, validStations.length]);
 
-  const label = ariaLabel || (mode !== "overview" && validStations[0] ? `Carte de localisation de ${validStations[0].name}` : "Carte des stations de ski en France");
+  const label = ariaLabel || (mode !== "overview" && validStations[0] ? `Carte de localisation ${stationNameOf(validStations[0].name)}` : "Carte des stations de ski en France");
   return (
     <div className={`station-map station-map--${mode}`} aria-labelledby={labelId}>
       <span id={labelId} className="sr-only">{label}</span>

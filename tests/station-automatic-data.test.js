@@ -32,7 +32,12 @@ test('coordinates reject absent, boolean, nonnumeric and out-of-range values but
 const stubs = new Map();
 const StationPage = load('src/components/stations/StationV3Page.tsx', (name) => {
   if (name === 'react') return { ...React, useState: (v) => [v, () => {}], useEffect: () => {}, useRef: () => ({ current: null }) };
+  if (name === '@/lib/stationOverview') return require('../src/lib/stationOverview');
+  if (name === '@/lib/stationPisteMap') return require('../src/lib/stationPisteMap');
+  if (name === '@/components/stations/StationForfaitsBlocks') return { __esModule: true, hasStationForfaits: () => false, default: () => null };
+  if (name === '@/components/maps/StationMapCard') return { __esModule: true, stationDirectionsUrl: () => null, default: () => null };
   if (name === '@/lib/activities') return require('../src/lib/activities');
+  if (name === '@/lib/stationName') return require('../src/lib/stationName');
   if (name === '@/lib/stationAutomaticData') return automatic;
   if (name === '@/lib/stationContent') return { SECTION_LABELS: {}, stationLocation: () => '', getStationEditorialContent: () => '', getStationSectionData: () => ({}) };
   if (name === 'react/jsx-runtime') return require(name);
@@ -79,6 +84,7 @@ test('Windy effects make no request for invalid coordinates and use explicit zer
         global.fetch = async (url) => { requests.push(url); return { ok: true, json: async () => ({ webcams: [], daily: {} }) }; };
         const component = load(`src/components/stations/${file}.tsx`, (name) => {
           if (name === 'react') return { ...React, useRef: () => ({ current: null }), useEffect: (effect) => effects.push(effect), useState: (value) => [value, () => {}] };
+          if (name === '@/lib/stationName') return require('../src/lib/stationName');
           if (name === '@/lib/stationAutomaticData') return automatic;
           if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
           return require(name);
@@ -94,4 +100,23 @@ test('Windy effects make no request for invalid coordinates and use explicit zer
       }
     }
   } finally { global.fetch = originalFetch; }
+});
+
+test('station H2s retain natural geographic context only where useful', () => {
+  const station = { name: 'Le Lac Blanc', slug: 'le-lac-blanc' };
+  const tree = StationPage({ station, widgets: null });
+  const titles = {};
+  for (const type of ['Overview', 'Weather', 'Webcams', 'SkiPasses', 'PisteMap', 'LocationAccess']) {
+    const section = find(tree, node => node.type?.name === type);
+    const sectionTree = section.type(section.props);
+    titles[type] = find(sectionTree, node => node.type?.name === 'SectionHeading').props.title;
+  }
+  assert.deepEqual(titles, {
+    Overview: 'Présentation',
+    Weather: 'Météo et enneigement au Lac Blanc',
+    Webcams: 'Webcams du Lac Blanc',
+    SkiPasses: 'Forfaits de ski',
+    PisteMap: 'Plan des pistes du Lac Blanc',
+    LocationAccess: 'Localisation, accès et hébergement',
+  });
 });
