@@ -36,3 +36,16 @@ test('unsaved widget preview strips inline execution and unsafe attributes', () 
   assert.equal(doc.querySelector('script:not([nonce])'), null);
   assert.equal(doc.querySelector('[onerror],[srcdoc],base,form'), null);
 });
+
+test('GetYourGuide container bootstraps its loader once inside the isolated document', () => {
+  const html = '<div data-gyg-widget="activities" data-gyg-href="https://widget.getyourguide.com/default/activities.frame" data-gyg-partner-id="32QOCNG" data-gyg-location-id="201172"></div>';
+  const src = 'https://widget.getyourguide.com/dist/pa.umd.production.min.js';
+  for (const code of [html, html + `<script async src="${src}"></script>`, html + `<script async src="${src}?cache=1"></script>`]) {
+    const doc = new JSDOM(widgetDocument({ ...embed, html: code }, 'n', 't')).window.document;
+    assert.equal(doc.querySelectorAll(`script[src^="${src}"]`).length, 1);
+    assert.match(doc.querySelector('[http-equiv]').content, /https:\/\/widget.getyourguide.com/);
+    assert.equal(doc.querySelector('body > script').nonce, 'n', 'error listener is installed before partner scripts');
+  }
+  const unknown = new JSDOM(widgetDocument({ ...embed, html: html.replace('widget.getyourguide.com/', 'evil.test/') }, 'n', 't')).window.document;
+  assert.equal(unknown.querySelectorAll('script[src]').length, 0);
+});

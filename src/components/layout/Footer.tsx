@@ -1,3 +1,4 @@
+import { useCookiePreferences } from "@/contexts/CookiePreferencesContext";
 import Image from "next/image";
 import Link from "next/link";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
@@ -11,6 +12,7 @@ const groups = [
 ];
 
 export default function Footer() {
+  const { openSettings } = useCookiePreferences();
   return (
     <footer className="site-footer">
       <NewsletterSignup source="footer" compact />
@@ -28,7 +30,7 @@ export default function Footer() {
           ))}
         </nav>
       </div>
-      <div className="site-footer__bottom"><span>© {new Date().getFullYear()} Snow Explorer</span><span>Données météo indicatives, à vérifier avant toute sortie.</span></div>
+      <div className="site-footer__bottom"><span>© {new Date().getFullYear()} Snow Explorer</span><button type="button" className="cookie-settings-link" onClick={openSettings}>Gérer mes cookies</button><span>Données météo indicatives, à vérifier avant toute sortie.</span></div>
     </footer>
   );
 }
