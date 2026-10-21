@@ -18,7 +18,14 @@ export function SkiAreaFacts({ area }: { area: SkiAreaPublic }) {
 
 export function StationCards({ stations }: { stations: StationOption[] }) {
   const unique = [...new Map(stations.map(station => [station.id, station])).values()];
-  return <div className="ski-area-stations">{unique.map(station => <article key={station.id}>{(station.cover_image_url || station.logo_url) && <img src={station.cover_image_url || station.logo_url || ""} alt={`Station de ski ${station.name}`} />}<div><h3>{station.name}</h3><Link href={`/stations/${station.slug}`} aria-label={`Découvrir la station de ski ${station.name}`}>Découvrir {station.name}</Link></div></article>)}</div>;
+  return <div className="ski-area-stations">{unique.map(station => (
+    <article key={station.id}>
+      <Link className="station-card-link" href={`/stations/${station.slug}`} aria-label={`Découvrir la station de ski ${station.name}`}>
+        {(station.cover_image_url || station.logo_url) && <img src={station.cover_image_url || station.logo_url || ""} alt={`Station de ski ${station.name}`} />}
+        <div><h3>{station.name}</h3><span>Découvrir {station.name}</span></div>
+      </Link>
+    </article>
+  ))}</div>;
 }
 
 export default function SkiAreaPublicCard({ area, compact = false }: { area: SkiAreaPublic; compact?: boolean }) {
