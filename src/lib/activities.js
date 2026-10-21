@@ -20,6 +20,27 @@ function activeActivityItems(block) {
     item.type === "embed" && Boolean(item.html?.trim())
   ));
 }
+// Inspect saved data, including disabled items. Network errors and rendering
+// validation must never turn a custom block into an affiliate replacement.
+function hasStoredActivityContent(block) {
+  return Array.isArray(block?.items) && block.items.some(item => {
+    if (!item || typeof item !== "object") return false;
+    if (item.type === "image") return [item.src, item.href, item.alt].some(value => typeof value === "string" && value.trim());
+    if (typeof item.html !== "string") return false;
+    let resource = false;
+    const inspected = sanitize(item.html, {
+      allowedTags: false, allowedAttributes: false, allowVulnerableTags: true,
+      exclusiveFilter: frame => {
+        if (["img", "script", "iframe", "video", "audio", "object", "embed", "svg", "canvas"].includes(frame.tag) ||
+          Object.keys(frame.attribs).some(key => key.startsWith("data-") || (["id", "class", "style"].includes(key) && frame.attribs[key].trim()))) resource = true;
+        return false;
+      },
+    });
+    const text = sanitize(inspected, { allowedTags: [], allowedAttributes: {} });
+    // sanitize-html decodes input entities and escapes them again on output.
+    return resource || text.replace(/&(?:nbsp|#160|#x0*a0);|[\s\u200b\ufeff]/gi, "").length > 0;
+  });
+}
 // Extract only ordinary HTTPS anchors, never external resources or scripts.
 // Keep the stored destination exactly as supplied, including affiliate params.
 function activityEmbedLinksHtml(html) {
@@ -75,4 +96,4 @@ function widgetDocument(item, nonce, token) {
   const escape = value => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${escape(csp)}"><style>html,body{margin:0;width:100%;font:16px/1.5 system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}img{height:auto}iframe{width:100%;border:0}a{color:#0b6c9e}</style></head><body><script nonce="${escape(nonce)}">${runtime}</script>${html}${bootstrap}</body></html>`;
 }
-module.exports = { cleanActivityHtml, activeActivityItems, activityEmbedLinksHtml, widgetDocument };
+module.exports = { cleanActivityHtml, activeActivityItems, hasStoredActivityContent, activityEmbedLinksHtml, widgetDocument };

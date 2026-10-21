@@ -31,12 +31,13 @@ test('coordinates reject absent, boolean, nonnumeric and out-of-range values but
 
 const stubs = new Map();
 const StationPage = load('src/components/stations/StationV3Page.tsx', (name) => {
-  if (name === 'react') return { ...React, useState: (v) => [v, () => {}], useEffect: () => {}, useRef: () => ({ current: null }) };
+  if (name === 'react') return { ...React, useState: (v) => [v, () => {}], useMemo: fn => fn(), useEffect: () => {}, useRef: () => ({ current: null }) };
   if (name === '@/lib/stationOverview') return require('../src/lib/stationOverview');
   if (name === '@/lib/stationPisteMap') return require('../src/lib/stationPisteMap');
   if (name === '@/components/stations/StationForfaitsBlocks') return { __esModule: true, hasStationForfaits: () => false, default: () => null };
   if (name === '@/components/maps/StationMapCard') return { __esModule: true, stationDirectionsUrl: () => null, default: () => null };
   if (name === '@/lib/activities') return require('../src/lib/activities');
+  if (name === '@/lib/departmentActivities') return require('../src/lib/departmentActivities');
   if (name === '@/lib/stationName') return require('../src/lib/stationName');
   if (name === '@/lib/stationAutomaticData') return automatic;
   if (name === '@/lib/stationContent') return { SECTION_LABELS: {}, stationLocation: () => '', getStationEditorialContent: () => '', getStationSectionData: () => ({}) };

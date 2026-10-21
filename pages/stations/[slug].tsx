@@ -62,6 +62,7 @@ type Resort = {
 interface Props {
   resort: Resort;
   activities: ActivitiesBlock | null;
+  activitiesLoaded: boolean;
   cfg: StationWidgetsConfig | null;
   departmentStations: import("@/types/skiArea").StationOption[];
 }
@@ -69,8 +70,8 @@ interface Props {
 // Widget piste colors remain disabled; V3 uses the station's canonical color data.
 const SHOW_PISTE_COLOR_DETAILS = false;
 
-const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations, activities }) => (
-  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} activities={activities} />
+const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations, activities, activitiesLoaded }) => (
+  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} activities={activities} activitiesLoaded={activitiesLoaded} />
 );
 
 /* =========================
@@ -251,11 +252,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   };
 
   let activities: ActivitiesBlock | null = null;
+  let activitiesLoaded = false;
   try {
     const response = await fetch(`${getStationApiBase()}/api/stations/${encodeURIComponent(slug)}/activities`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
-    if (response.ok) activities = await response.json();
+    if (response.ok) {
+      const data = await response.json();
+      if (data === null || (typeof data === "object" && typeof data.enabled === "boolean" && Array.isArray(data.items))) {
+        activities = data;
+        activitiesLoaded = true;
+      }
+    }
   } catch { console.error("[station activities] unavailable", slug); }
-  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations, activities } };
+  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations, activities, activitiesLoaded } };
 };
 
 export default ResortPage;

@@ -1,0 +1,482 @@
+{
+  "01": {
+    "name": "Ain",
+    "locative": "dans l’Ain",
+    "widget": null
+  },
+  "02": {
+    "name": "Aisne",
+    "locative": "dans l’Aisne",
+    "widget": null
+  },
+  "03": {
+    "name": "Allier",
+    "locative": "dans l’Allier",
+    "widget": null
+  },
+  "04": {
+    "name": "Alpes-de-Haute-Provence",
+    "locative": "dans les Alpes-de-Haute-Provence",
+    "widget": null
+  },
+  "05": {
+    "name": "Hautes-Alpes",
+    "locative": "dans les Hautes-Alpes",
+    "widget": null
+  },
+  "06": {
+    "name": "Alpes-Maritimes",
+    "locative": "dans les Alpes-Maritimes",
+    "widget": null
+  },
+  "07": {
+    "name": "Ardèche",
+    "locative": "en Ardèche",
+    "widget": null
+  },
+  "08": {
+    "name": "Ardennes",
+    "locative": "dans les Ardennes",
+    "widget": null
+  },
+  "09": {
+    "name": "Ariège",
+    "locative": "en Ariège",
+    "widget": null
+  },
+  "10": {
+    "name": "Aube",
+    "locative": "dans l’Aube",
+    "widget": null
+  },
+  "11": {
+    "name": "Aude",
+    "locative": "dans l’Aude",
+    "widget": null
+  },
+  "12": {
+    "name": "Aveyron",
+    "locative": "en Aveyron",
+    "widget": null
+  },
+  "13": {
+    "name": "Bouches-du-Rhône",
+    "locative": "dans les Bouches-du-Rhône",
+    "widget": null
+  },
+  "14": {
+    "name": "Calvados",
+    "locative": "dans le Calvados",
+    "widget": null
+  },
+  "15": {
+    "name": "Cantal",
+    "locative": "dans le Cantal",
+    "widget": null
+  },
+  "16": {
+    "name": "Charente",
+    "locative": "en Charente",
+    "widget": null
+  },
+  "17": {
+    "name": "Charente-Maritime",
+    "locative": "en Charente-Maritime",
+    "widget": null
+  },
+  "18": {
+    "name": "Cher",
+    "locative": "dans le Cher",
+    "widget": null
+  },
+  "19": {
+    "name": "Corrèze",
+    "locative": "en Corrèze",
+    "widget": null
+  },
+  "21": {
+    "name": "Côte-d'Or",
+    "locative": "en Côte-d'Or",
+    "widget": null
+  },
+  "22": {
+    "name": "Côtes-d'Armor",
+    "locative": "en Côtes-d'Armor",
+    "widget": null
+  },
+  "23": {
+    "name": "Creuse",
+    "locative": "en Creuse",
+    "widget": null
+  },
+  "24": {
+    "name": "Dordogne",
+    "locative": "en Dordogne",
+    "widget": null
+  },
+  "25": {
+    "name": "Doubs",
+    "locative": "dans le Doubs",
+    "widget": null
+  },
+  "26": {
+    "name": "Drôme",
+    "locative": "en Drôme",
+    "widget": null
+  },
+  "27": {
+    "name": "Eure",
+    "locative": "dans l’Eure",
+    "widget": null
+  },
+  "28": {
+    "name": "Eure-et-Loir",
+    "locative": "en Eure-et-Loir",
+    "widget": null
+  },
+  "29": {
+    "name": "Finistère",
+    "locative": "en Finistère",
+    "widget": null
+  },
+  "2A": {
+    "name": "Corse-du-Sud",
+    "locative": "en Corse-du-Sud",
+    "widget": null
+  },
+  "2B": {
+    "name": "Haute-Corse",
+    "locative": "en Haute-Corse",
+    "widget": null
+  },
+  "30": {
+    "name": "Gard",
+    "locative": "dans le Gard",
+    "widget": null
+  },
+  "31": {
+    "name": "Haute-Garonne",
+    "locative": "en Haute-Garonne",
+    "widget": null
+  },
+  "32": {
+    "name": "Gers",
+    "locative": "en Gers",
+    "widget": null
+  },
+  "33": {
+    "name": "Gironde",
+    "locative": "en Gironde",
+    "widget": null
+  },
+  "34": {
+    "name": "Hérault",
+    "locative": "dans l’Hérault",
+    "widget": null
+  },
+  "35": {
+    "name": "Ille-et-Vilaine",
+    "locative": "en Ille-et-Vilaine",
+    "widget": null
+  },
+  "36": {
+    "name": "Indre",
+    "locative": "dans l’Indre",
+    "widget": null
+  },
+  "37": {
+    "name": "Indre-et-Loire",
+    "locative": "en Indre-et-Loire",
+    "widget": null
+  },
+  "38": {
+    "name": "Isère",
+    "locative": "dans l’Isère",
+    "widget": null
+  },
+  "39": {
+    "name": "Jura",
+    "locative": "dans le Jura",
+    "widget": null
+  },
+  "40": {
+    "name": "Landes",
+    "locative": "dans les Landes",
+    "widget": null
+  },
+  "41": {
+    "name": "Loir-et-Cher",
+    "locative": "dans le Loir-et-Cher",
+    "widget": null
+  },
+  "42": {
+    "name": "Loire",
+    "locative": "en Loire",
+    "widget": null
+  },
+  "43": {
+    "name": "Haute-Loire",
+    "locative": "en Haute-Loire",
+    "widget": null
+  },
+  "44": {
+    "name": "Loire-Atlantique",
+    "locative": "en Loire-Atlantique",
+    "widget": null
+  },
+  "45": {
+    "name": "Loiret",
+    "locative": "dans le Loiret",
+    "widget": null
+  },
+  "46": {
+    "name": "Lot",
+    "locative": "dans le Lot",
+    "widget": null
+  },
+  "47": {
+    "name": "Lot-et-Garonne",
+    "locative": "en Lot-et-Garonne",
+    "widget": null
+  },
+  "48": {
+    "name": "Lozère",
+    "locative": "en Lozère",
+    "widget": null
+  },
+  "49": {
+    "name": "Maine-et-Loire",
+    "locative": "en Maine-et-Loire",
+    "widget": null
+  },
+  "50": {
+    "name": "Manche",
+    "locative": "dans la Manche",
+    "widget": null
+  },
+  "51": {
+    "name": "Marne",
+    "locative": "en Marne",
+    "widget": null
+  },
+  "52": {
+    "name": "Haute-Marne",
+    "locative": "en Haute-Marne",
+    "widget": null
+  },
+  "53": {
+    "name": "Mayenne",
+    "locative": "en Mayenne",
+    "widget": null
+  },
+  "54": {
+    "name": "Meurthe-et-Moselle",
+    "locative": "en Meurthe-et-Moselle",
+    "widget": null
+  },
+  "55": {
+    "name": "Meuse",
+    "locative": "en Meuse",
+    "widget": null
+  },
+  "56": {
+    "name": "Morbihan",
+    "locative": "dans le Morbihan",
+    "widget": null
+  },
+  "57": {
+    "name": "Moselle",
+    "locative": "en Moselle",
+    "widget": null
+  },
+  "58": {
+    "name": "Nièvre",
+    "locative": "en Nièvre",
+    "widget": null
+  },
+  "59": {
+    "name": "Nord",
+    "locative": "dans le Nord",
+    "widget": null
+  },
+  "60": {
+    "name": "Oise",
+    "locative": "dans l’Oise",
+    "widget": null
+  },
+  "61": {
+    "name": "Orne",
+    "locative": "en Orne",
+    "widget": null
+  },
+  "62": {
+    "name": "Pas-de-Calais",
+    "locative": "dans le Pas-de-Calais",
+    "widget": null
+  },
+  "63": {
+    "name": "Puy-de-Dôme",
+    "locative": "dans le Puy-de-Dôme",
+    "widget": null
+  },
+  "64": {
+    "name": "Pyrénées-Atlantiques",
+    "locative": "dans les Pyrénées-Atlantiques",
+    "widget": null
+  },
+  "65": {
+    "name": "Hautes-Pyrénées",
+    "locative": "dans les Hautes-Pyrénées",
+    "widget": null
+  },
+  "66": {
+    "name": "Pyrénées-Orientales",
+    "locative": "dans les Pyrénées-Orientales",
+    "widget": null
+  },
+  "67": {
+    "name": "Bas-Rhin",
+    "locative": "dans le Bas-Rhin",
+    "widget": null
+  },
+  "68": {
+    "name": "Haut-Rhin",
+    "locative": "dans le Haut-Rhin",
+    "widget": null
+  },
+  "69": {
+    "name": "Rhône",
+    "locative": "dans le Rhône",
+    "widget": null
+  },
+  "70": {
+    "name": "Haute-Saône",
+    "locative": "en Haute-Saône",
+    "widget": null
+  },
+  "71": {
+    "name": "Saône-et-Loire",
+    "locative": "en Saône-et-Loire",
+    "widget": null
+  },
+  "72": {
+    "name": "Sarthe",
+    "locative": "en Sarthe",
+    "widget": null
+  },
+  "73": {
+    "name": "Savoie",
+    "locative": "en Savoie",
+    "widget": null
+  },
+  "74": {
+    "name": "Haute-Savoie",
+    "locative": "en Haute-Savoie",
+    "widget": null
+  },
+  "75": {
+    "name": "Paris",
+    "locative": "à Paris",
+    "widget": null
+  },
+  "76": {
+    "name": "Seine-Maritime",
+    "locative": "en Seine-Maritime",
+    "widget": null
+  },
+  "77": {
+    "name": "Seine-et-Marne",
+    "locative": "en Seine-et-Marne",
+    "widget": null
+  },
+  "78": {
+    "name": "Yvelines",
+    "locative": "dans les Yvelines",
+    "widget": null
+  },
+  "79": {
+    "name": "Deux-Sèvres",
+    "locative": "dans les Deux-Sèvres",
+    "widget": null
+  },
+  "80": {
+    "name": "Somme",
+    "locative": "en Somme",
+    "widget": null
+  },
+  "81": {
+    "name": "Tarn",
+    "locative": "en Tarn",
+    "widget": null
+  },
+  "82": {
+    "name": "Tarn-et-Garonne",
+    "locative": "en Tarn-et-Garonne",
+    "widget": null
+  },
+  "83": {
+    "name": "Var",
+    "locative": "dans le Var",
+    "widget": null
+  },
+  "84": {
+    "name": "Vaucluse",
+    "locative": "dans le Vaucluse",
+    "widget": null
+  },
+  "85": {
+    "name": "Vendée",
+    "locative": "en Vendée",
+    "widget": null
+  },
+  "86": {
+    "name": "Vienne",
+    "locative": "en Vienne",
+    "widget": null
+  },
+  "87": {
+    "name": "Haute-Vienne",
+    "locative": "en Haute-Vienne",
+    "widget": null
+  },
+  "88": {
+    "name": "Vosges",
+    "locative": "dans les Vosges",
+    "widget": null
+  },
+  "89": {
+    "name": "Yonne",
+    "locative": "dans l’Yonne",
+    "widget": null
+  },
+  "90": {
+    "name": "Territoire de Belfort",
+    "locative": "dans le Territoire de Belfort",
+    "widget": null
+  },
+  "91": {
+    "name": "Essonne",
+    "locative": "en Essonne",
+    "widget": null
+  },
+  "92": {
+    "name": "Hauts-de-Seine",
+    "locative": "dans les Hauts-de-Seine",
+    "widget": null
+  },
+  "93": {
+    "name": "Seine-Saint-Denis",
+    "locative": "en Seine-Saint-Denis",
+    "widget": null
+  },
+  "94": {
+    "name": "Val-de-Marne",
+    "locative": "en Val-de-Marne",
+    "widget": null
+  },
+  "95": {
+    "name": "Val-d'Oise",
+    "locative": "dans le Val-d’Oise",
+    "widget": null
+  }
+}

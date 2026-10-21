@@ -65,3 +65,46 @@ test('reloaded pending batch retains explicit initial launch and replacement wor
     act(() => view.unmount());
   }
 });
+
+test('department replacement updates iframe on navigation and gives way to stored content', () => {
+  const { resolveStationActivities } = require('../src/lib/departmentActivities');
+  const departments = require('../src/lib/departmentActivities.json');
+  const mapping = Object.fromEntries(['73', '74'].map(code => [code, {
+    ...departments[code], widget: { html: `<div data-test-department="${code}"></div><script src="https://partner.test/widget.js"></script>`, origins: [] },
+  }]));
+  const previous = global.window;
+  const listeners = new Set();
+  global.window = { addEventListener: (_name, fn) => listeners.add(fn), removeEventListener: (_name, fn) => listeners.delete(fn) };
+  let view;
+  try {
+    const render = (department, stored = null, loaded = true) => {
+      const resolved = resolveStationActivities(stored, department, loaded, mapping);
+      act(() => {
+        const element = React.createElement(Block, { block: resolved, key: department });
+        if (view) view.update(element); else view = create(element);
+      });
+    };
+    render('73');
+    assert.equal(view.root.findByType('h2').children.join(''), 'Activité à faire en Savoie');
+    const first = view.root.findByType('iframe');
+    assert.match(first.props.srcDoc, /data-test-department="73"/);
+    assert.equal(listeners.size, 1);
+    render('74');
+    const second = view.root.findByType('iframe');
+    assert.notEqual(first, second);
+    assert.equal(view.root.findByType('h2').children.join(''), 'Activité à faire en Haute-Savoie');
+    assert.match(second.props.srcDoc, /data-test-department="74"/);
+    assert.doesNotMatch(second.props.srcDoc, /data-test-department="73"/);
+    assert.equal(listeners.size, 1);
+    for (const type of ['rich', 'image', 'embed']) {
+      const custom = { ...block, items: block.items.filter(item => item.type === type) };
+      render('74', custom);
+      assert.equal(view.root.findByType('h2').children.join(''), custom.title);
+      assert.doesNotMatch(JSON.stringify(view.toJSON()), /data-test-department/);
+      assert.equal(view.root.findAllByType('iframe').length, type === 'embed' ? 1 : 0);
+      assert.equal(listeners.size, type === 'embed' ? 1 : 0);
+    }
+    render('unknown'); assert.equal(view.toJSON(), null); assert.equal(listeners.size, 0);
+    render('73', null, false); assert.equal(view.toJSON(), null);
+  } finally { if (view) act(() => view.unmount()); global.window = previous; }
+});
