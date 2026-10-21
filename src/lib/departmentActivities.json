@@ -2,7 +2,7 @@
   "01": {
     "name": "Ain",
     "locative": "dans l’Ain",
-    "locationId": null
+    "locationId": "247436"
   },
   "02": {
     "name": "Aisne",
@@ -17,7 +17,7 @@
   "04": {
     "name": "Alpes-de-Haute-Provence",
     "locative": "dans les Alpes-de-Haute-Provence",
-    "locationId": null
+    "locationId": "247540"
   },
   "05": {
     "name": "Hautes-Alpes",
@@ -27,12 +27,12 @@
   "06": {
     "name": "Alpes-Maritimes",
     "locative": "dans les Alpes-Maritimes",
-    "locationId": null
+    "locationId": "167019"
   },
   "07": {
     "name": "Ardèche",
     "locative": "en Ardèche",
-    "locationId": null
+    "locationId": "248284"
   },
   "08": {
     "name": "Ardennes",
@@ -42,7 +42,7 @@
   "09": {
     "name": "Ariège",
     "locative": "en Ariège",
-    "locationId": null
+    "locationId": "247575"
   },
   "10": {
     "name": "Aube",
@@ -52,7 +52,7 @@
   "11": {
     "name": "Aude",
     "locative": "dans l’Aude",
-    "locationId": null
+    "locationId": "259128"
   },
   "12": {
     "name": "Aveyron",
@@ -117,7 +117,7 @@
   "25": {
     "name": "Doubs",
     "locative": "dans le Doubs",
-    "locationId": null
+    "locationId": "247435"
   },
   "26": {
     "name": "Drôme",
@@ -147,17 +147,17 @@
   "2B": {
     "name": "Haute-Corse",
     "locative": "en Haute-Corse",
-    "locationId": null
+    "locationId": "150371"
   },
   "30": {
     "name": "Gard",
     "locative": "dans le Gard",
-    "locationId": null
+    "locationId": "222497"
   },
   "31": {
     "name": "Haute-Garonne",
     "locative": "en Haute-Garonne",
-    "locationId": null
+    "locationId": "247573"
   },
   "32": {
     "name": "Gers",
@@ -197,7 +197,7 @@
   "39": {
     "name": "Jura",
     "locative": "dans le Jura",
-    "locationId": null
+    "locationId": "247437"
   },
   "40": {
     "name": "Landes",
@@ -322,27 +322,27 @@
   "64": {
     "name": "Pyrénées-Atlantiques",
     "locative": "dans les Pyrénées-Atlantiques",
-    "locationId": null
+    "locationId": "247572"
   },
   "65": {
     "name": "Hautes-Pyrénées",
     "locative": "dans les Hautes-Pyrénées",
-    "locationId": null
+    "locationId": "247574"
   },
   "66": {
     "name": "Pyrénées-Orientales",
     "locative": "dans les Pyrénées-Orientales",
-    "locationId": null
+    "locationId": "247576"
   },
   "67": {
     "name": "Bas-Rhin",
     "locative": "dans le Bas-Rhin",
-    "locationId": null
+    "locationId": "186738"
   },
   "68": {
     "name": "Haut-Rhin",
     "locative": "dans le Haut-Rhin",
-    "locationId": null
+    "locationId": "247438"
   },
   "69": {
     "name": "Rhône",
@@ -372,7 +372,7 @@
   "74": {
     "name": "Haute-Savoie",
     "locative": "en Haute-Savoie",
-    "locationId": null
+    "locationId": "120865"
   },
   "75": {
     "name": "Paris",
@@ -422,7 +422,7 @@
   "84": {
     "name": "Vaucluse",
     "locative": "dans le Vaucluse",
-    "locationId": null
+    "locationId": "185371"
   },
   "85": {
     "name": "Vendée",

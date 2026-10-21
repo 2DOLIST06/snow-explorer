@@ -72,11 +72,40 @@ test('all repository departments have a locative; no provider IDs are invented',
   assert.equal(Object.keys(departments).length, 96);
   for (const entry of Object.values(departments)) {
     assert.ok(entry.name && entry.locative.replace(/’/g, "'").endsWith(entry.name.replace(/’/g, "'")));
-    assert.equal(entry.locationId, null);
+    assert.ok(entry.locationId === null || /^[1-9]\d*$/.test(entry.locationId));
   }
   for (const [code, expected] of Object.entries({ '73': 'en Savoie', '74': 'en Haute-Savoie', '06': 'dans les Alpes-Maritimes', '05': 'dans les Hautes-Alpes', '83': 'dans le Var', '38': 'dans l’Isère', '66': 'dans les Pyrénées-Orientales', '63': 'dans le Puy-de-Dôme' })) {
     assert.equal(departments[code].locative, expected);
   }
+});
+
+test('confirmed department mappings target the supplied destinations; uncertain scopes stay disabled', () => {
+  const confirmed = {
+    '01': '247436', '04': '247540', '06': '167019', '07': '248284',
+    '09': '247575', '11': '259128', '25': '247435', '2B': '150371',
+    '30': '222497', '31': '247573', '39': '247437', '64': '247572',
+    '65': '247574', '66': '247576', '67': '186738', '68': '247438',
+    '74': '120865', '84': '185371',
+  };
+  for (const [code, id] of Object.entries(confirmed)) {
+    const block = resolveStationActivities(null, code, true);
+    assert.equal(departments[code].locationId, id);
+    assert.equal(block.title, `Activité à faire ${departments[code].locative}`);
+    assert.match(block.items[0].html, new RegExp(`data-gyg-location-id="${id}"`));
+    const custom = blockWith({ type: 'rich', html: '<p>Contenu conservé</p>' });
+    assert.equal(resolveStationActivities(custom, code, true), custom);
+  }
+  for (const code of ['03', '05', '12', '15', '26', '38', '42', '43', '48', '63', '70', '73', '88', '90', '2A']) {
+    assert.equal(departments[code].locationId, null);
+    assert.equal(resolveStationActivities(null, code, true), null);
+  }
+  assert.equal(Object.values(departments).filter(entry => entry.locationId !== null).length, 18);
+  assert.deepEqual(departmentActivityGaps(['Haute-Savoie', 'Savoie', 'Vosges']), [
+    { department: 'Savoie', code: '73', reason: 'missing_destination_id' },
+    { department: 'Vosges', code: '88', reason: 'missing_destination_id' },
+  ]);
+  const serialized = JSON.stringify(departments);
+  assert.doesNotMatch(serialized, /173369|159731|"200"/);
 });
 
 test('supplied city widget preserves all parameters except the mapped location ID, with one loader', () => {

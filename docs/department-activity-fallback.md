@@ -1,10 +1,12 @@
 # Remplacement du bloc d’activités par département
 
-## État de livraison : brouillon, codes fournisseur manquants
+## État de livraison : 18 correspondances renseignées, 78 en attente
 
 Le code fourni par l’utilisateur utilise le widget `city`, l’URL `https://widget.getyourguide.com/default/city.frame`, la langue `fr-FR`, le partenaire `32QOCNG` et `data-gyg-location-id="200"`. La localisation attend donc un identifiant GetYourGuide, pas un nom de département. La destination de l’identifiant 200 n’a pas été confirmée ; il n’est associé à aucun département par défaut. Le dépôt contient aussi un ancien exemple Courchevel (`201172`), qui n’est pas une correspondance départementale.
 
-Le format exact fourni est intégré. Seul `data-gyg-location-id` change selon la correspondance centralisée. Les 96 valeurs `locationId` de `src/lib/departmentActivities.json` restent explicitement `null` en attendant les destinations départementales validées. Aucun remplacement mal ciblé n’est activé. La PR reste en brouillon jusqu’à la réception des correspondances et à la vérification du rendu réel fournisseur.
+Le format exact fourni est intégré. Seul `data-gyg-location-id` change selon la correspondance centralisée. Les **18 correspondances indiquées comme confirmées par l’utilisateur le 21 octobre 2026** sont renseignées dans `src/lib/departmentActivities.json`. Les **78 autres valeurs restent `null`**. La présence d’un identifiant active le remplacement uniquement pour un bloc vide et un département correspondant ; la priorité au contenu personnalisé reste inchangée.
+
+L’identifiant `173369` proposé pour les Vosges reste exclu : le périmètre département/massif n’est pas confirmé. L’identifiant `159731` reste également exclu du Puy-de-Dôme, puisqu’il correspond au sommet. L’identifiant initial `200` reste sans attribution départementale. Aucun de ces identifiants n’est utilisé comme repli.
 
 ## Comportement
 
@@ -22,29 +24,51 @@ Le département provient exclusivement de `station.department`. Le code est priv
 
 Renseigner `locationId` avec l’identifiant GetYourGuide validé pour le département de la ligne. Le code français du département reste la clé ; il ne doit jamais être utilisé comme identifiant fournisseur. Aucun autre paramètre du widget n’est modifié. Le code utilise le chargeur GetYourGuide déjà présent dans le dépôt, ajouté une seule fois dans le document isolé du remplacement. Si le fournisseur ne dispose pas de destination départementale correspondante, laisser `locationId: null`.
 
-Départements rencontrés dans les fichiers JSON locaux du projet (imports et exemples), tous sans identifiant de destination départementale validé :
+Départements rencontrés dans les fichiers JSON locaux du projet (imports et exemples) : **11 avec identifiant fourni, 6 sans correspondance activée**.
 
-| Code | Département | Formulation du H2 après « Activité à faire » |
+| Code | Département | Identifiant GetYourGuide | Formulation du H2 après « Activité à faire » |
+| --- | --- | --- | --- |
+| 01 | Ain | 247436 | dans l’Ain |
+| 04 | Alpes-de-Haute-Provence | 247540 | dans les Alpes-de-Haute-Provence |
+| 05 | Hautes-Alpes | Non confirmé | dans les Hautes-Alpes |
+| 06 | Alpes-Maritimes | 167019 | dans les Alpes-Maritimes |
+| 09 | Ariège | 247575 | en Ariège |
+| 15 | Cantal | Non confirmé | dans le Cantal |
+| 25 | Doubs | 247435 | dans le Doubs |
+| 31 | Haute-Garonne | 247573 | en Haute-Garonne |
+| 38 | Isère | Non confirmé | dans l’Isère |
+| 39 | Jura | 247437 | dans le Jura |
+| 63 | Puy-de-Dôme | Non confirmé | dans le Puy-de-Dôme |
+| 64 | Pyrénées-Atlantiques | 247572 | dans les Pyrénées-Atlantiques |
+| 65 | Hautes-Pyrénées | 247574 | dans les Hautes-Pyrénées |
+| 66 | Pyrénées-Orientales | 247576 | dans les Pyrénées-Orientales |
+| 73 | Savoie | Non confirmé | en Savoie |
+| 74 | Haute-Savoie | 120865 | en Haute-Savoie |
+| 88 | Vosges | Non activé : périmètre de 173369 à vérifier | dans les Vosges |
+
+Les sept autres correspondances fournies et activées dans le référentiel sont :
+
+| Code | Département | Identifiant GetYourGuide |
 | --- | --- | --- |
-| 01 | Ain | dans l’Ain |
-| 04 | Alpes-de-Haute-Provence | dans les Alpes-de-Haute-Provence |
-| 05 | Hautes-Alpes | dans les Hautes-Alpes |
-| 06 | Alpes-Maritimes | dans les Alpes-Maritimes |
-| 09 | Ariège | en Ariège |
-| 15 | Cantal | dans le Cantal |
-| 25 | Doubs | dans le Doubs |
-| 31 | Haute-Garonne | en Haute-Garonne |
-| 38 | Isère | dans l’Isère |
-| 39 | Jura | dans le Jura |
-| 63 | Puy-de-Dôme | dans le Puy-de-Dôme |
-| 64 | Pyrénées-Atlantiques | dans les Pyrénées-Atlantiques |
-| 65 | Hautes-Pyrénées | dans les Hautes-Pyrénées |
-| 66 | Pyrénées-Orientales | dans les Pyrénées-Orientales |
-| 73 | Savoie | en Savoie |
-| 74 | Haute-Savoie | en Haute-Savoie |
-| 88 | Vosges | dans les Vosges |
+| 07 | Ardèche | 248284 |
+| 11 | Aude | 259128 |
+| 2B | Haute-Corse | 150371 |
+| 30 | Gard | 222497 |
+| 67 | Bas-Rhin | 186738 |
+| 68 | Haut-Rhin | 247438 |
+| 84 | Vaucluse | 185371 |
 
-Aucun département des fichiers locaux examinés ne manque au référentiel. Cette analyse ne constitue pas un audit de la base de production. `departmentActivityGaps(values)` distingue `unknown_department` et `missing_destination_id` pour contrôler un futur export. Les 79 autres départements du référentiel ont aussi une formulation mais restent sans widget validé.
+Codes sans correspondance activée (**78**) : 02, 03, 05, 08, 10, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 26, 27, 28, 29, 2A, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 69, 70, 71, 72, 73, 75, 76, 77, 78, 79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95.
+
+Aucun département des fichiers locaux examinés ne manque au référentiel. Cette analyse ne constitue pas un audit de la base de production. `departmentActivityGaps(values)` distingue `unknown_department` et `missing_destination_id` pour contrôler un futur export.
+
+Les identifiants et leur statut proviennent du tableau fourni par l’utilisateur. Les liens GetYourGuide associés dans ce tableau sont conservés ci-dessous comme provenance ; ils ne constituent pas une vérification indépendante de tous les identifiants ni du rendu du widget :
+
+- Alpes-de-Haute-Provence : https://www.getyourguide.com/alpes-de-haute-provence-l247540/day-trips-tc172/
+- Ariège / Pyrénées : https://www.getyourguide.com/fr-fr/ariege-l247575/
+- Ain / Jura : https://www.getyourguide.com/en-au/ain-france-l247436/
+- Bas-Rhin / Vosges : https://www.getyourguide.com/de-de/departement-bas-rhin-l186738/
+- Ardèche / Massif central : https://www.getyourguide.com/fr-fr/ardeche-l248284/
 
 ## Chargement et navigation
 
@@ -61,4 +85,4 @@ Le remplacement ajoute explicitement une seule balise vers le chargeur GetYourGu
 - Chromium sur une page de vérification temporaire : un seul bloc en bas, passage entre deux stations sans rechargement, conservation des contenus personnalisés, absence de remplacement pour un département inconnu ou des données indisponibles, libellé et sélection de l’onglet, ancres conservées, aucune erreur JavaScript de page et aucun débordement horizontal à 390 px. Les ressources externes sont simulées ou bloquées ; ce contrôle ne valide pas l’exécution réelle chez GetYourGuide. La route temporaire est supprimée avant livraison.
 - Test React : passage entre deux départements, remplacement du document iframe, retrait des écouteurs, priorité au texte/image/script personnalisé et disparition en cas de destination inconnue.
 
-Les tests utilisent le format fourni, avec des identifiants synthétiques explicitement réservés aux tests, jamais placés dans la configuration de production. Le rendu et le ciblage réels chez GetYourGuide restent à vérifier après réception des identifiants départementaux validés.
+Les tests utilisent le format fourni, avec des identifiants synthétiques explicitement réservés aux tests, jamais placés dans la configuration de production. Les 18 correspondances fournies sont testées dans la résolution du bloc et les destinations non confirmées restent désactivées. Le rendu et le ciblage réels chez GetYourGuide restent à vérifier avec le service fournisseur ; aucun déploiement n’est effectué.
