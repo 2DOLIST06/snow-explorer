@@ -1,5 +1,5 @@
 const departments = require("./departmentActivities.json");
-const { hasStoredActivityContent } = require("./activities");
+const { hasStoredActivityContent, getYourGuideScriptUrl } = require("./activities");
 
 const normalize = value => typeof value === "string" || typeof value === "number"
   ? String(value).trim().normalize("NFC").toLocaleLowerCase("fr").replace(/’/g, "'") : "";
@@ -20,20 +20,23 @@ function departmentActivityConfig(department, mapping = departments) {
 function resolveStationActivities(block, department, loaded, mapping = departments) {
   if (!loaded || hasStoredActivityContent(block)) return block;
   const config = departmentActivityConfig(department, mapping);
-  // Each widget must contain the supplied, verified department-specific code.
-  // null means pending confirmation; never use another location as a default.
-  if (!config?.widget?.html?.trim()) return block;
+  // IDs come from verified department mappings, never from another location.
+  const locationId = String(config?.locationId ?? "");
+  if (!config || !/^[1-9]\d*$/.test(locationId)) return block;
   return {
     enabled: true,
     title: `Activité à faire ${config.locative}`,
-    items: [{ id: `department-${config.code}`, enabled: true, type: "embed", ...config.widget }],
+    items: [{ id: `department-${config.code}`, enabled: true, type: "embed", origins: ["https://widget.getyourguide.com", "https://www.getyourguide.com"],
+      // Original supplied widget; only the department destination changes.
+      html: `<div data-gyg-href="https://widget.getyourguide.com/default/city.frame" data-gyg-location-id="${locationId}" data-gyg-locale-code="fr-FR" data-gyg-widget="city" data-gyg-partner-id="32QOCNG"></div><script async src="${getYourGuideScriptUrl}" data-gyg-partner-id="32QOCNG"></script>`,
+    }],
   };
 }
 
 function departmentActivityGaps(values, mapping = departments) {
   return values.map(department => {
     const config = departmentActivityConfig(department, mapping);
-    return { department, code: config?.code || null, reason: !config ? "unknown_department" : !config.widget?.html?.trim() ? "missing_widget" : null };
+    return { department, code: config?.code || null, reason: !config ? "unknown_department" : !/^[1-9]\d*$/.test(String(config.locationId ?? "")) ? "missing_destination_id" : null };
   }).filter(entry => entry.reason);
 }
 

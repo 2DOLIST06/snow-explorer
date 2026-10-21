@@ -2,9 +2,9 @@
 
 ## État de livraison : brouillon, codes fournisseur manquants
 
-Le code GetYourGuide annoncé dans la demande n’a pas été joint au message et aucun fichier fourni ne le contient. Le dépôt contient un exemple de test avec `data-gyg-location-id="201172"`, ciblé sur Courchevel, et le partenaire `32QOCNG`. Cet identifiant de ville n’est pas une destination départementale. Il n’a été repris pour aucun département. Le véritable contrat de destination et les paramètres d’affiliation du widget demandé restent à vérifier sur le code fourni.
+Le code fourni par l’utilisateur utilise le widget `city`, l’URL `https://widget.getyourguide.com/default/city.frame`, la langue `fr-FR`, le partenaire `32QOCNG` et `data-gyg-location-id="200"`. La localisation attend donc un identifiant GetYourGuide, pas un nom de département. La destination de l’identifiant 200 n’a pas été confirmée ; il n’est associé à aucun département par défaut. Le dépôt contient aussi un ancien exemple Courchevel (`201172`), qui n’est pas une correspondance départementale.
 
-En conséquence, les 96 entrées `widget` de `src/lib/departmentActivities.json` sont explicitement `null`. Aucun widget de remplacement réel n’est actuellement activé. Cette PR prépare et vérifie le mécanisme ; elle ne doit pas être présentée comme une intégration GetYourGuide terminée. Il faut fournir le code original puis les destinations départementales validées avant activation.
+Le format exact fourni est intégré. Seul `data-gyg-location-id` change selon la correspondance centralisée. Les 96 valeurs `locationId` de `src/lib/departmentActivities.json` restent explicitement `null` en attendant les destinations départementales validées. Aucun remplacement mal ciblé n’est activé. La PR reste en brouillon jusqu’à la réception des correspondances et à la vérification du rendu réel fournisseur.
 
 ## Comportement
 
@@ -18,11 +18,11 @@ Le département provient exclusivement de `station.department`. Le code est priv
 
 ## Configuration centralisée et correspondances manquantes
 
-`departmentActivities.json` contient les codes, noms, formulations complètes et codes de widget vérifiés par département. Il reprend les **96 départements** de `snow-explorer-api/app/routes/public_departments.py`. Aucun champ station supplémentaire n’est nécessaire.
+`departmentActivities.json` contient les codes, noms, formulations complètes et identifiants de destination GetYourGuide validés par département. Il reprend les **96 départements** de `snow-explorer-api/app/routes/public_departments.py`. Aucun champ station supplémentaire n’est nécessaire.
 
-Après réception et examen du code fournisseur, renseigner uniquement les entrées validées avec `widget: { "html": "CODE ORIGINAL CIBLÉ SUR CE DÉPARTEMENT", "origins": ["ORIGINES HTTPS NÉCESSAIRES"] }`. Conserver le partenaire, les liens et leurs paramètres d’affiliation ; modifier uniquement le ciblage nécessaire. Le HTML complet permet de conserver le contrat réel du fournisseur sans supposer qu’un texte ou un identifiant inventé est accepté. Si un département n’a pas de destination fournisseur correspondante, laisser `widget: null`.
+Renseigner `locationId` avec l’identifiant GetYourGuide validé pour le département de la ligne. Le code français du département reste la clé ; il ne doit jamais être utilisé comme identifiant fournisseur. Aucun autre paramètre du widget n’est modifié. Le code utilise le chargeur GetYourGuide déjà présent dans le dépôt, ajouté une seule fois dans le document isolé du remplacement. Si le fournisseur ne dispose pas de destination départementale correspondante, laisser `locationId: null`.
 
-Départements rencontrés dans les fichiers JSON locaux du projet (imports et exemples), tous sans widget départemental validé :
+Départements rencontrés dans les fichiers JSON locaux du projet (imports et exemples), tous sans identifiant de destination départementale validé :
 
 | Code | Département | Formulation du H2 après « Activité à faire » |
 | --- | --- | --- |
@@ -44,13 +44,13 @@ Départements rencontrés dans les fichiers JSON locaux du projet (imports et ex
 | 74 | Haute-Savoie | en Haute-Savoie |
 | 88 | Vosges | dans les Vosges |
 
-Aucun département des fichiers locaux examinés ne manque au référentiel. Cette analyse ne constitue pas un audit de la base de production. `departmentActivityGaps(values)` distingue `unknown_department` et `missing_widget` pour contrôler un futur export. Les 79 autres départements du référentiel ont aussi une formulation mais restent sans widget validé.
+Aucun département des fichiers locaux examinés ne manque au référentiel. Cette analyse ne constitue pas un audit de la base de production. `departmentActivityGaps(values)` distingue `unknown_department` et `missing_destination_id` pour contrôler un futur export. Les 79 autres départements du référentiel ont aussi une formulation mais restent sans widget validé.
 
 ## Chargement et navigation
 
 Les remplacements utilisent les mêmes iframes isolées, CSP, adaptation de hauteur et styles fluides que les widgets personnalisés. La résolution est mémorisée pour ne pas redémarrer un widget lors d’un changement d’état sans rapport. La clé de station existante démonte le cadre et ses écouteurs lors du changement de station. Un script ne peut donc pas conserver la destination de la station précédente.
 
-Le chargeur GetYourGuide déjà présent dans `widgetDocument` n’est ajouté qu’en l’absence de sa balise dans le code embarqué. L’analytique GetYourGuide globale existante n’est pas modifiée. Une bibliothèque présente dans le document parent ne peut pas être réutilisée depuis un cadre opaque : le chargeur reste unique par document isolé, comme pour les intégrations actuelles. Aucun appel hypothétique de rafraîchissement du SDK n’est ajouté.
+Le remplacement ajoute explicitement une seule balise vers le chargeur GetYourGuide déjà utilisé dans le dépôt. L’URL du chargeur est partagée avec `widgetDocument`, dont le comportement de chargement des intégrations personnalisées reste inchangé. L’analytique GetYourGuide globale existante n’est pas modifiée. Une bibliothèque présente dans le document parent ne peut pas être réutilisée depuis un cadre opaque : le chargeur reste unique par document isolé, comme pour les intégrations actuelles. Aucun appel hypothétique de rafraîchissement du SDK n’est ajouté.
 
 ## Vérifications
 
@@ -61,4 +61,4 @@ Le chargeur GetYourGuide déjà présent dans `widgetDocument` n’est ajouté q
 - Chromium sur une page de vérification temporaire : un seul bloc en bas, passage entre deux stations sans rechargement, conservation des contenus personnalisés, absence de remplacement pour un département inconnu ou des données indisponibles, libellé et sélection de l’onglet, ancres conservées, aucune erreur JavaScript de page et aucun débordement horizontal à 390 px. Les ressources externes sont simulées ou bloquées ; ce contrôle ne valide pas l’exécution réelle chez GetYourGuide. La route temporaire est supprimée avant livraison.
 - Test React : passage entre deux départements, remplacement du document iframe, retrait des écouteurs, priorité au texte/image/script personnalisé et disparition en cas de destination inconnue.
 
-Les tests utilisent un partenaire synthétique HTTPS, sans faux identifiants GetYourGuide dans la configuration. Le rendu et le ciblage réels chez GetYourGuide restent à vérifier après réception du code et des correspondances validées.
+Les tests utilisent le format fourni, avec des identifiants synthétiques explicitement réservés aux tests, jamais placés dans la configuration de production. Le rendu et le ciblage réels chez GetYourGuide restent à vérifier après réception des identifiants départementaux validés.

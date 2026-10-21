@@ -70,7 +70,7 @@ test('department replacement updates iframe on navigation and gives way to store
   const { resolveStationActivities } = require('../src/lib/departmentActivities');
   const departments = require('../src/lib/departmentActivities.json');
   const mapping = Object.fromEntries(['73', '74'].map(code => [code, {
-    ...departments[code], widget: { html: `<div data-test-department="${code}"></div><script src="https://partner.test/widget.js"></script>`, origins: [] },
+    ...departments[code], locationId: code === '73' ? '900000001' : '900000002',
   }]));
   const previous = global.window;
   const listeners = new Set();
@@ -87,20 +87,20 @@ test('department replacement updates iframe on navigation and gives way to store
     render('73');
     assert.equal(view.root.findByType('h2').children.join(''), 'Activité à faire en Savoie');
     const first = view.root.findByType('iframe');
-    assert.match(first.props.srcDoc, /data-test-department="73"/);
+    assert.match(first.props.srcDoc, /data-gyg-location-id="900000001"/);
     assert.equal(listeners.size, 1);
     render('74');
     const second = view.root.findByType('iframe');
     assert.notEqual(first, second);
     assert.equal(view.root.findByType('h2').children.join(''), 'Activité à faire en Haute-Savoie');
-    assert.match(second.props.srcDoc, /data-test-department="74"/);
-    assert.doesNotMatch(second.props.srcDoc, /data-test-department="73"/);
+    assert.match(second.props.srcDoc, /data-gyg-location-id="900000002"/);
+    assert.doesNotMatch(second.props.srcDoc, /data-gyg-location-id="900000001"/);
     assert.equal(listeners.size, 1);
     for (const type of ['rich', 'image', 'embed']) {
       const custom = { ...block, items: block.items.filter(item => item.type === type) };
       render('74', custom);
       assert.equal(view.root.findByType('h2').children.join(''), custom.title);
-      assert.doesNotMatch(JSON.stringify(view.toJSON()), /data-test-department/);
+      assert.doesNotMatch(JSON.stringify(view.toJSON()), /data-gyg-location-id="90000000[12]"/);
       assert.equal(view.root.findAllByType('iframe').length, type === 'embed' ? 1 : 0);
       assert.equal(listeners.size, type === 'embed' ? 1 : 0);
     }

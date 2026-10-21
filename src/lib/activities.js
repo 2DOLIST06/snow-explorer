@@ -1,4 +1,5 @@
 const sanitize = require("sanitize-html");
+const getYourGuideScriptUrl = "https://widget.getyourguide.com/dist/pa.umd.production.min.js";
 const richTags = ["p", "br", "h2", "h3", "h4", "strong", "em", "ul", "ol", "li", "blockquote", "a", "img"];
 const https = value => { try { const parsed = new URL(value); return parsed.protocol === "https:" && !parsed.username && !parsed.password; } catch { return false; } };
 function cleanActivityHtml(html) {
@@ -66,7 +67,7 @@ function widgetDocument(item, nonce, token) {
   const origins = new Set((item.origins || []).filter(https).map(value => new URL(value).origin));
   let gygPartnerId = null;
   const scriptUrls = new Set();
-  const gygScript = "https://widget.getyourguide.com/dist/pa.umd.production.min.js";
+  const gygScript = getYourGuideScriptUrl;
   const html = sanitize(item.html || "", {
     allowedTags: ["div", "span", "p", "a", "img", "iframe", "script", "br", "strong", "em"],
     allowedAttributes: { "*": ["id", "class", "style", "data-*", "title"], a: ["href", "target", "rel"], img: ["src", "alt", "width", "height"], script: ["src", "async", "defer", "type", "data-*"], iframe: ["src", "title", "width", "height", "loading", "allowfullscreen", "sandbox", "referrerpolicy"] },
@@ -96,4 +97,4 @@ function widgetDocument(item, nonce, token) {
   const escape = value => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${escape(csp)}"><style>html,body{margin:0;width:100%;font:16px/1.5 system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}img{height:auto}iframe{width:100%;border:0}a{color:#0b6c9e}</style></head><body><script nonce="${escape(nonce)}">${runtime}</script>${html}${bootstrap}</body></html>`;
 }
-module.exports = { cleanActivityHtml, activeActivityItems, hasStoredActivityContent, activityEmbedLinksHtml, widgetDocument };
+module.exports = { cleanActivityHtml, activeActivityItems, hasStoredActivityContent, activityEmbedLinksHtml, widgetDocument, getYourGuideScriptUrl };
