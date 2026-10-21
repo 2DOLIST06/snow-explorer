@@ -1,13 +1,14 @@
 import { stationNameAt, stationNameOf } from "@/lib/stationName";
 import ActivitiesBlock from "@/components/activities/ActivitiesBlock";
 import { activeActivityItems } from "@/lib/activities";
+import { resolveStationActivities } from "@/lib/departmentActivities";
 import type { ActivitiesBlock as Activities } from "@/types/activities";
 import { parseCoordinate } from "@/lib/stationAutomaticData";
 import Head from "next/head";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import StationLodgingOptions from "@/components/stations/StationLodgingOptions";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { StationWidgetsConfig } from "@/types/station";
 import type { StationOption } from "@/types/skiArea";
 import StationLogoFrame from "@/components/stations/StationLogoFrame";
@@ -26,8 +27,8 @@ const ORIGIN = "https://www.snow-explorer.com";
 type StationV3Section = StationPageSection | "localisation-acces" | "activites";
 
 const DEFAULT_ORDER: StationV3Section[] = ["apercu", "meteo-neige", "webcams", "forfaits", "plan-des-pistes", "localisation-acces"];
-const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "activites": "Activités à faire", "localisation-acces": "Accès & hébergement" };
-const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "activites": "Activités", "localisation-acces": "Accès & hébergement" };
+const V3_SECTION_LABELS: Record<StationV3Section, string> = { ...SECTION_LABELS, "activites": "Activité à faire", "localisation-acces": "Accès & hébergement" };
+const V3_SECTION_MOBILE_LABELS: Record<StationV3Section, string> = { apercu: "Aperçu", "meteo-neige": "Météo", webcams: "Webcams", forfaits: "Forfaits", "plan-des-pistes": "Plan", "activites": "Activité à faire", "localisation-acces": "Accès & hébergement" };
 
 const text = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : "";
 const usefulNumber = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0;
@@ -121,8 +122,9 @@ function LocationAccess({ station }: { station: any }) {
   </section>;
 }
 
-export default function StationV3Page({ station, widgets, departmentStations = [], activities }: { activities?: Activities | null; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
-  const hasActivities = activeActivityItems(activities).length > 0;
+export default function StationV3Page({ station, widgets, departmentStations = [], activities, activitiesLoaded = false }: { activities?: Activities | null; activitiesLoaded?: boolean; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
+  const activityBlock = useMemo(() => resolveStationActivities(activities, station.department, activitiesLoaded), [activities, station.department, activitiesLoaded]);
+  const hasActivities = activeActivityItems(activityBlock).length > 0;
   const availableOrder = hasActivities ? [...DEFAULT_ORDER, "activites" as const] : DEFAULT_ORDER;
   const [order, setOrder] = useState<StationV3Section[] | null>(null);
   const displayedOrder = [...(order || availableOrder), ...availableOrder.filter(section => order && !order.includes(section))];
@@ -137,7 +139,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
     webcams: <Webcams station={station} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
     "plan-des-pistes": <PisteMap station={station} widgets={widgets} />,
     "localisation-acces": <LocationAccess station={station} />,
-    activites: <ActivitiesBlock key={station.slug} block={activities} />,
+    activites: <ActivitiesBlock key={station.slug} block={activityBlock} />,
   };
   useEffect(() => {
     const navigation = navigationRef.current;
