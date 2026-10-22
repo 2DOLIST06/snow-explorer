@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { CookiePreferences } from "@/lib/cookiePreferences";
 
@@ -24,7 +25,7 @@ export default function CookieBanner({ settings, preferences, onSave, onCustomiz
   }, [settings]);
   return <div className={settings ? "cookie-settings-backdrop" : "cookie-banner-position"}>
     <section ref={root} className="cookie-panel" role={settings ? "dialog" : "region"} aria-modal={settings ? true : undefined} aria-labelledby="cookie-panel-title" aria-describedby="cookie-panel-description">
-      <div className="cookie-panel-heading"><h2 id="cookie-panel-title">{settings ? "Mes préférences cookies" : "Cookies Snow Explorer"}</h2>{settings && <button type="button" onClick={onClose} aria-label="Fermer les préférences cookies">×</button>}</div>
+      <div className="cookie-panel-heading"><div className="cookie-panel-brand"><Image src="/logo.png" alt="" width={48} height={48} /><h2 id="cookie-panel-title">{settings ? "Mes préférences cookies" : "Cookies Snow Explorer"}</h2></div>{settings && <button type="button" onClick={onClose} aria-label="Fermer les préférences cookies">×</button>}</div>
       <p id="cookie-panel-description">Vos préférences concernent les cookies propres à Snow Explorer. Les cookies nécessaires restent actifs. Aucun cookie facultatif Snow Explorer n’est installé actuellement.</p>
       <p><a href="/cookies">Consulter la politique relative aux cookies</a>. Vous pouvez modifier votre choix à tout moment avec « Gérer mes cookies » en bas de page.</p>
       {settings && <div className="cookie-categories">
