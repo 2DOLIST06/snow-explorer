@@ -14,9 +14,9 @@ const topics = [
 export default function StationNewsletterEditor({ api, locale = "fr" }: { api: StationSettingsApi; locale?: "fr" | "en" }) {
   const fr = locale === "fr"; const t = useMemo(() => translator(locale), [locale]);
   const [stations, setStations] = useState<StationSettings[]>([]); const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false); const [selected, setSelected] = useState<StationSummary | null>(null);
+  const [adding, setAdding] = useState(false); const [selected, setSelected] = useState<StationSummary[]>([]);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
-  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [lastAdded, setLastAdded] = useState<string[]>([]);
   useEffect(() => { let live = true; setLoading(true); api.list().then(rows => { if (live) { setStations(rows); setAdding(rows.length === 0); } }).catch(() => { if (live) setError(fr ? "Impossible de charger vos stations. Réessayez." : "Unable to load your resorts. Please try again."); }).finally(() => { if (live) setLoading(false); }); return () => { live = false; }; }, [api, fr]);
   const followedIds = useMemo(() => new Set(stations.map(item => String(item.station.id))), [stations]);
   async function action(fn: () => Promise<void>) {
@@ -25,12 +25,18 @@ export default function StationNewsletterEditor({ api, locale = "fr" }: { api: S
     finally { setBusy(false); }
   }
   async function add(event: FormEvent) {
-    event.preventDefault(); if (!selected) return;
+    event.preventDefault(); if (!selected.length || busy) return;
     await action(async () => {
-      const value = await api.add(selected.id);
-      setStations(old => followedIds.has(String(value.station.id)) ? old.map(item => String(item.station.id) === String(value.station.id) ? value : item) : [...old, value]);
-      setLastAdded(String(value.station.id)); setSelected(null); setAdding(false);
-      setNotice(fr ? "Station ajoutée. Choisissez les informations à recevoir ci-dessous." : "Resort added. Choose your updates below.");
+      setLastAdded([]);
+      for (const station of selected) {
+        const value = await api.add(station.id);
+        setStations(old => old.some(item => String(item.station.id) === String(value.station.id))
+          ? old.map(item => String(item.station.id) === String(value.station.id) ? value : item) : [...old, value]);
+        setLastAdded(old => [...old, String(value.station.id)]);
+        setSelected(old => old.filter(item => String(item.id) !== String(station.id)));
+      }
+      setAdding(false);
+      setNotice(fr ? "Stations ajoutées. Choisissez les informations à recevoir pour chacune." : "Resorts added. Choose your updates for each one.");
     });
   }
   return <section className={styles.editor}>
@@ -38,13 +44,13 @@ export default function StationNewsletterEditor({ api, locale = "fr" }: { api: S
     {error && <p role="alert" className="newsletter-feedback newsletter-feedback--error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {loading ? <p role="status">{t("loading")}</p> : <>
       {!stations.length && <p>{fr ? "Vous n’avez pas encore choisi de station." : "You have not selected a resort yet."}</p>}
-      {stations.map(item => <StationCard key={String(item.station.id)} value={item} fr={fr} busy={busy} newlyAdded={lastAdded === String(item.station.id)} onSave={draft => action(async () => {
+      {stations.map(item => <StationCard key={String(item.station.id)} value={item} fr={fr} busy={busy} newlyAdded={lastAdded.includes(String(item.station.id))} onSave={draft => action(async () => {
         const saved = await api.save(item.station.id, draft); setStations(old => old.map(row => String(row.station.id) === String(item.station.id) ? saved : row)); setNotice(t("saved"));
       })} onRemove={() => action(async () => { await api.remove(item.station.id); setStations(old => old.filter(row => String(row.station.id) !== String(item.station.id))); setNotice(t("removed")); })} />)}
-      <details className={styles.add} open={adding} onToggle={event => setAdding(event.currentTarget.open)}><summary>{t("addStation")}</summary>{adding && <form onSubmit={add}>
-        <StationSearch followedIds={followedIds} t={t} onSelect={async station => { setSelected(station); }} />
-        {selected && <p>{fr ? "Station sélectionnée :" : "Selected resort:"} <strong>{selected.name}</strong></p>}
-        <button className="btn btn--primary" disabled={!selected || busy}>{busy ? t("saving") : fr ? "Valider cette station" : "Add this resort"}</button>
+      <details className={styles.add} open={adding} onToggle={event => setAdding(event.currentTarget.open)}><summary>{stations.length ? (fr ? "Rajouter une autre station" : "Add another resort") : (fr ? "Choisir mes stations" : "Choose my resorts")}</summary>{adding && <form onSubmit={add}>
+        <StationSearch followedIds={followedIds} t={t} selected={selected} onChange={setSelected} disabled={busy} />
+        <p role="status">{fr ? `${selected.length} station(s) sélectionnée(s)` : `${selected.length} resort(s) selected`}</p>
+        <button className="btn btn--primary" disabled={!selected.length || busy}>{busy ? t("saving") : fr ? "Valider ma sélection" : "Confirm my selection"}</button>
       </form>}</details>
     </>}
   </section>;

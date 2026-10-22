@@ -14,6 +14,11 @@ const root = "/api/newsletter";
 const preferenceResource = (token: string, suffix = "") => `${root}/preferences/${encodeURIComponent(token)}${suffix}`;
 const unwrap = <T,>(response: ApiDataResponse<T>): T => response.data;
 export const newsletterApi = {
+  listStations: async (): Promise<StationSummary[]> => {
+    const rows = await request<(StationSummary & { is_active?: boolean })[]>("/api/resorts/?active=true");
+    return rows.filter(row => row.is_active === true && Boolean(row.slug?.trim()))
+      .map(({ id, name, slug }) => ({ id, name, slug }));
+  },
   stationSettings: async (token: string) => unwrap(await request<ApiDataResponse<{ stations: StationSettings[] }>>(preferenceResource(token, "/station-settings"))).stations,
   addStationSettings: async (token: string, station_id: string | number) => unwrap(await request<ApiDataResponse<StationSettings>>(preferenceResource(token, "/station-settings"), { method: "POST", body: JSON.stringify({ station_id }) })),
   saveStationSettings: async (token: string, id: string | number, value: StationTopics) => unwrap(await request<ApiDataResponse<StationSettings>>(preferenceResource(token, `/station-settings/${encodeURIComponent(id)}`), { method: "POST", body: JSON.stringify(value) })),
@@ -31,6 +36,6 @@ export const newsletterApi = {
   searchStations: async (query: string) => {
     const response = await request<ApiDataResponse<StationSummary[]> | StationSummary[]>(`/api/stations/search?q=${encodeURIComponent(query)}`);
     const rows = Array.isArray(response) ? response : response.data;
-    return rows.slice(0, 6);
+    return rows;
   },
 };
