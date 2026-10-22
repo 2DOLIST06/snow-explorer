@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Loader2, MapPin, Menu, Search, UserRound, X } from "lucide-react";
-import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
+import { filterStations, matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
 
 type Resort = {
   id?: string;
@@ -212,13 +212,7 @@ export default function ProHeader({ initialStations }: Props) {
     };
   }, [mobileOpen, router.events]);
 
-  const filteredResults = useMemo(() => {
-    const needle = normalizeSearchText(query);
-    const matches = needle
-      ? stations.filter((station) => matchesSearch(`${station?.name || ""} ${station?.region?.name || ""} ${station?.department?.name || ""}`, needle))
-      : stations;
-    return matches.slice(0, 8);
-  }, [query, stations]);
+  const filteredResults = useMemo(() => filterStations(stations, query), [query, stations]);
 
   const stationsByLetter = useMemo(() => {
     const needle = normalizeSearchText(stationsFilter);

@@ -16,3 +16,17 @@ export function normalizeSearchText(value) {
 export function matchesSearch(value, query) {
   return normalizeSearchText(value).includes(normalizeSearchText(query));
 }
+
+/**
+ * Return every matching station: scrolling must never hide later matches.
+ * @template {{name?: string, slug?: string, region?: {name?: string}, department?: {name?: string}}} T
+ * @param {T[]} stations
+ * @param {string} query
+ * @returns {T[]}
+ */
+export function filterStations(stations, query) {
+  return stations.filter((station) => matchesSearch(
+    `${station.name || ""} ${station.slug || ""} ${station.region?.name || ""} ${station.department?.name || ""}`,
+    query,
+  )).sort((a, b) => (a.name || "").localeCompare(b.name || "", "fr"));
+}

@@ -4,3 +4,9 @@
 .card form, .add form { display: grid; gap: 16px; margin-top: 16px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .actions button { white-space: normal; }
+
+.picker { display: grid; gap: 12px; min-width: 0; }
+.stationList { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+.stationOption { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; border-radius: 8px; }
+.stationOption:hover, .stationOption:focus-within { background: var(--surface); }
+.stationOption input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--brand); }
