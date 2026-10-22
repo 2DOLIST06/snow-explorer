@@ -1,0 +1,6 @@
+.editor { display: grid; gap: 16px; margin: 18px 0; }
+.card, .add { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
+.card summary, .add summary { cursor: pointer; font-weight: 800; color: var(--brand); padding: 4px; }
+.card form, .add form { display: grid; gap: 16px; margin-top: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions button { white-space: normal; }
