@@ -13,7 +13,7 @@ export type StationPreferenceUpdate = Pick<StationPreference, "weather_enabled" 
 export type SnowAlertInput = { station_id: string | number; alert_type: "snowfall"; threshold_cm: number; forecast_period_hours: 24 | 48 | 72; is_active: boolean };
 export type SnowAlert = SnowAlertInput & { id: string | number; station?: StationSummary };
 export type NewsletterPreferencesData = {
-  status: "active";
+  status: "active" | "pending" | "unsubscribed" | "bounced" | "complained";
   language: NewsletterLanguage;
   preferences: NewsletterPreferences & { newsletter_frequency: NewsletterFrequency };
   newsletter_frequency: NewsletterFrequency;
@@ -23,3 +23,7 @@ export type NewsletterPreferencesData = {
 };
 export type ApiDataResponse<T> = { data: T };
 export const NEWSLETTER_CONSENT_TEXT_VERSION = "v1" as const;
+
+export type StationTopics = { snowfall_enabled: boolean; snow_conditions_enabled: boolean; weather_enabled: boolean; resort_updates_enabled: boolean; articles_enabled: boolean; newsletter_frequency: NewsletterFrequency };
+export type StationSettings = { station: StationSummary & { is_active?: boolean }; preferences: StationTopics };
+export type StationSettingsApi = { list: () => Promise<StationSettings[]>; add: (id: string | number) => Promise<StationSettings>; save: (id: string | number, value: StationTopics) => Promise<StationSettings>; remove: (id: string | number) => Promise<unknown> };

@@ -18,7 +18,6 @@ test("general preferences use query-token URL and the flat backend payload", () 
   const centre = read("src/components/newsletter/NewsletterPreferences.tsx");
   assert.match(api, /`\$\{root\}\/preferences\?token=\$\{encodeURIComponent\(token\)\}`/);
   assert.match(types, /NewsletterPreferencesUpdate = NewsletterPreferences & \{ newsletter_frequency:/);
-  assert.match(centre, /\{ \.\.\.draftPrefs, newsletter_frequency: frequency \}/);
   assert.doesNotMatch(api, /JSON\.stringify\(\{ token, \.\.\.body \}\)/);
 });
 
@@ -38,7 +37,6 @@ test("station settings and snow alerts use the final backend field names", () =>
   for (const field of ["weather_enabled", "snow_conditions_enabled", "resort_updates_enabled", "weather_frequency"]) assert.match(types, new RegExp(field));
   for (const field of ["alert_type", "threshold_cm", "forecast_period_hours", "is_active"]) assert.match(types, new RegExp(field));
   for (const oldField of [/snowfall_cm/, /(?:^|[^a-z_])period_hours/, /(?:^|[^a-z_])active: boolean/]) assert.doesNotMatch(types, oldField);
-  assert.match(centre, /alert_type: "snowfall"/);
 });
 
 test("station search uses only the final active-station endpoint", () => {

@@ -1,5 +1,5 @@
 import { ADMIN_API_BASE } from "@/lib/adminApi";
-import type { ApiDataResponse, NewsletterPreferencesData, NewsletterPreferencesUpdate, NewsletterSubscribePayload, NewsletterSubscribeResult, SnowAlert, SnowAlertInput, StationPreference, StationPreferenceUpdate, StationSummary } from "@/types/newsletter";
+import type { ApiDataResponse, NewsletterPreferencesData, NewsletterPreferencesUpdate, NewsletterSubscribePayload, NewsletterSubscribeResult, SnowAlert, SnowAlertInput, StationPreference, StationPreferenceUpdate, StationSummary, StationSettings, StationTopics } from "@/types/newsletter";
 
 export class NewsletterApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -14,6 +14,10 @@ const root = "/api/newsletter";
 const preferenceResource = (token: string, suffix = "") => `${root}/preferences/${encodeURIComponent(token)}${suffix}`;
 const unwrap = <T,>(response: ApiDataResponse<T>): T => response.data;
 export const newsletterApi = {
+  stationSettings: async (token: string) => unwrap(await request<ApiDataResponse<{ stations: StationSettings[] }>>(preferenceResource(token, "/station-settings"))).stations,
+  addStationSettings: async (token: string, station_id: string | number) => unwrap(await request<ApiDataResponse<StationSettings>>(preferenceResource(token, "/station-settings"), { method: "POST", body: JSON.stringify({ station_id }) })),
+  saveStationSettings: async (token: string, id: string | number, value: StationTopics) => unwrap(await request<ApiDataResponse<StationSettings>>(preferenceResource(token, `/station-settings/${encodeURIComponent(id)}`), { method: "POST", body: JSON.stringify(value) })),
+  removeStationSettings: (token: string, id: string | number) => request(preferenceResource(token, `/station-settings/${encodeURIComponent(id)}/remove`), { method: "POST", body: "{}" }),
   subscribe: async (body: NewsletterSubscribePayload) => unwrap(await request<ApiDataResponse<NewsletterSubscribeResult>>(`${root}/subscribe`, { method: "POST", body: JSON.stringify(body) })),
   preferences: async (token: string) => unwrap(await request<ApiDataResponse<NewsletterPreferencesData>>(`${root}/preferences?token=${encodeURIComponent(token)}`)),
   updatePreferences: async (token: string, body: NewsletterPreferencesUpdate) => unwrap(await request<ApiDataResponse<NewsletterPreferencesData>>(`${root}/preferences?token=${encodeURIComponent(token)}`, { method: "PUT", body: JSON.stringify(body) })),

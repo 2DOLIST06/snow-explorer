@@ -24,7 +24,7 @@ export function memberError(code: string) {
   return messages[code] || "Une erreur est survenue. Veuillez réessayer.";
 }
 export async function memberRequest<T = any>(path: string, body?: object, authenticated = false): Promise<T> {
-  if (!/^\/[a-z0-9/-]+$/.test(path)) throw new Error("Invalid member path");
+  if (!/^\/[A-Za-z0-9_/%.-]+$/.test(path) || path.includes("//") || path.split("/").some(part => part === "." || part === "..")) throw new Error("Invalid member path");
   if (body && authenticated && !csrf) await memberRequest("/session");
   let response: Response;
   try {
