@@ -1,0 +1,18 @@
+.menu {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
+}
+.menu .form {
+  display: grid;
+  gap: 12px;
+}
+.menu .wrap {
+  white-space: normal;
+  text-align: center;
+}
+.error {
+  color: #991b1b;
+  font-size: .9rem;
+  line-height: 1.5;
+}
