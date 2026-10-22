@@ -53,10 +53,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 export function useAdminAuth() { const value = useContext(AdminAuthContext); if (!value) throw new Error("useAdminAuth must be used inside AdminAuthProvider"); return value; }
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
-  const auth = useAdminAuth(); const router = useRouter(); const loginPage = router.pathname === "/admin/login";
+  const auth = useAdminAuth(); const router = useRouter(); const loginPage = router.pathname === "/admin/login" || router.pathname === "/admin/login-link";
   useEffect(() => {
     if (auth.status === "unauthenticated" && !loginPage) { const next = safeAdminNext(router.asPath); void router.replace(`/admin/login?next=${encodeURIComponent(next)}`); }
-    if (auth.status === "authenticated" && loginPage) void router.replace(safeAdminNext(router.query.next) || DEFAULT_ADMIN_PATH);
+    if (auth.status === "authenticated" && loginPage) void router.replace(router.pathname === "/admin/login-link" ? "/admin/account" : safeAdminNext(router.query.next) || DEFAULT_ADMIN_PATH);
   }, [auth.status, loginPage, router]);
   if (auth.status === "loading" || (auth.status === "unauthenticated" && !loginPage) || (auth.status === "authenticated" && loginPage)) return <main className="admin-auth-loading" aria-live="polite">Vérification de la session…</main>;
   return <>{children}</>;
