@@ -131,6 +131,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   useEffect(() => { setOrder(null); setSelected("apercu"); }, [station.slug]);
   const [selected, setSelected] = useState<StationV3Section>("apercu");
   const navigationRef = useRef<HTMLElement>(null);
+  const sectionRefs = useRef<Partial<Record<StationV3Section, HTMLDivElement | null>>>({});
   const [navigationEdges, setNavigationEdges] = useState({ left: false, right: false });
   const location = stationLocation(station);
   const canonical = `${ORIGIN}/stations/${encodeURIComponent(station.slug)}`;
@@ -161,10 +162,22 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   }, [hasActivities]);
 
   const select = (section: StationV3Section) => {
+    const wasAlreadySelected = selected === section;
     setSelected(section);
     setOrder([section, ...availableOrder.filter((item) => item !== section)]);
     window.requestAnimationFrame(() => {
       const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      if (wasAlreadySelected) {
+        const target = sectionRefs.current[section];
+        const navigationShell = navigationRef.current?.parentElement;
+        if (target) {
+          const headerHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--site-header-visible-height")) || 0;
+          const navigationHeight = navigationShell?.getBoundingClientRect().height || 0;
+          const top = window.scrollY + target.getBoundingClientRect().top - headerHeight - navigationHeight;
+          window.scrollTo({ top, behavior });
+          return;
+        }
+      }
       navigationRef.current?.scrollIntoView({ behavior, block: "start" });
       navigationRef.current?.querySelector<HTMLButtonElement>(`[data-section="${section}"]`)?.scrollIntoView({ behavior, block: "nearest", inline: "center" });
     });
@@ -193,7 +206,7 @@ export default function StationV3Page({ station, widgets, departmentStations = [
       <nav id="station-conditions" ref={navigationRef} className="v3-navigation" aria-label="Rubriques de la fiche station">{availableOrder.map((section) => <button key={section} data-section={section} type="button" aria-pressed={(availableOrder.includes(selected) ? selected : "apercu") === section} aria-label={V3_SECTION_LABELS[section]} onClick={() => select(section)}><span className="v3-label-desktop">{V3_SECTION_LABELS[section]}</span><span className="v3-label-mobile" aria-hidden="true">{V3_SECTION_MOBILE_LABELS[section]}</span></button>)}</nav>
     </div>
     <main className="v3-page"><nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/stations">Stations</Link><span aria-hidden="true">›</span><span aria-current="page">{station.name}</span></nav>
-      <div className="v3-floors">{displayedOrder.filter(section => availableOrder.includes(section) && (order !== null || section !== "activites")).map((section) => <div key={section} className="v3-floor-slot">{sections[section]}</div>)}</div>
+      <div className="v3-floors">{displayedOrder.filter(section => availableOrder.includes(section) && (order !== null || section !== "activites")).map((section) => <div key={section} ref={(element) => { sectionRefs.current[section] = element; }} className="v3-floor-slot">{sections[section]}</div>)}</div>
       <div className="v3-complementary">{Array.isArray(station.ski_areas) ? station.ski_areas.filter((area: any) => area?.status === "published").map((area: any) => <SkiAreaPublicCard key={area.id} area={area} compact />) : null}
         {!station.ski_areas?.length && departmentStations.length ? <section className="ski-area-public-card"><header><p className="eyebrow">À proximité</p><h2>Autres stations du même département</h2></header><StationCards stations={departmentStations} /></section> : null}
       </div>
