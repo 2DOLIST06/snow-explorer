@@ -7,7 +7,7 @@ type Props = {
   enabled?: boolean;
 };
 
-const StationPistesCard: React.FC<Props> = ({ smallMapUrl, largeMapUrl, caption, enabled }) => {
+const StationPistesCard: React.FC<Props> = ({ smallMapUrl, largeMapUrl, enabled }) => {
   const [open, setOpen] = useState(false);
   if (!enabled && !smallMapUrl) return null;
 
@@ -82,13 +82,12 @@ const StationPistesCard: React.FC<Props> = ({ smallMapUrl, largeMapUrl, caption,
       {smallMapUrl ? (
         <div style={thumbWrap} onClick={() => setOpen(true)} aria-label="Voir le plan des pistes">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={smallMapUrl} alt={caption || "Plan des pistes"} style={thumbImg} />
+          <img src={smallMapUrl} alt="Plan des pistes" style={thumbImg} />
         </div>
       ) : (
         <div style={{ fontSize: 14, color: "#6b7280" }}>Miniature non configurée.</div>
       )}
 
-      {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
 
       {open && (
         <div style={modalOverlay} onClick={() => setOpen(false)}>
@@ -98,7 +97,7 @@ const StationPistesCard: React.FC<Props> = ({ smallMapUrl, largeMapUrl, caption,
             {largeMapUrl ? (
               <img
                 src={largeMapUrl}
-                alt={caption || "Plan des pistes"}
+                alt="Plan des pistes"
                 /* taille réelle dans la limite de la fenêtre */
                 style={{
                   width: "auto",
@@ -112,7 +111,6 @@ const StationPistesCard: React.FC<Props> = ({ smallMapUrl, largeMapUrl, caption,
             ) : (
               <p style={{ fontSize: 14 }}>Agrandissement non configuré.</p>
             )}
-            {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
           </div>
         </div>
       )}
