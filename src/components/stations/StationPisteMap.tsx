@@ -91,7 +91,6 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
   small,
   large,
   officialUrl,
-  caption,
   headingLevel = "h2",
 }) => {
   const [open, setOpen] = useState(false);
@@ -152,12 +151,11 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           >
             Agrandir le plan
           </button>
-          <figcaption style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}>
-            <span>{caption || "Plan officiel"}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}>
             <a href={officialMap.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1", fontWeight: 700, whiteSpace: "nowrap" }}>
               Ouvrir la source <span aria-hidden="true">↗</span>
             </a>
-          </figcaption>
+          </div>
         </figure>
 
         {open && (
@@ -197,13 +195,6 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt={`Plan des pistes ${stationNameOf(name)}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
         </button>
-        {caption ? (
-          <figcaption
-            style={{ padding: 10, fontSize: 13, color: "#4b5563", borderTop: "1px solid #d1d5db" }}
-          >
-            {caption}
-          </figcaption>
-        ) : null}
       </figure>
 
       {open && (
@@ -257,7 +248,6 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
               alt={`Plan des pistes ${stationNameOf(name)}`}
               style={{ maxWidth: "96vw", maxHeight: "86vh", objectFit: "contain", borderRadius: 8 }}
             />
-            {caption ? <p style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>{caption}</p> : null}
           </div>
         </div>
       )}
