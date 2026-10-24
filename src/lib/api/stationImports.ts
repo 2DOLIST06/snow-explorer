@@ -1,6 +1,7 @@
 import api from "@/config/axios";
 import type { AxiosError, AxiosResponse } from "axios";
 import type { BulkImportOptions, BulkImportResult, ImportHistoryDetail, ImportHistoryFilters, ImportHistoryResponse, ImportResult, StationImportPreview, StationImportPreviewResponse } from "@/types/stationImport";
+import type { BatchJob, PreparedBatchMedia } from "@/components/admin/imports/BatchMediaPreparation";
 
 export class AdminApiError extends Error { constructor(message: string, public status?: number, public code?: string) { super(message); this.name = "AdminApiError"; } }
 
@@ -40,6 +41,9 @@ export const previewStationImport = (id: string, file: File) => request(api.post
 export const confirmStationImport = (id: string, file: File, previewToken: string) => request(api.post<ImportResult>(`/api/admin/stations/${encodeURIComponent(id)}/import/confirm`, form(file, { preview_token: previewToken })));
 export const previewBulkStationImport = (document: unknown, options: BulkImportOptions) => request(api.post<StationImportPreviewResponse>("/api/admin/stations/import/preview", bulkDocument(document, options)));
 export const confirmBulkStationImport = (document: unknown, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", bulkDocument(document, options, previewToken)));
+export const resolveStationBatch = (batch: unknown) => request(api.post<{ jobs: BatchJob[]; warnings: string[] }>("/api/admin/stations/import/batch/resolve", { batch }, { timeout: 60000 }));
+export const prepareStationBatchMedia = (job_token: string) => request(api.post<PreparedBatchMedia>("/api/admin/stations/import/batch/prepare-media", { job_token }, { timeout: 70000 }));
+export const assembleStationBatch = (batch: unknown, receipts: string[]) => request(api.post<{ document: unknown; warnings: string[] }>("/api/admin/stations/import/batch/assemble", { batch, receipts }, { timeout: 60000 }));
 export const getImportHistory = (filters: ImportHistoryFilters = {}) => request(api.get<ImportHistoryResponse>("/api/admin/stations/import/history", { params: filters }));
 export const getImportHistoryDetail = (id: string) => request(api.get<ImportHistoryDetail>(`/api/admin/stations/import/history/${encodeURIComponent(id)}`));
 

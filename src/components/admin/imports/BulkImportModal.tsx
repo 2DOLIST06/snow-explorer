@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AccessibleModal from "./AccessibleModal";
+import BatchMediaPreparation from "./BatchMediaPreparation";
 import { ChangeList, FilePicker, ImportRules, MessageList, validateJsonFile } from "./ImportUi";
 import { confirmBulkStationImport, previewBulkStationImport, readStationImportDocument } from "@/lib/api/stationImports";
 import { getBulkImportBlockReason } from "@/lib/bulkImportConfirmation";
@@ -7,11 +8,12 @@ import type { BulkImportOptions, BulkImportPreview, BulkImportResult, ImportMess
 
 type Filter = "all" | "update" | "create" | "unchanged" | "error";
 export default function BulkImportModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void | Promise<void> }) {
+  const [batch, setBatch] = useState<unknown>(null);
   const [file, setFile] = useState<File | null>(null), [document, setDocument] = useState<unknown>(); const [fileError, setFileError] = useState(""); const [options, setOptions] = useState<BulkImportOptions>({ create_missing: false, transaction: "atomic" }); const [preview, setPreview] = useState<BulkImportPreview | null>(null), [result, setResult] = useState<BulkImportResult | null>(null); const [detail, setDetail] = useState<StationImportPreviewItem | null>(null), [filter, setFilter] = useState<Filter>("all"), [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const reset = () => { setFile(null); setDocument(undefined); setFileError(""); setOptions({ create_missing: false, transaction: "atomic" }); setPreview(null); setResult(null); setDetail(null); setFilter("all"); setError(""); };
-  const invalidatePreview = () => { setPreview(null); setResult(null); setDetail(null); setDocument(undefined); };
+  const reset = () => { setBatch(null); setFile(null); setDocument(undefined); setFileError(""); setOptions({ create_missing: false, transaction: "atomic" }); setPreview(null); setResult(null); setDetail(null); setFilter("all"); setError(""); };
+  const invalidatePreview = () => { setBatch(null); setPreview(null); setResult(null); setDetail(null); setDocument(undefined); };
   const close = () => { if (!busy) { reset(); onClose(); } }; const select = (f: File | null) => { setFile(f); setFileError(f ? validateJsonFile(f) || "" : ""); invalidatePreview(); setError(""); };
-  const analyze = async () => { if (!file) return; setBusy(true); setError(""); try { const parsed = await readStationImportDocument(file); const value = await previewBulkStationImport(parsed, options); setDocument(parsed); setPreview(value); } catch (e) { setDocument(undefined); setError(e instanceof Error ? e.message : "Analyse impossible."); } finally { setBusy(false); } };
+  const analyze = async () => { if (!file) return; setBusy(true); setError(""); try { const parsed = await readStationImportDocument(file); if (parsed && typeof parsed === "object" && "batch_version" in parsed) { setBatch(parsed); return; } const value = await previewBulkStationImport(parsed, options); setDocument(parsed); setPreview(value); } catch (e) { setDocument(undefined); setError(e instanceof Error ? e.message : "Analyse impossible."); } finally { setBusy(false); } };
   const previewStations = Array.isArray(preview?.stations)
     ? preview.stations.filter(
         (item): item is StationImportPreviewItem =>
@@ -45,15 +47,16 @@ export default function BulkImportModal({ open, onClose, onImported }: { open: b
     <div className="import-modal__body" aria-live="polite">
       {error && <div className="import-alert import-alert--error" role="alert">{error}</div>}
       {!result && <>
-        <FilePicker file={file} onChange={select} error={fileError} />
-        <fieldset className="import-options">
+        {!busy && <FilePicker file={file} onChange={select} error={fileError} />}
+        <fieldset className="import-options" disabled={busy}>
           <legend>Options</legend>
           <label><input type="checkbox" checked={options.create_missing} onChange={event => { setOptions(current => ({ ...current, create_missing: event.target.checked })); invalidatePreview(); }} /> Créer les stations absentes</label>
           {options.create_missing && <p className="import-alert import-alert--warning">Les stations absentes du site pourront être créées lors de la confirmation.</p>}
           <label><input type="radio" name="transaction" checked={options.transaction === "atomic"} onChange={() => { setOptions(current => ({ ...current, transaction: "atomic" })); invalidatePreview(); }} /> Annuler tout l’import si une erreur survient</label>
           <label><input type="radio" name="transaction" checked={options.transaction === "valid_only"} onChange={() => { setOptions(current => ({ ...current, transaction: "valid_only" })); invalidatePreview(); }} /> Importer uniquement les stations valides</label>
         </fieldset>
-        {!preview && <><ImportRules /><button className="btn btn--primary" disabled={!file || !!fileError || busy} onClick={analyze}>{busy ? "Analyse…" : "Analyser le fichier"}</button></>}
+        {!preview && !batch && <><ImportRules /><button className="btn btn--primary" disabled={!file || !!fileError || busy} onClick={analyze}>{busy ? "Analyse…" : "Analyser le fichier"}</button></>}
+        {Boolean(batch) && !preview && <BatchMediaPreparation batch={batch} onBusy={setBusy} onPrepared={async prepared => { const value = await previewBulkStationImport(prepared, options); setDocument(prepared); setPreview(value); }} />}
       </>}
       {preview && !result && invalidPreview && <div className="import-alert import-alert--error" role="alert">La réponse de prévisualisation est invalide. Aucun contenu ne peut être affiché.</div>}
       {preview && !result && !invalidPreview && <>
