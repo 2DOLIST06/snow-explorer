@@ -447,11 +447,14 @@ const Home: NextPage<HomeProps> = ({ featuredResorts, stationDirectory }) => {
                       boxShadow: "0 10px 24px rgba(2,6,23,0.16)",
                       position: "relative",
                       scrollSnapAlign: "start",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
                     <div
                       style={{
                         minHeight: 230,
+                        flex: 1,
                         display: "flex",
                         flexDirection: "column",
                         background: "white",
