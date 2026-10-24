@@ -57,7 +57,6 @@ function getOfficialMapImageUrl(value) {
 
 function selectMapMode({ smallMapUrl, largeMapUrl, officialMapUrl }) {
   if (smallMapUrl || largeMapUrl) return "image";
-  if (getOfficialMapImageUrl(officialMapUrl)) return "image";
   const presentation = getOfficialMapPresentation(officialMapUrl);
   if (presentation?.provider === "calameo") return "embed";
   if (presentation?.provider === "generic") return "official-link";
