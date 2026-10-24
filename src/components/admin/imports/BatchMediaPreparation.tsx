@@ -53,7 +53,8 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
     finally { changeBusy(false); }
   };
   const allLoaded = assets.every(asset => asset.render_mode === "interactive" || loaded[keyOf(asset)]);
-  const mapsOpened = assets.filter(asset => asset.role === "piste_map").every(asset => opened[keyOf(asset)]);
+  const unopenedMaps = assets.filter(asset => asset.role === "piste_map" && !opened[keyOf(asset)]);
+  const mapsOpened = unopenedMaps.length === 0;
   const finish = async () => {
     if (!ready || !allLoaded || !mapsOpened || !reviewed) return;
     changeBusy(true); setError("");
@@ -78,16 +79,14 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
         {/* Test the final public URL, not an expiring private preview URL. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {asset.render_mode !== "interactive" && <img hidden={asset.role === "piste_map"} src={asset.url} alt={`Aperçu ${asset.role} ${asset.station_slug}`} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} onLoad={event => { if (event.currentTarget.naturalWidth > 0) setLoaded(current => ({ ...current, [key]: true })); }} onError={() => { setLoaded(current => ({ ...current, [key]: false })); setError(`Le fichier public de ${asset.station_slug} (${asset.role}) ne se charge pas. Vérifiez les permissions du stockage.`); }} />}
-        {asset.role === "piste_map" && <div onClickCapture={event => {
-          if ((event.target as HTMLElement).closest('button[aria-label^="Agrandir le plan"], button[aria-label^="Voir le plan"]')) setOpened(current => ({ ...current, [key]: true }));
-        }}><PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} /></div>}
+        {asset.role === "piste_map" && <PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} onModalOpen={() => setOpened(current => current[key] ? current : ({ ...current, [key]: true }))} />}
         {asset.source_url && <a href={asset.source_url} target="_blank" rel="noopener noreferrer">Voir la source</a>}
       </article>;
     })}
     {ready && <>
       <label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} disabled={!allLoaded || !mapsOpened} /> J’ai vérifié les médias et les plans dans les modales. Les éléments manquants signalés peuvent rester vides.</label>
       {!allLoaded && <p role="status">En attente du chargement des fichiers publics.</p>}
-      {!mapsOpened && <p role="status">Ouvrez chaque plan avec « Agrandir le plan ».</p>}
+      {!mapsOpened && <p role="status">Plans restant à ouvrir avec leur bouton : {unopenedMaps.map(asset => asset.station_slug).join(", ")}.</p>}
       <button type="button" className="btn btn--primary" disabled={busy || !allLoaded || !mapsOpened || !reviewed} onClick={() => void finish()}>Prévisualiser les créations</button>
     </>}
   </section>;

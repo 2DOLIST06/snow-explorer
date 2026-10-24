@@ -5,7 +5,7 @@ import { getOfficialMapImageUrl, getOfficialMapPresentation, normalizeOfficialMa
 const PANEL_HEIGHT = 420;
 const textOrEmpty = (v?: string | null) => (v && v.trim() ? v.trim() : "");
 
-const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = ({ name, officialMapUrl }) => {
+const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string; onModalOpen?: () => void }> = ({ name, officialMapUrl, onModalOpen }) => {
   const [open, setOpen] = useState(false);
   const [maximized, setMaximized] = useState(false);
 
@@ -50,7 +50,7 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
       >
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => { setOpen(true); onModalOpen?.(); }}
           aria-label={`Voir le plan des pistes ${stationNameOf(name)}`}
           style={{ border: 0, borderRadius: 999, padding: "13px 22px", background: "#0369a1", color: "#fff", boxShadow: "0 6px 18px rgba(3,105,161,0.25)", cursor: "pointer", fontSize: 15, fontWeight: 800 }}
         >
@@ -91,12 +91,13 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
   );
 };
 
-export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; officialUrl?: string | null; caption?: string | null; headingLevel?: "h2" | "h3" }> = ({
+export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; large?: string | null; officialUrl?: string | null; caption?: string | null; headingLevel?: "h2" | "h3"; onModalOpen?: () => void }> = ({
   name,
   small,
   large,
   officialUrl,
   headingLevel = "h2",
+  onModalOpen,
 }) => {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -116,7 +117,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
     if (!officialMap) return null;
 
     if (officialMap.provider === "generic") {
-      return <GenericOfficialMap name={name} officialMapUrl={officialMap.sourceUrl} />;
+      return <GenericOfficialMap name={name} officialMapUrl={officialMap.sourceUrl} onModalOpen={onModalOpen} />;
     }
 
     const iframeTitle = `Plan des pistes officiel ${stationNameOf(name)}`;
@@ -150,7 +151,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           />
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => { setOpen(true); onModalOpen?.(); }}
             aria-label={`Agrandir le plan des pistes ${stationNameOf(name)}`}
             style={{ position: "absolute", top: 10, right: 10, border: "1px solid #cbd5e1", borderRadius: 999, padding: "8px 12px", background: "rgba(255,255,255,0.96)", boxShadow: "0 4px 14px rgba(15,23,42,0.15)", cursor: "zoom-in", fontWeight: 700 }}
           >
@@ -196,7 +197,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
         <Heading style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#111827" }}>
           Plan des pistes
         </Heading>
-        <button type="button" onClick={() => setOpen(true)} aria-label={`Agrandir le plan des pistes ${stationNameOf(name)}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
+        <button type="button" onClick={() => { setOpen(true); onModalOpen?.(); }} aria-label={`Agrandir le plan des pistes ${stationNameOf(name)}`} style={{ all: "unset", cursor: "zoom-in", display: "block", flex: 1, minHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt={`Plan des pistes ${stationNameOf(name)}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
         </button>
