@@ -76,7 +76,10 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
               <button type="button" onClick={close} aria-label="Fermer le plan des pistes" style={{ width: 38, height: 38, flex: "0 0 38px", borderRadius: "50%", border: "1px solid #94a3b8", background: "#fff", color: "#0f172a", fontSize: 24, lineHeight: 1, cursor: "pointer", fontWeight: 700 }}>×</button>
             </div>
             <div style={{ flex: "1 1 auto", minHeight: 0, minWidth: 0, overflow: "hidden", background: "#fff" }}>
-              <iframe src={officialMapUrl} title="Plan officiel des pistes" referrerPolicy="strict-origin-when-cross-origin" style={{ display: "block", width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", border: 0 }} />
+              {getOfficialMapImageUrl(officialMapUrl)
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={officialMapUrl} alt={`Plan des pistes ${stationNameOf(name)}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain" }} />
+                : <iframe src={officialMapUrl} title="Plan officiel des pistes" referrerPolicy="strict-origin-when-cross-origin" style={{ display: "block", width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", border: 0 }} />}
             </div>
             <div style={{ flex: "0 0 auto", padding: "9px 14px", borderTop: "1px solid #d1d5db", fontSize: 13 }}>
               <a href={officialMapUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1", fontWeight: 700 }}>Ouvrir le plan officiel <span aria-hidden="true">↗</span></a>
@@ -102,11 +105,10 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
-  const linkedImage = getOfficialMapImageUrl(officialUrl);
-  const src = textOrEmpty(small) || textOrEmpty(large) || linkedImage || "";
+  const src = textOrEmpty(small) || textOrEmpty(large);
   const officialMapUrl = normalizeOfficialMapUrl(officialUrl);
   if (!src && !officialMapUrl) return null;
-  const big = textOrEmpty(large) || textOrEmpty(small) || linkedImage || "";
+  const big = textOrEmpty(large) || textOrEmpty(small);
   const Heading = headingLevel;
 
   if (!src) {

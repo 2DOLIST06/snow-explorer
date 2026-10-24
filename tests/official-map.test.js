@@ -11,11 +11,11 @@ const {
 
 const calameoUrl = "https://www.calameo.com/read/0057989615a273aaacd64?page=1";
 
-test("an official image link uses the image modal without moving its URL", () => {
+test("an official image link stays behind the official-plan button", () => {
   const { getOfficialMapImageUrl } = require("../src/lib/officialMap");
   const url = "https://example.com/map.jpg?edition=winter";
   assert.equal(getOfficialMapImageUrl(url), url);
-  assert.equal(selectMapMode({ officialMapUrl: url }), "image");
+  assert.equal(selectMapMode({ officialMapUrl: url }), "official-link");
   assert.equal(getOfficialMapImageUrl("https://example.com/map.pdf"), null);
 });
 
