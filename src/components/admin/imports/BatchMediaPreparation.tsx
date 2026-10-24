@@ -14,6 +14,7 @@ export type PreparedBatchMedia = BatchJob & {
   url: string;
   preview_url: string;
   render_mode?: "image" | "interactive";
+  linked_image?: boolean;
   width: number;
   height: number;
   size_bytes: number;
@@ -73,13 +74,13 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
       const key = keyOf(asset);
       return <article key={key} className="import-detail">
         <h4>{asset.station_slug} — {asset.role === "cover" ? "Couverture" : asset.role === "logo" ? "Logo" : "Plan des pistes"}</h4>
-        <p>{asset.source_provider === "anmsm" ? "Source ANMSM" : "Source de remplacement"} · {asset.render_mode === "interactive" ? "Plan interactif : vérification visuelle requise" : `${asset.width} × ${asset.height} · ${(asset.size_bytes / 1024).toFixed(1)} Ko`}</p>
+        <p>{asset.source_provider === "anmsm" ? "Source ANMSM" : "Source officielle"} · {asset.render_mode === "interactive" ? "Plan interactif : vérification visuelle requise" : asset.linked_image ? "Lien image conservé" : `${asset.width} × ${asset.height} · ${(asset.size_bytes / 1024).toFixed(1)} Ko`}</p>
         {/* Test the final public URL, not an expiring private preview URL. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {asset.render_mode !== "interactive" && <img src={asset.url} alt={`Aperçu ${asset.role} ${asset.station_slug}`} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} onLoad={event => { if (event.currentTarget.naturalWidth > 0) setLoaded(current => ({ ...current, [key]: true })); }} onError={() => { setLoaded(current => ({ ...current, [key]: false })); setError(`Le fichier public de ${asset.station_slug} (${asset.role}) ne se charge pas. Vérifiez les permissions du stockage.`); }} />}
         {asset.role === "piste_map" && <div onClickCapture={event => {
           if ((event.target as HTMLElement).closest('button[aria-label^="Agrandir le plan"], button[aria-label^="Voir le plan"]')) setOpened(current => ({ ...current, [key]: true }));
-        }}><PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" ? null : asset.url} officialUrl={asset.render_mode === "interactive" ? asset.url : null} /></div>}
+        }}><PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} /></div>}
         <a href={asset.source_url} target="_blank" rel="noopener noreferrer">Voir la source</a>
       </article>;
     })}

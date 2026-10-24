@@ -1,6 +1,6 @@
 import { stationNameOf } from "@/lib/stationName";
 import React, { useEffect, useState } from "react";
-import { getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
+import { getOfficialMapImageUrl, getOfficialMapPresentation, normalizeOfficialMapUrl } from "@/lib/officialMap";
 
 const PANEL_HEIGHT = 420;
 const textOrEmpty = (v?: string | null) => (v && v.trim() ? v.trim() : "");
@@ -102,10 +102,11 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
-  const src = textOrEmpty(small) || textOrEmpty(large);
+  const linkedImage = getOfficialMapImageUrl(officialUrl);
+  const src = textOrEmpty(small) || textOrEmpty(large) || linkedImage || "";
   const officialMapUrl = normalizeOfficialMapUrl(officialUrl);
   if (!src && !officialMapUrl) return null;
-  const big = textOrEmpty(large) || (small as string);
+  const big = textOrEmpty(large) || textOrEmpty(small) || linkedImage || "";
   const Heading = headingLevel;
 
   if (!src) {
@@ -214,6 +215,9 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Plan des pistes ${stationNameOf(name)}`}
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "relative",
