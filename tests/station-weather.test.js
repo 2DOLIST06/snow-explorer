@@ -160,3 +160,24 @@ test('observation proxy uses configured backend and sanitizes upstream failures'
     assert.equal(result.code, 405); assert.equal(result.headers.Allow, 'GET');
   } finally { global.fetch = original; }
 });
+
+ test('initial observations and forecasts are readable in server HTML without effects', () => {
+  const html = renderToStaticMarkup(React.createElement(widget.default, {
+    slug: 'val-thorens', name: 'Val Thorens', latitude: 45, longitude: 6,
+    initialObservations: payload('stale'), initialForecasts: api.normalizeForecast(forecastPayload),
+  }));
+  for (const text of ['9,4 °C', '0 cm', 'Relevé ancien', 'VAL THORENS_SAPC', '2026-10-13T12:36:00Z', 'Neige prévue', 'Source : Open-Meteo']) assert.ok(html.includes(text), text);
+  assert.doesNotMatch(html, /Chargement des/);
+});
+
+test('image and generic official plans expose direct links in initial HTML', () => {
+  const { PlanPistesFigure } = load('src/components/stations/StationPisteMap.tsx');
+  for (const props of [
+    { small: 'https://example.com/small.jpg', large: 'https://example.com/large.jpg' },
+    { officialUrl: 'https://example.com/plan.pdf' },
+  ]) {
+    const html = renderToStaticMarkup(React.createElement(PlanPistesFigure, { name: 'Station', ...props }));
+    assert.ok(html.includes(`href="${props.large || props.officialUrl}"`));
+    assert.doesNotMatch(html, /role="dialog"/);
+  }
+});

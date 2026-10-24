@@ -1,4 +1,5 @@
 import type { GetServerSideProps, NextPage } from "next";
+import { loadStationInitialData, type StationInitialData } from "@/lib/api/stationInitialData";
 
 import type { ActivitiesBlock } from "@/types/activities";
 import StationV3Page from "@/components/stations/StationV3Page";
@@ -60,6 +61,7 @@ type Resort = {
 };
 
 interface Props {
+  initialData: StationInitialData;
   resort: Resort;
   activities: ActivitiesBlock | null;
   activitiesLoaded: boolean;
@@ -70,8 +72,8 @@ interface Props {
 // Widget piste colors remain disabled; V3 uses the station's canonical color data.
 const SHOW_PISTE_COLOR_DETAILS = false;
 
-const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations, activities, activitiesLoaded }) => (
-  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} activities={activities} activitiesLoaded={activitiesLoaded} />
+const ResortPage: NextPage<Props> = ({ resort, cfg, departmentStations, activities, activitiesLoaded, initialData }) => (
+  <StationV3Page station={resort} widgets={cfg} departmentStations={departmentStations} initialData={initialData} activities={activities} activitiesLoaded={activitiesLoaded} />
 );
 
 /* =========================
@@ -115,6 +117,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // Le détail accepte déjà la région imbriquée et les champs plats historiques.
   // Le backend peut donc ajouter `{ id, name, slug }` sans modifier le contrat.
   const resort = resolveResortRegion(loadedResort) as Resort;
+  const initialDataPromise = loadStationInitialData(resort);
 
   const publishedSkiAreas = Array.isArray(resort.ski_areas)
     ? resort.ski_areas.filter((area) => area?.status === "published")
@@ -263,7 +266,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       }
     }
   } catch { console.error("[station activities] unavailable", slug); }
-  return { props: { resort: stationForPage, cfg: cleanCfg, departmentStations, activities, activitiesLoaded } };
+  const initialData = await initialDataPromise;
+  return { props: { initialData, resort: stationForPage, cfg: cleanCfg, departmentStations, activities, activitiesLoaded } };
 };
 
 export default ResortPage;

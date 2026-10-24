@@ -1,3 +1,4 @@
+import type { StationInitialData } from "@/lib/api/stationInitialData";
 import { stationNameAt, stationNameOf } from "@/lib/stationName";
 import ActivitiesBlock from "@/components/activities/ActivitiesBlock";
 import { activeActivityItems } from "@/lib/activities";
@@ -71,7 +72,7 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
   </section>;
 }
 
-function Weather({ station }: { station: any }) {
+function Weather({ station, initialData }: { station: any; initialData?: StationInitialData }) {
   const data = getStationSectionData(station, "meteo-neige");
   const lat = parseCoordinate(station.latitude, 90);
   const lon = parseCoordinate(station.longitude, 180);
@@ -79,16 +80,16 @@ function Weather({ station }: { station: any }) {
     <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
-    <StationWeatherTabs slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
+    <StationWeatherTabs initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
   </section>;
 }
 
-function Webcams({ station }: { station: any }) {
+function Webcams({ station, initialData }: { station: any; initialData?: StationInitialData }) {
   return <section className="v3-floor" aria-labelledby="v3-webcams-title">
     <SectionHeading id="v3-webcams-title" eyebrow="En images" title={`Webcams ${stationNameOf(station.name)}`} />
     {editorial(getStationEditorialContent(station, "webcams"))}
     <p className="v3-highlight">Consultez les webcams disponibles pour {station.name}.</p>
-    <div className="v3-media-stage"><WebcamsAuto name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
+    <div className="v3-media-stage"><WebcamsAuto key={station.slug} initialWebcams={initialData?.webcams} name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
   </section>;
 }
 
@@ -122,7 +123,7 @@ function LocationAccess({ station }: { station: any }) {
   </section>;
 }
 
-export default function StationV3Page({ station, widgets, departmentStations = [], activities, activitiesLoaded = false }: { activities?: Activities | null; activitiesLoaded?: boolean; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
+export default function StationV3Page({ station, widgets, departmentStations = [], activities, activitiesLoaded = false, initialData }: { initialData?: StationInitialData; activities?: Activities | null; activitiesLoaded?: boolean; station: any; widgets: StationWidgetsConfig | null; departmentStations?: StationOption[] }) {
   const activityBlock = useMemo(() => resolveStationActivities(activities, station.department, activitiesLoaded), [activities, station.department, activitiesLoaded]);
   const hasActivities = activeActivityItems(activityBlock).length > 0;
   const availableOrder = hasActivities ? [...DEFAULT_ORDER, "activites" as const] : DEFAULT_ORDER;
@@ -136,8 +137,8 @@ export default function StationV3Page({ station, widgets, departmentStations = [
   const location = stationLocation(station);
   const canonical = `${ORIGIN}/stations/${encodeURIComponent(station.slug)}`;
   const sections: Record<StationV3Section, ReactNode> = {
-    apercu: <Overview station={station} widgets={widgets} />, "meteo-neige": <Weather station={station} />,
-    webcams: <Webcams station={station} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
+    apercu: <Overview station={station} widgets={widgets} />, "meteo-neige": <Weather station={station} initialData={initialData} />,
+    webcams: <Webcams station={station} initialData={initialData} />, forfaits: <SkiPasses station={station} widgets={widgets} />,
     "plan-des-pistes": <PisteMap station={station} widgets={widgets} />,
     "localisation-acces": <LocationAccess station={station} />,
     activites: <ActivitiesBlock key={station.slug} block={activityBlock} />,

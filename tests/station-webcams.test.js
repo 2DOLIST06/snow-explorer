@@ -32,7 +32,7 @@ test('missing/ambiguous/future dates stay hidden; explicit timestamps use Paris 
   assert.match(formatCapture(captureTime('2024-07-01T12:00:00Z')), /14:00/);
 });
 test('endpoint preserves only current capture metadata, never creation or daylight date', () => {
-  const { mapWebcam } = load('pages/api/webcams.ts', require);
+  const { mapWebcam } = load('pages/api/webcams.ts', name => name === '@/lib/stationWebcams' ? require('../src/lib/stationWebcams') : require(name));
   const mapped = mapWebcam({ webcamId: 7, created: 123, images: { daylight: { preview: 'old' } }, location: { city: 'Altiport' } });
   assert.equal(mapped.lastUpdated, null);
   assert.equal(mapped.preview, null);
@@ -40,7 +40,7 @@ test('endpoint preserves only current capture metadata, never creation or daylig
   assert.equal(mapped.title, 'Webcam', 'city cannot become the webcam subject');
 });
 test('Windy v3 lastUpdatedOn survives mapping and renders dates in cards and the enlarged gallery', async () => {
-  const { mapWebcam } = load('pages/api/webcams.ts', require);
+  const { mapWebcam } = load('pages/api/webcams.ts', name => name === '@/lib/stationWebcams' ? require('../src/lib/stationWebcams') : require(name));
   const timestamp = '2024-07-01T12:00:00.000Z';
   const mapped = mapWebcam({
     webcamId: 7, title: 'Méribel : Altiport', status: 'active',
@@ -174,4 +174,19 @@ test('single-match completion keeps the match first, avoids duplicates, and leav
     const matches = Array.from({ length: count }, (_, i) => cam(String(i)));
     assert.deepEqual(featuredWebcams([other, ...matches], 'Méribel'), matches.slice(0, 4));
   }
+});
+
+test('initial webcam metadata and provider link are present without JavaScript', () => {
+  const { WebcamsAuto } = load('src/components/stations/StationLegacyWebcams.tsx', name => {
+    if (name === '@/lib/stationName') return require('../src/lib/stationName');
+    if (name === '@/lib/stationAutomaticData') return require('../src/lib/stationAutomaticData');
+    if (name === '../../lib/stationWebcams') return require('../src/lib/stationWebcams');
+    return require(name);
+  });
+  const html = require('react-dom/server').renderToStaticMarkup(React.createElement(WebcamsAuto, {
+    name: 'Méribel', lat: 45.4, lon: 6.5,
+    initialWebcams: [{ id: '7', title: 'Méribel : Altiport', location: 'Les Allues', preview: 'https://images.example/cam.jpg', capturedAt: Date.parse('2024-07-01T12:00:00Z'), link: 'https://www.windy.com/webcams/7' }],
+  }));
+  for (const text of ['Méribel : Altiport', 'Les Allues', 'href="https://www.windy.com/webcams/7"', '2024-07-01T12:00:00.000Z']) assert.ok(html.includes(text), text);
+  assert.doesNotMatch(html, /Chargement des webcams/);
 });

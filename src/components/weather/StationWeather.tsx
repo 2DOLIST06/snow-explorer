@@ -14,6 +14,8 @@ export type StationWeatherProps = {
   latitude: number | null | undefined;
   longitude: number | null | undefined;
   headingLevel?: HeadingLevel;
+  initialObservations?: StationWeatherResponse | null;
+  initialForecasts?: WeatherForecastDay[] | null;
 };
 
 export function weatherValue(value: number | null | undefined, unit: string): string {
@@ -97,13 +99,13 @@ export function ForecastConditions({ resource, headingLevel = 'h3' }: { resource
   </section>;
 }
 
-export function useStationWeatherResources({ slug, latitude, longitude }: StationWeatherProps) {
+export function useStationWeatherResources({ slug, latitude, longitude, initialObservations, initialForecasts }: StationWeatherProps) {
   const lat = parseCoordinate(latitude, 90);
   const lon = parseCoordinate(longitude, 180);
   const loadObservations = useCallback((signal: AbortSignal) => fetchStationWeather(slug, signal), [slug]);
   const loadForecast = useCallback((signal: AbortSignal) => lat === null || lon === null ? Promise.reject(new Error('Missing coordinates')) : fetchWeatherForecast(lat, lon, signal), [lat, lon]);
-  const observations = useWeatherResource(loadObservations);
-  const forecasts = useWeatherResource(loadForecast);
+  const observations = useWeatherResource(loadObservations, initialObservations);
+  const forecasts = useWeatherResource(loadForecast, initialForecasts);
   return { observations, forecasts };
 }
 
