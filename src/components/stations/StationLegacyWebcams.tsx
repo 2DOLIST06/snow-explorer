@@ -4,14 +4,14 @@ import { nearbyWebcams, featuredWebcams, formatCapture } from "../../lib/station
 import React, { useEffect, useRef, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
-type Webcam = { id: string; title: string; preview: string; location?: string; capturedAt: number | null };
-export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel }> = ({
-  name, lat, lon, headingLevel = "h2",
+export type Webcam = { id: string; title: string; preview: string; link?: string | null; location?: string; capturedAt: number | null };
+export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel; initialWebcams?: Webcam[] | null }> = ({
+  name, lat, lon, headingLevel = "h2", initialWebcams = null,
 }) => {
-  const [cams, setCams] = useState<Webcam[]>([]);
+  const [cams, setCams] = useState<Webcam[]>(initialWebcams || []);
   const [failed, setFailed] = useState<string[]>([]);
   const [err, setErr] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialWebcams === null);
   const [open, setOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
@@ -22,10 +22,10 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
   useEffect(() => {
     const controller = new AbortController();
     setOpen(false);
-    setCams([]);
+    setCams(initialWebcams || []);
     setFailed([]);
     setActiveId(null);
-    setLoading(true);
+    setLoading(initialWebcams === null);
     setErr(false);
     (async () => {
       try {
@@ -80,7 +80,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     {!loading && err && <p role="status">Webcams indisponibles. <button type="button" onClick={() => setRetry(value => value + 1)}>Réessayer</button></p>}
     {!loading && !err && !valid.length && <p role="status">{cams.length ? "Images des webcams indisponibles." : "Aucune webcam identifiée pour cette station."}</p>}
     {!loading && !err && valid.length > 0 && <>
-      <div className={`webcam-grid${featured.length === 1 ? " webcam-grid-single" : ""}`}>{featured.map(card)}</div>
+      <div className={`webcam-grid${featured.length === 1 ? " webcam-grid-single" : ""}`}>{featured.map(cam => <div key={cam.id}>{card(cam)}{cam.link && /^https?:\/\//i.test(cam.link) && <p><a href={cam.link} target="_blank" rel="noopener noreferrer">Voir la webcam : {cam.title}</a></p>}</div>)}</div>
       {hasMore && <button type="button" className="webcam-more" onClick={() => { setActiveId(null); setOpen(true); }}>Voir plus de webcams</button>}
     </>}
     <p className="webcam-source">Images : <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">Windy.com</a></p>

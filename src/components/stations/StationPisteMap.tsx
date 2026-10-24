@@ -43,6 +43,7 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
           height: PANEL_HEIGHT,
           display: "flex",
           alignItems: "center",
+          flexDirection: "column",
           justifyContent: "center",
           padding: 24,
         }}
@@ -55,6 +56,7 @@ const GenericOfficialMap: React.FC<{ name: string; officialMapUrl: string }> = (
         >
           Voir le plan des pistes
         </button>
+        <a href={officialMapUrl} target="_blank" rel="noopener noreferrer" style={{ marginTop: 12 }}>Ouvrir le plan officiel</a>
       </figure>
 
       {open && (
@@ -195,6 +197,7 @@ export const PlanPistesFigure: React.FC<{ name: string; small?: string | null; l
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt={`Plan des pistes ${stationNameOf(name)}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "#fff" }} />
         </button>
+        <a href={officialMapUrl || big} target="_blank" rel="noopener noreferrer" style={{ marginTop: 8 }}>Ouvrir le plan des pistes</a>
       </figure>
 
       {open && (

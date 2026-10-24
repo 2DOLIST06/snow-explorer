@@ -11,38 +11,8 @@ function bboxFrom(lat: number, lon: number, km: number) {
   };
 }
 
-export function mapWebcam(c: any) {
-  const preview =
-    c?.images?.current?.preview ||
-    c?.images?.current?.icon ||
-    null;
-
-  const embed =
-    c?.player?.day?.embed ||
-    c?.player?.lifetime?.embed ||
-    c?.player?.live?.embed ||
-    null;
-
-  const link =
-    c?.urls?.current ||
-    c?.urls?.detail ||
-    c?.urls?.webcam ||
-    null;
-
-  return {
-    status: c?.status ?? null,
-    id: c?.webcamId ?? c?.id ?? null,
-    title: c?.title || "Webcam",
-    preview,
-    embed,
-    link,
-    location: c?.location?.city || null,
-    // Windy v3 names this field lastUpdatedOn; keep the frontend contract stable.
-    lastUpdated: c?.lastUpdatedOn ?? c?.lastUpdated ?? null,
-    lat: c?.location?.latitude ?? null,
-    lon: c?.location?.longitude ?? null,
-  };
-}
+import { mapWebcam } from "@/lib/stationWebcams";
+export { mapWebcam };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Cache-Control", "no-store");
