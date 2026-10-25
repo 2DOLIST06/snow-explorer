@@ -16,6 +16,7 @@ function loadComponent(relativePath, overrides = {}) {
   const standardRequire = loaded.require.bind(loaded);
   loaded.require = name => {
     if (overrides[name]) return overrides[name];
+    if (name === "./BatchCorrectionEditor") return loadComponent("src/components/admin/imports/BatchCorrectionEditor.tsx");
     if (name === "@/components/stations/StationPisteMap") return loadComponent("src/components/stations/StationPisteMap.tsx");
     if (name.startsWith("@/lib/")) return require("../src/lib/" + name.slice(6));
     return standardRequire(name);
@@ -163,4 +164,108 @@ test("an unanswered step times out with an explicit message and unlocks retry", 
     assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /Vérification des sources.*75 s/);
     assert.equal(view.root.findByProps({ className: "btn btn--secondary" }).props.disabled, false);
   } finally { global.setTimeout = original; if (view) renderer.act(() => view.unmount()); }
+});
+
+test("a failed PDF can be replaced in the editor and retested without redoing prepared media", async () => {
+  let view, revision;
+  const jobs = ["cover", "logo", "piste_map"].map(role => ({ station_slug: "first", role, job_token: role, source_url: `https://example.org/${role}.pdf` }));
+  const prepared = [];
+  const calls = [];
+  const api = {
+    resolveStationBatch: async () => ({ jobs, warnings: [] }),
+    prepareStationBatchMedia: async token => {
+      calls.push(token);
+      if (token === "piste_map") throw new Error("Le fournisseur interdit l’intégration du PDF.");
+      const job = token === "new-map" ? { ...jobs[2], job_token: token } : jobs.find(item => item.job_token === token);
+      const asset = { ...job, receipt: token, url: "https://example.org/public/" + token, render_mode: "interactive", width: 200, height: 100, size_bytes: 1000 };
+      prepared.push(asset);
+      return asset;
+    },
+    reviseStationBatch: async (batch, receipts) => {
+      revision = { batch, receipts };
+      return { jobs: [...jobs.slice(0, 2), { ...jobs[2], job_token: "new-map" }], warnings: [], prepared: prepared.slice() };
+    },
+  };
+  const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api }).default;
+  const source = completeBatch();
+  source.document.stations[0].station.slug = "first";
+  source.media.forEach(media => { media.station_slug = "first"; });
+  source.media.find(item => item.role === "piste_map").source_url = "https://example.org/blocked.pdf";
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Batch, { batch: source, onBusy: () => {}, onPrepared: async () => {} })); });
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    renderer.act(() => view.root.findAllByType("button").find(button => button.children.join("") === "Corriger le média en erreur").props.onClick());
+    renderer.act(() => view.root.findByProps({ "aria-label": "Nouveau lien du plan" }).props.onChange({ target: { value: "https://www.calameo.com/read/1234" } }));
+    await renderer.act(async () => { view.root.findAllByType("button").find(button => button.children.join("") === "Appliquer la correction et reprendre les tests").props.onClick(); });
+    assert.equal(revision.batch.media.find(item => item.role === "piste_map").source_url, "https://www.calameo.com/read/1234");
+    assert.equal(revision.batch.media.find(item => item.role === "piste_map").format, "interactive");
+    assert.deepEqual(revision.receipts, ["cover", "logo"]);
+    assert.deepEqual(calls, ["cover", "logo", "piste_map", "new-map"]);
+    assert.equal(source.media.find(item => item.role === "piste_map").source_url, "https://example.org/blocked.pdf");
+    assert.equal(view.root.findAllByType("article").length, 3);
+    assert.equal(view.root.findByProps({ type: "checkbox" }).props.disabled, true);
+  } finally { if (view) renderer.act(() => view.unmount()); }
+});
+
+test("the correction editor validates input, preserves unrelated media and can exclude one station", async () => {
+  const Editor = loadComponent("src/components/admin/imports/BatchCorrectionEditor.tsx").default;
+  const batch = completeBatch();
+  batch.document.stations[0].station.slug = "first";
+  batch.media.forEach(media => { media.station_slug = "first"; });
+  batch.document.stations.push(JSON.parse(JSON.stringify(batch.document.stations[0])));
+  batch.document.stations[1].station.slug = "second";
+  batch.media.push(...batch.media.map(media => ({ ...media, station_slug: "second" })));
+  batch.research = [{ station_slug: "first" }, { station_slug: "second" }];
+  const applied = [];
+  let view;
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Editor, { batch, target: { station_slug: "first", role: "piste_map" }, busy: false, onApply: async value => { applied.push(value); }, onClose: () => {} })); });
+    renderer.act(() => view.root.findByProps({ "aria-label": "Nouveau lien du plan" }).props.onChange({ target: { value: "http://example.org/unsafe.pdf" } }));
+    await renderer.act(async () => { view.root.findAllByType("button").find(button => button.children.join("") === "Appliquer la correction et reprendre les tests").props.onClick(); });
+    assert.equal(applied.length, 0);
+    assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /HTTPS/);
+    await renderer.act(async () => { view.root.findAllByType("button").find(button => button.children.join("") === "Écarter cette station du lot").props.onClick(); });
+    assert.deepEqual(applied[0].document.stations.map(item => item.station.slug), ["second"]);
+    assert.equal(applied[0].media.length, 3);
+    assert.deepEqual(applied[0].research, [{ station_slug: "second" }]);
+    assert.equal(batch.document.stations.length, 2);
+  } finally { if (view) renderer.act(() => view.unmount()); }
+});
+
+test("station data can be corrected without changing the source media", async () => {
+  const Editor = loadComponent("src/components/admin/imports/BatchCorrectionEditor.tsx").default;
+  const batch = completeBatch(), slug = batch.document.stations[0].station.slug;
+  let view, corrected;
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Editor, { batch, target: { station_slug: slug, role: "piste_map" }, busy: false, onApply: async value => { corrected = value; }, onClose: () => {} })); });
+    renderer.act(() => view.root.findByProps({ type: "checkbox" }).props.onChange({ target: { checked: true } }));
+    const record = JSON.parse(JSON.stringify(batch.document.stations[0]));
+    record.station.altitude_min_m = 1300;
+    renderer.act(() => view.root.findByProps({ "aria-label": "Données de la station" }).props.onChange({ target: { value: JSON.stringify(record) } }));
+    await renderer.act(async () => { view.root.findAllByType("button").find(button => button.children.join("") === "Appliquer la correction et reprendre les tests").props.onClick(); });
+    assert.equal(corrected.document.stations[0].station.altitude_min_m, 1300);
+    assert.deepEqual(corrected.media, batch.media);
+  } finally { if (view) renderer.act(() => view.unmount()); }
+});
+
+test("logo replacements enforce the file limit and are sent as explicit generated WebP", async () => {
+  const Editor = loadComponent("src/components/admin/imports/BatchCorrectionEditor.tsx").default;
+  const batch = completeBatch(), slug = batch.document.stations[0].station.slug;
+  let view, corrected;
+  const submit = () => view.root.findAllByType("button").find(button => button.children.join("") === "Appliquer la correction et reprendre les tests").props.onClick();
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Editor, { batch, target: { station_slug: slug, role: "logo" }, busy: false, onApply: async value => { corrected = value; }, onClose: () => {} })); });
+    renderer.act(() => view.root.findByProps({ "aria-label": "Fichier WebP de remplacement" }).props.onChange({ target: { files: [{ size: 40961 }] } }));
+    await renderer.act(async () => submit());
+    assert.equal(corrected, undefined);
+    assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /40 Ko/);
+    const bytes = Uint8Array.from(Buffer.from("RIFFxxxxWEBPtest"));
+    renderer.act(() => view.root.findByProps({ "aria-label": "Fichier WebP de remplacement" }).props.onChange({ target: { files: [{ size: bytes.length, arrayBuffer: async () => bytes.buffer }] } }));
+    await renderer.act(async () => submit());
+    const logo = corrected.media.find(item => item.role === "logo");
+    assert.equal(logo.source_selection, "manual");
+    assert.equal(logo.source_kind, "generated");
+    assert.equal(logo.data_base64, Buffer.from(bytes).toString("base64"));
+    assert.equal(logo.source_url, undefined);
+  } finally { if (view) renderer.act(() => view.unmount()); }
 });

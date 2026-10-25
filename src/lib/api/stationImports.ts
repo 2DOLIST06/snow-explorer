@@ -6,11 +6,12 @@ import type { BatchJob, PreparedBatchMedia } from "@/components/admin/imports/Ba
 export class AdminApiError extends Error { constructor(message: string, public status?: number, public code?: string) { super(message); this.name = "AdminApiError"; } }
 
 function asApiError(error: unknown): AdminApiError {
-  const e = error as AxiosError<{ message?: string; detail?: string; code?: string }>;
+  const e = error as AxiosError<{ message?: string; detail?: string; code?: string; errors?: { path?: string; message?: string }[] }>;
   const status = e.response?.status;
   const fallback = e.code === "ECONNABORTED" || e.code === "ETIMEDOUT" ? "Le serveur n’a pas répondu dans le délai prévu. Réessayez." : !e.response && e.code === "ERR_NETWORK" ? "Connexion au serveur interrompue. Vérifiez votre connexion puis réessayez." : status === 401 ? "Votre session a expiré. Reconnectez-vous." : status === 403 ? "Vous n’avez pas accès à cette action." : status === 408 ? "La requête a expiré. Réessayez." : "Une erreur serveur est survenue.";
   if (process.env.NODE_ENV === "development") console.error("Administration imports", error);
-  return new AdminApiError(e.response?.data?.message || e.response?.data?.detail || fallback, status, e.response?.data?.code);
+  const validation = Array.isArray(e.response?.data?.errors) ? e.response.data.errors.filter(item => item && item.message).map(item => `${item.path ? `${item.path} : ` : ""}${item.message}`).join(" ; ") : "";
+  return new AdminApiError(validation || e.response?.data?.message || e.response?.data?.detail || fallback, status, e.response?.data?.code);
 }
 
 async function request<T>(call: Promise<AxiosResponse<T>>): Promise<T> { try { return (await call).data; } catch (e) { throw asApiError(e); } }
@@ -43,6 +44,7 @@ export const previewBulkStationImport = (document: unknown, options: BulkImportO
 export const confirmBulkStationImport = (document: unknown, previewToken: string, options: BulkImportOptions) => request(api.post<BulkImportResult>("/api/admin/stations/import/confirm", bulkDocument(document, options, previewToken)));
 export const resolveStationBatch = (batch: unknown, signal?: AbortSignal) => request(api.post<{ jobs: BatchJob[]; warnings: string[] }>("/api/admin/stations/import/batch/resolve", { batch }, { timeout: 60000, signal }));
 export const prepareStationBatchMedia = (job_token: string, signal?: AbortSignal) => request(api.post<PreparedBatchMedia>("/api/admin/stations/import/batch/prepare-media", { job_token }, { timeout: 70000, signal }));
+export const reviseStationBatch = (batch: unknown, receipts: string[], signal?: AbortSignal) => request(api.post<{ jobs: BatchJob[]; warnings: string[]; prepared: PreparedBatchMedia[] }>("/api/admin/stations/import/batch/revise", { batch, receipts }, { timeout: 60000, signal }));
 export const assembleStationBatch = (batch: unknown, receipts: string[], signal?: AbortSignal) => request(api.post<{ document: unknown; warnings: string[] }>("/api/admin/stations/import/batch/assemble", { batch, receipts }, { timeout: 60000, signal }));
 export const getImportHistory = (filters: ImportHistoryFilters = {}) => request(api.get<ImportHistoryResponse>("/api/admin/stations/import/history", { params: filters }));
 export const getImportHistoryDetail = (id: string) => request(api.get<ImportHistoryDetail>(`/api/admin/stations/import/history/${encodeURIComponent(id)}`));
