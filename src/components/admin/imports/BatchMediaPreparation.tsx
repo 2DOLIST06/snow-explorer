@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
-import { assembleStationBatch, prepareStationBatchMedia, resolveStationBatch } from "@/lib/api/stationImports";
+import { assembleStationBatch, prepareStationBatchMedia, resolveStationBatch, reviseStationBatch } from "@/lib/api/stationImports";
+import BatchCorrectionEditor from "./BatchCorrectionEditor";
 import { completeStationBatch } from "@/lib/completeStationBatch";
 
 export type BatchJob = {
@@ -21,11 +22,16 @@ export type PreparedBatchMedia = BatchJob & {
   size_bytes: number;
 };
 
+type BatchQueue = { source: unknown; jobs: BatchJob[]; prepared: PreparedBatchMedia[] };
+
 export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   batch: unknown;
   onPrepared: (document: unknown) => Promise<void>;
   onBusy: (busy: boolean) => void;
 }) {
+  const [workingBatch, setWorkingBatch] = useState(batch);
+  const [failedJob, setFailedJob] = useState<BatchJob | null>(null);
+  const [editTarget, setEditTarget] = useState<Pick<BatchJob, "station_slug" | "role"> | null>(null);
   const [assets, setAssets] = useState<PreparedBatchMedia[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
@@ -36,7 +42,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [importBatch, setImportBatch] = useState<unknown>(null);
-  const cache = useRef<{ source: unknown; jobs: BatchJob[]; prepared: PreparedBatchMedia[] } | null>(null);
+  const cache = useRef<BatchQueue | null>(null);
   const controller = useRef<AbortController | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [step, setStep] = useState("");
@@ -63,15 +69,32 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   };
   const keyOf = (asset: BatchJob) => `${asset.station_slug}:${asset.role}`;
   const changeBusy = (value: boolean) => { setBusy(value); onBusy(value); };
+  const prepareQueue = async (current: BatchQueue) => {
+    for (let i = 0; i < current.jobs.length; i++) {
+      const job = current.jobs[i];
+      if (current.prepared.some(asset => keyOf(asset) === keyOf(job))) continue;
+      setFailedJob(job);
+      const label = `${i + 1}/${current.jobs.length} — ${job.station_slug} : ${job.role}`;
+      setProgress(label);
+      const prepared = await runStep(label, signal => prepareStationBatchMedia(job.job_token, signal));
+      current.prepared.push(prepared);
+      setAssets([...current.prepared]);
+    }
+    setFailedJob(null); setReady(true); setProgress("Médias préparés. Vérifiez les aperçus avant de poursuivre.");
+  };
+  const interrupted = (e: unknown) => {
+    setProgress(`Préparation interrompue. ${cache.current?.prepared.length || 0} média(s) préparé(s) conservé(s) dans cette fenêtre. Corrigez l’élément ou reprenez les tests.`);
+    setError(e instanceof Error && e.message ? e.message : "Préparation impossible.");
+  };
   const prepare = async () => {
     if (busy) return;
     changeBusy(true); setError(""); setReady(false); setReviewed(false);
     try {
-      if (!cache.current || cache.current.source !== batch) {
+      if (!cache.current || cache.current.source !== workingBatch) {
         cache.current = null;
         setAssets([]); setLoaded({}); setOpened({}); setWarnings([]); setImportBatch(null);
         setProgress("Vérification des sources et de la disponibilité ANMSM…");
-        const filtered = completeStationBatch(batch);
+        const filtered = completeStationBatch(workingBatch);
         const exclusions = filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`);
         setWarnings(exclusions);
         if (!filtered.batch.document.stations.length) {
@@ -81,22 +104,36 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
         setImportBatch(filtered.batch);
         const resolved = await runStep("Vérification des sources du lot", signal => resolveStationBatch(filtered.batch, signal));
         setWarnings([...exclusions, ...resolved.warnings]);
-        cache.current = { source: batch, jobs: resolved.jobs, prepared: [] };
+        cache.current = { source: workingBatch, jobs: resolved.jobs, prepared: [] };
       }
-      const current = cache.current;
-      for (let i = current.prepared.length; i < current.jobs.length; i++) {
-        const job = current.jobs[i];
-        const label = `${i + 1}/${current.jobs.length} — ${job.station_slug} : ${job.role}`;
-        setProgress(label);
-        const prepared = await runStep(label, signal => prepareStationBatchMedia(job.job_token, signal));
-        current.prepared.push(prepared);
-        setAssets([...current.prepared]);
-      }
-      setReady(true); setProgress("Médias préparés. Vérifiez les aperçus avant de poursuivre.");
-    } catch (e) {
-      setProgress(`Préparation interrompue. ${cache.current?.prepared.length || 0} média(s) préparé(s) conservé(s) dans cette fenêtre. Reprenez à l’étape interrompue.`);
-      setError(e instanceof Error && e.message ? e.message : "Préparation impossible.");
-    } finally { changeBusy(false); }
+      await prepareQueue(cache.current);
+    } catch (e) { interrupted(e); }
+    finally { changeBusy(false); }
+  };
+  const revise = async (nextBatch: unknown) => {
+    if (busy) return;
+    changeBusy(true); setError(""); setReviewed(false); setReady(false);
+    try {
+      const filtered = completeStationBatch(nextBatch);
+      if (!filtered.batch.document.stations.length) throw new Error("Aucune station complète ne resterait dans le lot. Complétez les données avant de réessayer.");
+      const result = await runStep("Validation de la correction", signal => reviseStationBatch(filtered.batch, (cache.current?.prepared || []).map(asset => asset.receipt), signal));
+      const retainedKeys = new Set(result.prepared.map(keyOf));
+      setLoaded(current => Object.fromEntries(Object.entries(current).filter(([key]) => retainedKeys.has(key))));
+      setOpened(current => Object.fromEntries(Object.entries(current).filter(([key]) => retainedKeys.has(key))));
+      setWorkingBatch(nextBatch); setImportBatch(filtered.batch);
+      setWarnings([...filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`), ...result.warnings]);
+      const current = { source: nextBatch, jobs: result.jobs, prepared: result.prepared };
+      cache.current = current;
+      setAssets([...current.prepared]); setEditTarget(null);
+      await prepareQueue(current);
+    } catch (e) { interrupted(e); }
+    finally { changeBusy(false); }
+  };
+  const openCorrection = () => {
+    const candidate = failedJob || cache.current?.jobs[0];
+    const first = (workingBatch as { document?: { stations?: { station: { slug: string } }[] } })?.document?.stations?.[0]?.station.slug;
+    if (candidate) setEditTarget(candidate);
+    else if (first) setEditTarget({ station_slug: first, role: "piste_map" });
   };
   const allLoaded = assets.every(asset => asset.render_mode === "interactive" || loaded[keyOf(asset)]);
   const unopenedMaps = assets.filter(asset => asset.role === "piste_map" && !opened[keyOf(asset)]);
@@ -122,8 +159,11 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
       <button type="button" onClick={() => controller.current?.abort()}>Arrêter l’attente</button>
     </>}
     {error && <p role="alert">{error}</p>}
+    {!busy && <button type="button" onClick={openCorrection}>{failedJob ? "Corriger le média en erreur" : "Corriger une station ou un média"}</button>}
+    {error && !busy && <p>Vous pouvez modifier le lien du plan, remplacer un WebP ou corriger les données. Une erreur de connexion peut être réessayée ; un problème de droits ou de configuration serveur peut nécessiter une intervention technique.</p>}
     {assets.length > 0 && !ready && !busy && <p>Les médias reçus sont conservés tant que cette fenêtre reste ouverte. Aucun import de station n’a été lancé à cette étape.</p>}
     </div>
+    {editTarget && <BatchCorrectionEditor key={`${editTarget.station_slug}:${editTarget.role}`} batch={workingBatch} target={editTarget} busy={busy} onApply={revise} onClose={() => setEditTarget(null)} />}
     {warnings.length > 0 && <ul>{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>}
     {assets.map(asset => {
       const key = keyOf(asset);
@@ -134,6 +174,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {asset.render_mode !== "interactive" && <img hidden={asset.role === "piste_map"} src={asset.url} alt={`Aperçu ${asset.role} ${asset.station_slug}`} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} onLoad={event => { if (event.currentTarget.naturalWidth > 0) setLoaded(current => ({ ...current, [key]: true })); }} onError={() => { setLoaded(current => ({ ...current, [key]: false })); setError(`Le fichier public de ${asset.station_slug} (${asset.role}) ne se charge pas. Vérifiez les permissions du stockage.`); }} />}
         {asset.role === "piste_map" && <PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} onModalOpen={() => setOpened(current => current[key] ? current : ({ ...current, [key]: true }))} />}
+        {!busy && <button type="button" onClick={() => setEditTarget(asset)}>Modifier ce média</button>}
         {asset.source_url && <a href={asset.source_url} target="_blank" rel="noopener noreferrer">Voir la source</a>}
       </article>;
     })}
