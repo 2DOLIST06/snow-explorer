@@ -25,6 +25,7 @@ type ResortType = {
   updated_at?: string | null;
   name?: string;
   slug?: string;
+  is_active?: boolean;
   latitude?: number | null;
   longitude?: number | null;
   website_url?: string | null;
@@ -779,6 +780,7 @@ export default function AdminStationEdit() {
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingActive, setUpdatingActive] = useState(false);
 
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
@@ -901,7 +903,7 @@ setWidgets(w);
   }, [resort?.region_id, resort]);
 
   const saveAll = async () => {
-    if (!resort || saving) return;
+    if (!resort || saving || updatingActive) return;
 
     setSaving(true);
     setMsg("Enregistrement de toutes les modifications…");
@@ -975,6 +977,31 @@ setWidgets(w);
       setMsg("");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleStationActive = async () => {
+    if (!resort || updatingActive || saving) return;
+    const nextActive = resort.is_active === false;
+    setUpdatingActive(true);
+    setMsg("");
+    setErr("");
+    try {
+      const response = await adminFetch(`/api/admin/stations/${encodeURIComponent(slug)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      if (!response.ok) throw new Error(`Modification du statut impossible (${response.status}) : ${await response.text()}`);
+      const data = await response.json();
+      const confirmedActive = data.resort?.is_active;
+      if (typeof confirmedActive !== "boolean") throw new Error("Le serveur n’a pas confirmé le statut de la station. Rafraîchissez la fiche.");
+      setResort(current => current ? { ...current, is_active: confirmedActive } : current);
+      setMsg(confirmedActive ? "Station activée." : "Station désactivée.");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de modifier le statut de la station.");
+    } finally {
+      setUpdatingActive(false);
     }
   };
 
@@ -1334,6 +1361,7 @@ const removeForfaitRow = (rowIdx: number) => {
             <h1 style={styles.title}>{resort.name || "Station"}</h1>
             <div style={styles.subtitle}>
               <span style={styles.chip}>Slug : {slug || "—"}</span>
+              <span style={styles.chip}>Statut : {resort.is_active === false ? "désactivée" : "active"}</span>
               <span style={styles.chip}>region_id : {resort.region_id || "—"}</span>
               <span style={styles.chip}>department : {resort.department || "—"}</span>
               {resort.region?.name ? <span style={styles.chip}>region.name : {resort.region.name}</span> : null}
@@ -1341,6 +1369,9 @@ const removeForfaitRow = (rowIdx: number) => {
           </div>
 
           <div style={styles.actionRow}>
+            <button type="button" onClick={() => void toggleStationActive()} disabled={updatingActive || saving} style={styles.secondaryBtn}>
+              {updatingActive ? "Mise à jour…" : resort.is_active === false ? "Activer la station" : "Désactiver la station"}
+            </button>
             <Link
               href={`/stations/${encodeURIComponent(resort.slug || slug)}`}
               target="_blank"
@@ -1358,10 +1389,10 @@ const removeForfaitRow = (rowIdx: number) => {
               label="Vider le cache de cette station"
               successMessage="Cache de la station vidé. Les données seront régénérées au prochain affichage."
             />
-            <button onClick={() => load(slug)} style={styles.secondaryBtn}>
+            <button onClick={() => load(slug)} disabled={updatingActive} style={styles.secondaryBtn}>
               Rafraîchir
             </button>
-            <button onClick={() => void saveAll()} disabled={saving} style={styles.primaryBtn}>
+            <button onClick={() => void saveAll()} disabled={saving || updatingActive} style={styles.primaryBtn}>
               {saving ? "Enregistrement…" : "Tout enregistrer"}
             </button>
           </div>
