@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import { assembleStationBatch, prepareStationBatchMedia, resolveStationBatch } from "@/lib/api/stationImports";
+import { completeStationBatch } from "@/lib/completeStationBatch";
 
 export type BatchJob = {
   station_slug: string;
@@ -34,14 +35,23 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
+  const [importBatch, setImportBatch] = useState<unknown>(null);
   const keyOf = (asset: BatchJob) => `${asset.station_slug}:${asset.role}`;
   const changeBusy = (value: boolean) => { setBusy(value); onBusy(value); };
   const prepare = async () => {
-    changeBusy(true); setError(""); setReady(false); setAssets([]); setLoaded({}); setOpened({}); setReviewed(false);
+    changeBusy(true); setError(""); setReady(false); setAssets([]); setLoaded({}); setOpened({}); setReviewed(false); setWarnings([]); setImportBatch(null);
     try {
       setProgress("Vérification des sources et de la disponibilité ANMSM…");
-      const resolved = await resolveStationBatch(batch);
-      setWarnings(resolved.warnings);
+      const filtered = completeStationBatch(batch);
+      const exclusions = filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`);
+      setWarnings(exclusions);
+      if (!filtered.batch.document.stations.length) {
+        setProgress("Aucune station complète à importer. Les informations manquantes sont listées ci-dessous.");
+        return;
+      }
+      setImportBatch(filtered.batch);
+      const resolved = await resolveStationBatch(filtered.batch);
+      setWarnings([...exclusions, ...resolved.warnings]);
       for (let i = 0; i < resolved.jobs.length; i++) {
         const job = resolved.jobs[i];
         setProgress(`${i + 1}/${resolved.jobs.length} — ${job.station_slug} : ${job.role}`);
@@ -49,7 +59,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
         setAssets(current => [...current, prepared]);
       }
       setReady(true); setProgress("Médias préparés. Vérifiez les aperçus avant de poursuivre.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Préparation impossible."); }
+    } catch (e) { setProgress("Préparation interrompue. Corrigez l’erreur puis reprenez la préparation."); setError(e instanceof Error && e.message ? e.message : "Préparation impossible."); }
     finally { changeBusy(false); }
   };
   const allLoaded = assets.every(asset => asset.render_mode === "interactive" || loaded[keyOf(asset)]);
@@ -59,7 +69,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
     if (!ready || !allLoaded || !mapsOpened || !reviewed) return;
     changeBusy(true); setError("");
     try {
-      const result = await assembleStationBatch(batch, assets.map(asset => asset.receipt));
+      const result = await assembleStationBatch(importBatch, assets.map(asset => asset.receipt));
       await onPrepared(result.document);
     } catch (e) { setError(e instanceof Error ? e.message : "Assemblage impossible."); }
     finally { changeBusy(false); }
@@ -84,7 +94,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
       </article>;
     })}
     {ready && <>
-      <label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} disabled={!allLoaded || !mapsOpened} /> J’ai vérifié les médias et les plans dans les modales. Les éléments manquants signalés peuvent rester vides.</label>
+      <label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} disabled={!allLoaded || !mapsOpened} /> J’ai vérifié les médias et les plans dans les modales. Seules les stations complètes sont conservées.</label>
       {!allLoaded && <p role="status">En attente du chargement des fichiers publics.</p>}
       {!mapsOpened && <p role="status">Plans restant à ouvrir avec leur bouton : {unopenedMaps.map(asset => asset.station_slug).join(", ")}.</p>}
       <button type="button" className="btn btn--primary" disabled={busy || !allLoaded || !mapsOpened || !reviewed} onClick={() => void finish()}>Prévisualiser les créations</button>

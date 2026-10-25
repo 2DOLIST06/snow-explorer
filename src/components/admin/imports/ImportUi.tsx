@@ -2,11 +2,11 @@ import type { ImportChange, ImportMessage } from "@/types/stationImport";
 import { AlertTriangle, Check, CircleMinus, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 
-export const MAX_JSON_SIZE = 1024 * 1024;
+export const MAX_JSON_SIZE = 16 * 1024 * 1024;
 export function validateJsonFile(file: File): string | null {
   if (!file.name.toLowerCase().endsWith(".json")) return "Sélectionnez un fichier avec l’extension .json.";
   if (file.size === 0) return "Le fichier est vide.";
-  if (file.size > MAX_JSON_SIZE) return "Le fichier dépasse la taille maximale de 1 Mo.";
+  if (file.size > MAX_JSON_SIZE) return "Le fichier dépasse la limite technique de 16 Mo.";
   return null;
 }
 
@@ -29,5 +29,5 @@ export function ChangeList({ changes }: { changes: ImportChange[] }) {
 export function ImportRules() { return <aside className="import-rules"><h3>Règles d’import</h3><dl><div><dt>Champ absent</dt><dd>La valeur actuelle est conservée.</dd></div><div><dt>Champ avec null</dt><dd>La valeur est supprimée si le champ accepte une valeur vide.</dd></div><div><dt>Champ avec chaîne vide</dt><dd>La valeur peut être normalisée ou refusée selon le champ.</dd></div><div><dt>Tableau absent</dt><dd>La liste actuelle est conservée.</dd></div><div><dt>Tableau vide</dt><dd>La liste peut être vidée si le schéma le permet.</dd></div></dl></aside>; }
 
 export function FilePicker({ file, onChange, error }: { file: File | null; onChange: (file: File | null) => void; error?: string }) {
-  return <div className="import-file"><label htmlFor="station-json-file"><strong>Fichier JSON</strong><span>Format .json, 1 Mo maximum</span></label><input id="station-json-file" type="file" accept=".json,application/json" onChange={e => onChange(e.target.files?.[0] || null)} />{file && <div className="import-file__selected"><span><strong>{file.name}</strong> — {(file.size / 1024).toFixed(1)} Ko</span><button type="button" className="btn btn--secondary" onClick={() => onChange(null)}>Retirer</button></div>}{error && <p className="import-field-error" role="alert">{error}</p>}</div>;
+  return <div className="import-file"><label htmlFor="station-json-file"><strong>Fichier JSON</strong><span>Format .json, limite technique de 16 Mo</span></label><input id="station-json-file" type="file" accept=".json,application/json" onChange={e => onChange(e.target.files?.[0] || null)} />{file && <div className="import-file__selected"><span><strong>{file.name}</strong> — {(file.size / 1024).toFixed(1)} Ko</span><button type="button" className="btn btn--secondary" onClick={() => onChange(null)}>Retirer</button></div>}{error && <p className="import-field-error" role="alert">{error}</p>}</div>;
 }
