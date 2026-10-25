@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlanPistesFigure } from "@/components/stations/StationPisteMap";
 import { assembleStationBatch, prepareStationBatchMedia, resolveStationBatch } from "@/lib/api/stationImports";
 import { completeStationBatch } from "@/lib/completeStationBatch";
@@ -36,31 +36,67 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [importBatch, setImportBatch] = useState<unknown>(null);
+  const cache = useRef<{ source: unknown; jobs: BatchJob[]; prepared: PreparedBatchMedia[] } | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [step, setStep] = useState("");
+  useEffect(() => {
+    if (!busy) return;
+    const timer = globalThis.setInterval(() => setElapsed(value => value + 1), 1000);
+    return () => globalThis.clearInterval(timer);
+  }, [busy, step]);
+  useEffect(() => () => controller.current?.abort(), []);
+  const runStep = async <T,>(label: string, action: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    setStep(label); setElapsed(0);
+    const active = new AbortController();
+    controller.current = active;
+    let rejectAbort: () => void = () => {};
+    let timedOut = false;
+    const interrupted = new Promise<never>((_, reject) => {
+      rejectAbort = () => reject(new Error(timedOut ? "Aucune réponse dans le délai prévu (75 s)." : "Attente arrêtée."));
+      active.signal.addEventListener("abort", rejectAbort, { once: true });
+    });
+    const timer = globalThis.setTimeout(() => { timedOut = true; active.abort(); }, 75000);
+    try { return await Promise.race([action(active.signal), interrupted]); }
+    catch (error) { throw new Error(`${label} : ${error instanceof Error ? error.message : "Erreur inconnue"}`); }
+    finally { globalThis.clearTimeout(timer); active.signal.removeEventListener("abort", rejectAbort); controller.current = null; }
+  };
   const keyOf = (asset: BatchJob) => `${asset.station_slug}:${asset.role}`;
   const changeBusy = (value: boolean) => { setBusy(value); onBusy(value); };
   const prepare = async () => {
-    changeBusy(true); setError(""); setReady(false); setAssets([]); setLoaded({}); setOpened({}); setReviewed(false); setWarnings([]); setImportBatch(null);
+    if (busy) return;
+    changeBusy(true); setError(""); setReady(false); setReviewed(false);
     try {
-      setProgress("Vérification des sources et de la disponibilité ANMSM…");
-      const filtered = completeStationBatch(batch);
-      const exclusions = filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`);
-      setWarnings(exclusions);
-      if (!filtered.batch.document.stations.length) {
-        setProgress("Aucune station complète à importer. Les informations manquantes sont listées ci-dessous.");
-        return;
+      if (!cache.current || cache.current.source !== batch) {
+        cache.current = null;
+        setAssets([]); setLoaded({}); setOpened({}); setWarnings([]); setImportBatch(null);
+        setProgress("Vérification des sources et de la disponibilité ANMSM…");
+        const filtered = completeStationBatch(batch);
+        const exclusions = filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`);
+        setWarnings(exclusions);
+        if (!filtered.batch.document.stations.length) {
+          setProgress("Aucune station complète à importer. Les informations manquantes sont listées ci-dessous.");
+          return;
+        }
+        setImportBatch(filtered.batch);
+        const resolved = await runStep("Vérification des sources du lot", signal => resolveStationBatch(filtered.batch, signal));
+        setWarnings([...exclusions, ...resolved.warnings]);
+        cache.current = { source: batch, jobs: resolved.jobs, prepared: [] };
       }
-      setImportBatch(filtered.batch);
-      const resolved = await resolveStationBatch(filtered.batch);
-      setWarnings([...exclusions, ...resolved.warnings]);
-      for (let i = 0; i < resolved.jobs.length; i++) {
-        const job = resolved.jobs[i];
-        setProgress(`${i + 1}/${resolved.jobs.length} — ${job.station_slug} : ${job.role}`);
-        const prepared = await prepareStationBatchMedia(job.job_token);
-        setAssets(current => [...current, prepared]);
+      const current = cache.current;
+      for (let i = current.prepared.length; i < current.jobs.length; i++) {
+        const job = current.jobs[i];
+        const label = `${i + 1}/${current.jobs.length} — ${job.station_slug} : ${job.role}`;
+        setProgress(label);
+        const prepared = await runStep(label, signal => prepareStationBatchMedia(job.job_token, signal));
+        current.prepared.push(prepared);
+        setAssets([...current.prepared]);
       }
       setReady(true); setProgress("Médias préparés. Vérifiez les aperçus avant de poursuivre.");
-    } catch (e) { setProgress("Préparation interrompue. Corrigez l’erreur puis reprenez la préparation."); setError(e instanceof Error && e.message ? e.message : "Préparation impossible."); }
-    finally { changeBusy(false); }
+    } catch (e) {
+      setProgress(`Préparation interrompue. ${cache.current?.prepared.length || 0} média(s) préparé(s) conservé(s) dans cette fenêtre. Reprenez à l’étape interrompue.`);
+      setError(e instanceof Error && e.message ? e.message : "Préparation impossible.");
+    } finally { changeBusy(false); }
   };
   const allLoaded = assets.every(asset => asset.render_mode === "interactive" || loaded[keyOf(asset)]);
   const unopenedMaps = assets.filter(asset => asset.role === "piste_map" && !opened[keyOf(asset)]);
@@ -69,7 +105,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
     if (!ready || !allLoaded || !mapsOpened || !reviewed) return;
     changeBusy(true); setError("");
     try {
-      const result = await assembleStationBatch(importBatch, assets.map(asset => asset.receipt));
+      const result = await runStep("Assemblage et prévisualisation du lot", signal => assembleStationBatch(importBatch, assets.map(asset => asset.receipt), signal));
       await onPrepared(result.document);
     } catch (e) { setError(e instanceof Error ? e.message : "Assemblage impossible."); }
     finally { changeBusy(false); }
@@ -77,9 +113,17 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   return <section className="import-detail">
     <h3>Préparer les médias du lot</h3>
     <p>Les couvertures générées et les écussons sont stockés avant l’import. Les plans conservent leur URL, sans conversion ni copie. Ouvrez chaque plan pour vérifier son affichage.</p>
+    <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#f7fbff", padding: "12px", border: "1px solid #ccdce8" }}>
     <button type="button" className="btn btn--secondary" onClick={() => void prepare()} disabled={busy}>{assets.length || ready ? "Reprendre la préparation" : "Vérifier et préparer les médias"}</button>
     {progress && <p role="status">{progress}</p>}
+    {busy && <>
+      <p role="status">{step} — attente : {elapsed} s. {assets.length} média(s) déjà préparé(s).</p>
+      {elapsed >= 20 && <p>La réponse prend du temps. L’étape sera interrompue après 75 secondes au maximum ; vous pourrez la reprendre.</p>}
+      <button type="button" onClick={() => controller.current?.abort()}>Arrêter l’attente</button>
+    </>}
     {error && <p role="alert">{error}</p>}
+    {assets.length > 0 && !ready && !busy && <p>Les médias reçus sont conservés tant que cette fenêtre reste ouverte. Aucun import de station n’a été lancé à cette étape.</p>}
+    </div>
     {warnings.length > 0 && <ul>{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>}
     {assets.map(asset => {
       const key = keyOf(asset);
