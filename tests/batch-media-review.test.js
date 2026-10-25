@@ -28,7 +28,7 @@ function loadComponent(relativePath, overrides = {}) {
   return loaded.exports;
 }
 
-test("opening both real plan modals unlocks review and station preview", async () => {
+test("manual media confirmation does not require opening plan modals", async () => {
   const previous = global.document;
   const dom = new JSDOM("<!doctype html><body></body>");
   global.document = dom.window.document;
@@ -57,16 +57,10 @@ test("opening both real plan modals unlocks review and station preview", async (
       for (const image of view.root.findAllByType("img")) image.props.onLoad?.({ currentTarget: { naturalWidth: 200 } });
     });
     const checkbox = () => view.root.findByProps({ type: "checkbox" });
-    const open = station => view.root.findAllByType("button").find(button => button.props["aria-label"]?.startsWith("Voir le plan") && button.props["aria-label"].includes(station));
-    assert.equal(checkbox().props.disabled, true);
-    renderer.act(() => open("first").props.onClick());
-    assert.equal(checkbox().props.disabled, true);
-    const statuses = view.root.findAllByProps({ role: "status" }).map(item => item.children.join(""));
-    assert.ok(statuses.some(text => text.includes("second") && !text.includes("first")));
-    renderer.act(() => view.root.findByProps({ "aria-label": "Fermer le plan des pistes" }).props.onClick());
-    renderer.act(() => open("second").props.onClick());
     assert.equal(checkbox().props.disabled, false);
-    renderer.act(() => view.root.findByProps({ "aria-label": "Fermer le plan des pistes" }).props.onClick());
+    assert.equal(view.root.findByProps({ className: "btn btn--primary" }).props.disabled, true);
+    assert.equal(view.root.findAllByProps({ role: "dialog" }).length, 0);
+    assert.ok(!JSON.stringify(view.toJSON()).includes("Plans restant à ouvrir"));
     renderer.act(() => checkbox().props.onChange({ target: { checked: true } }));
     const preview = view.root.findByProps({ className: "btn btn--primary" });
     assert.equal(preview.props.disabled, false);
@@ -203,7 +197,8 @@ test("a failed PDF can be replaced in the editor and retested without redoing pr
     assert.deepEqual(calls, ["cover", "logo", "piste_map", "new-map"]);
     assert.equal(source.media.find(item => item.role === "piste_map").source_url, "https://example.org/blocked.pdf");
     assert.equal(view.root.findAllByType("article").length, 3);
-    assert.equal(view.root.findByProps({ type: "checkbox" }).props.disabled, true);
+    assert.equal(view.root.findByProps({ type: "checkbox" }).props.disabled, false);
+    assert.equal(view.root.findByProps({ type: "checkbox" }).props.checked, false);
   } finally { if (view) renderer.act(() => view.unmount()); }
 });
 

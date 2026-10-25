@@ -35,7 +35,6 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   const [assets, setAssets] = useState<PreparedBatchMedia[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
-  const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [reviewed, setReviewed] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -92,7 +91,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
     try {
       if (!cache.current || cache.current.source !== workingBatch) {
         cache.current = null;
-        setAssets([]); setLoaded({}); setOpened({}); setWarnings([]); setImportBatch(null);
+        setAssets([]); setLoaded({}); setWarnings([]); setImportBatch(null);
         setProgress("Vérification des sources et de la disponibilité ANMSM…");
         const filtered = completeStationBatch(workingBatch);
         const exclusions = filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`);
@@ -119,7 +118,6 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
       const result = await runStep("Validation de la correction", signal => reviseStationBatch(filtered.batch, (cache.current?.prepared || []).map(asset => asset.receipt), signal));
       const retainedKeys = new Set(result.prepared.map(keyOf));
       setLoaded(current => Object.fromEntries(Object.entries(current).filter(([key]) => retainedKeys.has(key))));
-      setOpened(current => Object.fromEntries(Object.entries(current).filter(([key]) => retainedKeys.has(key))));
       setWorkingBatch(nextBatch); setImportBatch(filtered.batch);
       setWarnings([...filtered.excluded.map(item => `${item.name} exclue : ${item.fields.join(", ")}.`), ...result.warnings]);
       const current = { source: nextBatch, jobs: result.jobs, prepared: result.prepared };
@@ -136,10 +134,8 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
     else if (first) setEditTarget({ station_slug: first, role: "piste_map" });
   };
   const allLoaded = assets.every(asset => asset.render_mode === "interactive" || loaded[keyOf(asset)]);
-  const unopenedMaps = assets.filter(asset => asset.role === "piste_map" && !opened[keyOf(asset)]);
-  const mapsOpened = unopenedMaps.length === 0;
   const finish = async () => {
-    if (!ready || !allLoaded || !mapsOpened || !reviewed) return;
+    if (!ready || !allLoaded || !reviewed) return;
     changeBusy(true); setError("");
     try {
       const result = await runStep("Assemblage et prévisualisation du lot", signal => assembleStationBatch(importBatch, assets.map(asset => asset.receipt), signal));
@@ -149,7 +145,7 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
   };
   return <section className="import-detail">
     <h3>Préparer les médias du lot</h3>
-    <p>Les couvertures générées et les écussons sont stockés avant l’import. Les plans conservent leur URL, sans conversion ni copie. Ouvrez chaque plan pour vérifier son affichage.</p>
+    <p>Les couvertures générées et les écussons sont stockés avant l’import. Les plans conservent leur URL, sans conversion ni copie. Vous pouvez ouvrir les plans pour vérifier leur affichage.</p>
     <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#f7fbff", padding: "12px", border: "1px solid #ccdce8" }}>
     <button type="button" className="btn btn--secondary" onClick={() => void prepare()} disabled={busy}>{assets.length || ready ? "Reprendre la préparation" : "Vérifier et préparer les médias"}</button>
     {progress && <p role="status">{progress}</p>}
@@ -169,20 +165,19 @@ export default function BatchMediaPreparation({ batch, onPrepared, onBusy }: {
       const key = keyOf(asset);
       return <article key={key} className="import-detail">
         <h4>{asset.station_slug} — {asset.role === "cover" ? "Couverture" : asset.role === "logo" ? "Logo" : "Plan des pistes"}</h4>
-        <p>{asset.source_provider === "generated" ? "Création Snow Explorer" : asset.source_provider === "anmsm" ? "Source ANMSM" : "Source officielle"} · {asset.render_mode === "interactive" ? "Plan interactif : vérification visuelle requise" : asset.linked_image ? "Lien image conservé" : `${asset.width} × ${asset.height} · ${(asset.size_bytes / 1024).toFixed(1)} Ko`}</p>
+        <p>{asset.source_provider === "generated" ? "Création Snow Explorer" : asset.source_provider === "anmsm" ? "Source ANMSM" : "Source officielle"} · {asset.render_mode === "interactive" ? "Plan interactif : aperçu disponible" : asset.linked_image ? "Lien image conservé" : `${asset.width} × ${asset.height} · ${(asset.size_bytes / 1024).toFixed(1)} Ko`}</p>
         {/* Test the final public URL, not an expiring private preview URL. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {asset.render_mode !== "interactive" && <img hidden={asset.role === "piste_map"} src={asset.url} alt={`Aperçu ${asset.role} ${asset.station_slug}`} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} onLoad={event => { if (event.currentTarget.naturalWidth > 0) setLoaded(current => ({ ...current, [key]: true })); }} onError={() => { setLoaded(current => ({ ...current, [key]: false })); setError(`Le fichier public de ${asset.station_slug} (${asset.role}) ne se charge pas. Vérifiez les permissions du stockage.`); }} />}
-        {asset.role === "piste_map" && <PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} onModalOpen={() => setOpened(current => current[key] ? current : ({ ...current, [key]: true }))} />}
+        {asset.role === "piste_map" && <PlanPistesFigure name={asset.station_slug} large={asset.render_mode === "interactive" || asset.linked_image ? null : asset.url} officialUrl={asset.render_mode === "interactive" || asset.linked_image ? asset.url : null} />}
         {!busy && <button type="button" onClick={() => setEditTarget(asset)}>Modifier ce média</button>}
         {asset.source_url && <a href={asset.source_url} target="_blank" rel="noopener noreferrer">Voir la source</a>}
       </article>;
     })}
     {ready && <>
-      <label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} disabled={!allLoaded || !mapsOpened} /> J’ai vérifié les médias et les plans dans les modales. Seules les stations complètes sont conservées.</label>
+      <label><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} disabled={!allLoaded} /> Je confirme les médias proposés pour cet import. Seules les stations complètes sont conservées.</label>
       {!allLoaded && <p role="status">En attente du chargement des fichiers publics.</p>}
-      {!mapsOpened && <p role="status">Plans restant à ouvrir avec leur bouton : {unopenedMaps.map(asset => asset.station_slug).join(", ")}.</p>}
-      <button type="button" className="btn btn--primary" disabled={busy || !allLoaded || !mapsOpened || !reviewed} onClick={() => void finish()}>Prévisualiser les créations</button>
+      <button type="button" className="btn btn--primary" disabled={busy || !allLoaded || !reviewed} onClick={() => void finish()}>Prévisualiser les créations</button>
     </>}
   </section>;
 }
