@@ -98,3 +98,69 @@ test("an entirely incomplete batch reports exclusions without starting media pre
     assert.ok(JSON.stringify(view.toJSON()).includes('Aucune station complète'));
   } finally { if (view) renderer.act(() => view.unmount()); }
 });
+
+
+test("interrupted preparation identifies the media and resumes without repeating completed jobs", async () => {
+  let view, resolved = 0;
+  const calls = [];
+  let fail = true;
+  const jobs = ["cover", "logo", "piste_map"].map(role => ({ station_slug: "first", role, job_token: role }));
+  const api = {
+    resolveStationBatch: async () => { resolved++; return { jobs, warnings: [] }; },
+    prepareStationBatchMedia: async token => {
+      calls.push(token);
+      if (token === "logo" && fail) { fail = false; throw new Error("Connexion interrompue"); }
+      return { ...jobs.find(job => job.job_token === token), receipt: token, url: "https://example.org/map.webp", render_mode: "image", width: 20, height: 20, size_bytes: 50 };
+    },
+  };
+  const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api });
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Batch.default, { batch: completeBatch(), onBusy: () => {}, onPrepared: async () => {} })); });
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /first : logo.*Connexion interrompue/);
+    assert.equal(view.root.findAllByType("article").length, 1);
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    assert.deepEqual(calls, ["cover", "logo", "logo", "piste_map"]);
+    assert.equal(resolved, 1);
+    assert.equal(view.root.findAllByType("article").length, 3);
+  } finally { if (view) renderer.act(() => view.unmount()); }
+});
+
+test("stopping an unanswered request preserves progress and ignores its late response", async () => {
+  let view, late;
+  const jobs = [{ station_slug: "first", role: "cover", job_token: "cover" }];
+  const api = {
+    resolveStationBatch: async () => ({ jobs, warnings: [] }),
+    prepareStationBatchMedia: () => new Promise(resolve => { late = resolve; }),
+  };
+  const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api }).default;
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Batch, { batch: completeBatch(), onBusy: () => {}, onPrepared: async () => {} })); });
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    const stop = view.root.findAllByType("button").find(button => button.children.join("") === "Arrêter l’attente");
+    await renderer.act(async () => { stop.props.onClick(); });
+    assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /first : cover.*Attente arrêtée/);
+    await renderer.act(async () => { late({ ...jobs[0], receipt: "late", url: "https://example.org/late.webp" }); });
+    assert.equal(view.root.findAllByType("article").length, 0);
+    assert.equal(view.root.findByProps({ className: "btn btn--secondary" }).props.disabled, false);
+  } finally { if (view) renderer.act(() => view.unmount()); }
+});
+
+test("an unanswered step times out with an explicit message and unlocks retry", async () => {
+  const original = global.setTimeout;
+  let expire, view;
+  global.setTimeout = (callback, delay, ...args) => {
+    if (delay === 75000) { expire = callback; return original(() => {}, 100000); }
+    return original(callback, delay, ...args);
+  };
+  const api = { resolveStationBatch: () => new Promise(() => {}) };
+  const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api }).default;
+  try {
+    await renderer.act(async () => { view = renderer.create(React.createElement(Batch, { batch: completeBatch(), onBusy: () => {}, onPrepared: async () => {} })); });
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    assert.equal(typeof expire, "function");
+    await renderer.act(async () => { expire(); });
+    assert.match(view.root.findByProps({ role: "alert" }).children.join(""), /Vérification des sources.*75 s/);
+    assert.equal(view.root.findByProps({ className: "btn btn--secondary" }).props.disabled, false);
+  } finally { global.setTimeout = original; if (view) renderer.act(() => view.unmount()); }
+});
