@@ -7,6 +7,7 @@ const ts = require("typescript");
 const React = require("react");
 const renderer = require("react-test-renderer");
 const { JSDOM } = require("jsdom");
+const { completeBatch } = require('./complete-station-batch.test');
 
 function loadComponent(relativePath, overrides = {}) {
   const filename = path.resolve(__dirname, "..", relativePath);
@@ -46,7 +47,7 @@ test("opening both real plan modals unlocks review and station preview", async (
   };
   try {
     const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api }).default;
-    const batch = { batch_version: "1.0" };
+    const batch = completeBatch();
     await renderer.act(async () => {
       view = renderer.create(React.createElement(Batch, { batch, onBusy: () => {}, onPrepared: async document => { previews.push(document); } }));
     });
@@ -70,7 +71,7 @@ test("opening both real plan modals unlocks review and station preview", async (
     assert.equal(preview.props.disabled, false);
     await renderer.act(async () => { preview.props.onClick(); });
     assert.equal(assembled.length, 1);
-    assert.equal(assembled[0][0], batch);
+    assert.deepEqual(assembled[0][0], batch);
     assert.equal(assembled[0][1].length, 6);
     assert.equal(previews.length, 1);
   } finally {
@@ -78,4 +79,22 @@ test("opening both real plan modals unlocks review and station preview", async (
     global.document = previous;
     dom.window.close();
   }
+});
+
+test("an entirely incomplete batch reports exclusions without starting media preparation", async () => {
+  let calls = 0, view;
+  const api = { resolveStationBatch: async () => { calls++; throw new Error('must not be called'); } };
+  const Batch = loadComponent("src/components/admin/imports/BatchMediaPreparation.tsx", { "@/lib/api/stationImports": api }).default;
+  const batch = completeBatch();
+  delete batch.document.stations[0].forfaits_avances;
+  try {
+    await renderer.act(async () => {
+      view = renderer.create(React.createElement(Batch, { batch, onBusy: () => {}, onPrepared: async () => {} }));
+    });
+    await renderer.act(async () => { view.root.findByProps({ className: "btn btn--secondary" }).props.onClick(); });
+    assert.equal(calls, 0);
+    assert.equal(view.root.findAllByProps({ type: 'checkbox' }).length, 0);
+    assert.ok(JSON.stringify(view.toJSON()).includes('forfaits_avances.seasons'));
+    assert.ok(JSON.stringify(view.toJSON()).includes('Aucune station complète'));
+  } finally { if (view) renderer.act(() => view.unmount()); }
 });
