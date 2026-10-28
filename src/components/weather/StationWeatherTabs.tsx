@@ -5,9 +5,16 @@ import styles from './StationWeatherTabs.module.css';
 
 const tabs = ['Observations', 'Prévisions', 'Avalanche'] as const;
 
-function WeatherTabsContent(props: StationWeatherProps) {
+type Props = StationWeatherProps & { selectedTab?: number; onTabChange?: (index: number) => void };
+
+function WeatherTabsContent(props: Props) {
   const { observations, forecasts } = useStationWeatherResources(props);
-  const [selected, setSelected] = useState(0);
+  const [localSelected, setLocalSelected] = useState(0);
+  const selected = props.selectedTab ?? localSelected;
+  const setSelected = (index: number) => {
+    setLocalSelected(index);
+    props.onTabChange?.(index);
+  };
   const id = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -37,7 +44,7 @@ function WeatherTabsContent(props: StationWeatherProps) {
   </div>;
 }
 
-export default function StationWeatherTabs(props: StationWeatherProps) {
-  // Reset selection and resources before painting a different station.
+export default function StationWeatherTabs(props: Props) {
+  // Reset station resources; a controlled tab remains shared across stations.
   return <WeatherTabsContent key={JSON.stringify([props.slug, props.latitude, props.longitude])} {...props} />;
 }

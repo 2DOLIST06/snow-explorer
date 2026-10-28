@@ -13,6 +13,7 @@ const sections: { value: Section; label: string }[] = [
 export function StationSection({ stations, section, label, domainName, initialDataByStation = {} }: {
   stations: SkiAreaStation[]; section: Section; label: string; domainName: string; initialDataByStation?: Record<string, StationInitialData>;
 }) {
+  const [weatherTab, setWeatherTab] = useState(0);
   const [slug, setSlug] = useState(stations[0]?.slug || "");
   const selected = stations.some(item => item.slug === slug) ? slug : stations[0]?.slug;
   const id = useId();
@@ -28,7 +29,7 @@ export function StationSection({ stations, section, label, domainName, initialDa
       </div>
       {stations.map(station => <div className="ski-area-station-panel" id={`${id}-${station.slug}`} key={station.slug} hidden={station.slug !== selected} aria-label={`${label} : ${station.name}`}>
         <p className="ski-area-station-attribution">Informations pour {station.name}.</p>
-        {section === "weather" && <Weather embedded station={station} initialData={initialDataByStation[station.slug]} active={station.slug === selected} />}
+        {section === "weather" && <Weather embedded weatherTab={weatherTab} onWeatherTabChange={setWeatherTab} station={station} initialData={initialDataByStation[station.slug]} active={station.slug === selected} />}
         {section === "webcams" && <Webcams embedded station={station} initialData={initialDataByStation[station.slug]} active={station.slug === selected} />}
         {section === "access" && <LocationAccess embedded station={station} active={station.slug === selected} />}
       </div>)}

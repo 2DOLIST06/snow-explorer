@@ -69,7 +69,7 @@ test('ski-area facts group piste counts and station links use descriptive SEO te
 
 test('ski-area hero text uses the full card width when there is no cover image', () => {
   const styles = read('src/styles/globals.css');
-  assert.match(styles, /\.ski-area-detail>header>div:only-child\{grid-column:1\/-1\}/);
+  assert.match(styles, /\.ski-area-hero>div:only-child\{grid-column:1\/-1\}/);
 });
 
 test('station statistics can switch from the station to each published ski area', () => {

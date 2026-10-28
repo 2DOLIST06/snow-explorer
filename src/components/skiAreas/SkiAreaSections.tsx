@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type SkiAreaSection = { id: string; label: string; mobileLabel?: string; content: ReactNode };
 
-export default function SkiAreaSections({ sections }: { sections: SkiAreaSection[] }) {
+export default function SkiAreaSections({ sections, hero }: { sections: SkiAreaSection[]; hero?: ReactNode }) {
   const [selected, setSelected] = useState("apercu");
   const [first, setFirst] = useState<string | null>(null);
   const navigationRef = useRef<HTMLElement>(null);
@@ -36,6 +36,8 @@ export default function SkiAreaSections({ sections }: { sections: SkiAreaSection
   }
   const ordered = first ? [...sections.filter(section => section.id === first), ...sections.filter(section => section.id !== first)] : sections;
   return <>
+    <div className="ski-area-masthead">
+    {hero}
     <div className={`v3-navigation-shell ski-area-navigation${edges.left ? " has-left-overflow" : ""}${edges.right ? " has-right-overflow" : ""}`}>
       <nav ref={navigationRef} className="v3-navigation" aria-label="Rubriques du domaine skiable">
         {sections.map(section => <button key={section.id} data-section={section.id} type="button" aria-pressed={selected === section.id} aria-label={section.label} aria-controls={`domaine-${section.id}`} onClick={() => select(section.id)}>
@@ -43,10 +45,14 @@ export default function SkiAreaSections({ sections }: { sections: SkiAreaSection
         </button>)}
       </nav>
     </div>
+    </div>
     <div className="ski-area-floors">
       {ordered.map(section => <div key={section.id} id={`domaine-${section.id}`} ref={element => { sectionRefs.current[section.id] = element; }}>{section.content}</div>)}
     </div>
     <style jsx global>{`
+      .ski-area-masthead{overflow:hidden;border-radius:28px;background:#fff}
+      .ski-area-masthead .ski-area-hero{margin:0;border-radius:0}
+      .ski-area-masthead .ski-area-navigation{position:relative;top:auto;background:#fff;border:0;backdrop-filter:none}
       .ski-area-navigation .v3-navigation{padding-inline:12px}
       .ski-area-floors{display:grid;gap:24px;margin-top:24px;min-width:0}
       .ski-area-floors>div{min-width:0}
