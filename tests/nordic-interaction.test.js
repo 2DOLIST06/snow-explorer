@@ -38,6 +38,8 @@ test('all Alpine and Nordic indicators are in server HTML and switching only hid
   let view;
   renderer.act(() => { view = renderer.create(React.createElement(Overview, { station, widgets })); });
   const click = label => renderer.act(() => view.root.findAllByType('button').find(b => b.children.includes(label)).props.onClick());
+  assert.equal(view.root.findByProps({ 'aria-label': 'Ski alpin' }).props.hidden, true);
+  assert.equal(view.root.findAllByType('button').find(b => b.children.includes('Nordique')).props['aria-pressed'], true);
   click('Nordique');
   assert.equal(view.root.findByProps({ 'aria-label': 'Ski alpin' }).props.hidden, true);
   assert.equal(view.root.findByProps({ 'aria-label': 'Ski nordique' }).props.hidden, false);
@@ -68,4 +70,14 @@ test('maps switch exclusively and the Nordic-only map needs no Alpine map', () =
   const html = renderToStaticMarkup(React.createElement(PisteMap, { station: { name: 'Nordic' }, widgets }));
   assert.match(html, /nordic.jpg/);
   assert.doesNotMatch(html, /Plan des pistes affiché|alpine.jpg/);
+});
+
+test('server HTML selects Alpine above 20 km even with a longer Nordic network', () => {
+  const html = renderToStaticMarkup(React.createElement(Overview, { station: { ...station, ski_area_km: 21 }, widgets }));
+  assert.match(html, /aria-label="Ski nordique" hidden=""/);
+  assert.doesNotMatch(html, /aria-label="Ski alpin" hidden/);
+  assert.match(html, /Kilomètres nordiques/);
+  const boundary = renderToStaticMarkup(React.createElement(Overview, { station: { ...station, ski_area_km: 20 }, widgets }));
+  assert.match(boundary, /aria-label="Ski alpin" hidden=""/);
+  assert.match(boundary, /Kilomètres de ski alpin/);
 });

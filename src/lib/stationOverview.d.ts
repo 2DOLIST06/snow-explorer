@@ -12,3 +12,5 @@ export type StationOverviewScope = { altitudeMin: any; altitudeMax: any; elevati
 export function getStationOverviewScope(station?: Record<string, any>, widgets?: StationWidgetsConfig | null, skiArea?: Record<string, any> | null): StationOverviewScope;
 
 export function getStationNordicOverview(widgets: any): { stats: Array<{ key: string; label: string; value: number; unit: string }>; techniques: string[] } | null;
+
+export function getDefaultSkiDiscipline(alpineKm: unknown, nordicKm: unknown): "alpine" | "nordic";
