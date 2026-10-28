@@ -13,10 +13,12 @@ function completeStationBatch(input) {
   const excluded = [];
   const stations = input.document.stations.filter(record => {
     const station = record.station || {};
-    const fields = STATION_FIELDS.filter(key => missing(station[key])).map(key => `station.${key}`);
+    const nordicOnly = [record.nordique?.ski_area_km, record.nordique?.pistes_count, record.nordique?.classic_km, record.nordique?.skating_km].some(value => Number(value) > 0)
+      && ![station.ski_area_km, station.pistes_count, station.lifts_count].some(value => Number(value) > 0);
+    const fields = STATION_FIELDS.filter(key => !(nordicOnly && ["ski_area_km", "pistes_count", "lifts_count"].includes(key)) && missing(station[key])).map(key => `station.${key}`);
     if (missing(station.region_id) && missing(station.region_name)) fields.push("station.region");
     if (station.country_code === "FR" && missing(station.department)) fields.push("station.department");
-    for (const [block, keys] of Object.entries(BLOCKS)) {
+    for (const [block, keys] of Object.entries(nordicOnly ? {} : BLOCKS)) {
       for (const key of keys) if (missing(record[block]?.[key])) fields.push(`${block}.${key}`);
     }
     const seasons = record.forfaits_avances?.seasons;
