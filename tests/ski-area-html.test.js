@@ -72,3 +72,47 @@ test('raw domain HTML includes each station’s actual weather, snow, forecasts,
   assert.equal(new Set(ids).size, ids.length, 'shared widget headings and panels have unique IDs');
   assert.equal(document.querySelectorAll('.ski-area-station-panel[hidden]').length, 3);
 });
+
+test('domain navigation belongs to the same frame as the hero and follows its description', () => {
+  const Page = load('pages/domaines-skiables/[slug].tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Page, {
+    area: { id: 1, name: 'Grand Domaine', slug: 'grand-domaine', description: 'Description complète du domaine.' },
+    stations: [], initialDataByStation: {},
+  }));
+  const document = new JSDOM(html).window.document;
+  const frame = document.querySelector('.ski-area-masthead');
+  assert.ok(frame);
+  assert.ok(frame.querySelector('.ski-area-hero .ski-area-description'));
+  assert.ok(frame.querySelector('.ski-area-navigation'));
+  assert.equal(frame.children[0].className, 'ski-area-hero');
+  assert.ok(frame.children[1].classList.contains('ski-area-navigation'));
+  assert.match(frame.children[0].textContent, /Description complète/);
+});
+
+test('weather subtab is shared across stations and stays selected after revisiting a station', async () => {
+  const { create, act } = require('react-test-renderer');
+  const { StationSection } = load('src/components/skiAreas/SkiAreaStationSections.tsx');
+  const original = global.fetch;
+  global.fetch = async url => ({ ok: true, json: async () => ({ station: { slug: url.split('/').at(-2) }, status: 'unavailable', observation: null, source: null }) });
+  const stations = ['alpha', 'beta'].map(slug => ({ id: slug, slug, name: slug, latitude: null, longitude: null }));
+  const data = Object.fromEntries(stations.map(station => [station.slug, { observations: { station, status: 'unavailable', observation: null }, forecasts: [], webcams: [] }]));
+  let view;
+  try {
+    await act(async () => { view = create(React.createElement(StationSection, { stations, section: 'weather', label: 'Météo et enneigement', domainName: 'Grand Domaine', initialDataByStation: data })); });
+    const panel = () => view.root.findAll(node => node.type === 'div' && node.props.className === 'ski-area-station-panel' && !node.props.hidden)[0];
+    const tabs = () => panel().findAllByProps({ role: 'tab' });
+    const stationButtons = () => view.root.findByProps({ role: 'group' }).findAllByType('button');
+    act(() => tabs()[1].props.onClick());
+    assert.equal(tabs()[1].props['aria-selected'], true);
+    await act(async () => stationButtons()[1].props.onClick());
+    assert.equal(tabs()[1].props['aria-selected'], true, 'Prévisions stays selected for beta');
+    act(() => tabs()[2].props.onClick());
+    await act(async () => stationButtons()[0].props.onClick());
+    assert.equal(tabs()[2].props['aria-selected'], true, 'Avalanche stays selected on return to alpha');
+    await act(async () => stationButtons()[1].props.onClick());
+    assert.equal(tabs()[2].props['aria-selected'], true, 'beta does not restore its previous local Prévisions state');
+    act(() => tabs()[2].props.onKeyDown({ key: 'Home', preventDefault() {} }));
+    await act(async () => stationButtons()[0].props.onClick());
+    assert.equal(tabs()[0].props['aria-selected'], true, 'keyboard selection also persists');
+  } finally { if (view) act(() => view.unmount()); global.fetch = original; }
+});

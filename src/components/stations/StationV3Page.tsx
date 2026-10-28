@@ -90,7 +90,7 @@ export function Overview({ station, widgets }: { station: any; widgets: StationW
   </section>;
 }
 
-export function Weather({ station, initialData, active = true, embedded = false }: { station: any; initialData?: StationInitialData; active?: boolean; embedded?: boolean }) {
+export function Weather({ station, initialData, active = true, embedded = false, weatherTab, onWeatherTabChange }: { station: any; initialData?: StationInitialData; active?: boolean; embedded?: boolean; weatherTab?: number; onWeatherTabChange?: (index: number) => void }) {
   const data = getStationSectionData(station, "meteo-neige");
   const lat = parseCoordinate(station.latitude, 90);
   const lon = parseCoordinate(station.longitude, 180);
@@ -99,7 +99,7 @@ export function Weather({ station, initialData, active = true, embedded = false 
     {!embedded && <SectionHeading id={headingId} eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />}
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
-    <StationWeatherTabs active={active} initialAvalanche={initialData?.avalanche} initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
+    <StationWeatherTabs selectedTab={weatherTab} onTabChange={onWeatherTabChange} active={active} initialAvalanche={initialData?.avalanche} initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
   </section>;
 }
 
