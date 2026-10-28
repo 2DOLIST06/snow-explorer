@@ -1293,6 +1293,18 @@ const removeForfaitRow = (rowIdx: number) => {
     return { largeUrl, smallUrl: smallPublicUrl };
   }
 
+  async function handleUploadNordicMap(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setMsg("Upload du plan nordique en cours…"); setErr("");
+      const { largeUrl, smallUrl } = await uploadLargeAndAutoSmall(file, { smallWidth: 800, smallMime: "image/jpeg", smallQuality: 0.85 });
+      setWidgets((current: any) => ({ ...current, nordique: { ...current.nordique, large_map_url: largeUrl, small_map_url: smallUrl } }));
+      setMsg("Plan nordique chargé. Enregistrez pour publier.");
+    } catch (error: any) { setErr(error?.message || "Erreur upload du plan nordique"); setMsg(""); }
+    finally { e.target.value = ""; }
+  }
+
   async function handleUploadPistesLargeAutoSmall(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1801,6 +1813,12 @@ const removeForfaitRow = (rowIdx: number) => {
               {widgets?.nordique?.enabled && <div className="admin-form-grid">
                 {Object.entries({ ski_area_km: "Kilomètres de pistes nordiques (sans doubler les parcours partagés)", pistes_count: "Nombre de pistes nordiques", green: "Pistes vertes", blue: "Pistes bleues", red: "Pistes rouges", black: "Pistes noires", classic_km: "Kilomètres en classique", skating_km: "Kilomètres en skating" }).map(([key, label]) => <label key={key}>{label}<input type="number" min="0" step={key.endsWith("km") ? "0.1" : "1"} value={widgets?.nordique?.[key] ?? ""} onChange={e => setW(`nordique.${key}`, toNumberOrNull(e.target.value))} /></label>)}
                 {[ ["classic", "Classique"], ["skating", "Skating"] ].map(([key, label]) => <label key={key}><input type="checkbox" checked={!!widgets?.nordique?.[key]} onChange={e => setW(`nordique.${key}`, e.target.checked)} />{label}</label>)}
+                <fieldset className="admin-form-wide" style={{ border: "1px solid #d9e3eb", padding: 16, borderRadius: 12 }}>
+                  <legend>Plan des pistes nordiques</legend>
+                  <label style={styles.label}>Charger une image<input type="file" accept="image/*" onChange={handleUploadNordicMap} /></label>
+                  {[ ["large_map_url", "Image grand format (URL)"], ["small_map_url", "Image miniature (URL)"], ["official_map_url", "Plan officiel ou interactif (URL)"], ["caption", "Légende"] ].map(([key, label]) => <label style={styles.label} key={key}>{label}<input style={styles.input} type={key === "caption" ? "text" : "url"} value={widgets?.nordique?.[key] ?? ""} onChange={e => setW(`nordique.${key}`, e.target.value.trim() || null)} /></label>)}
+                  <p>Le plan nordique est indépendant du plan alpin. Une image renseignée est prioritaire sur le lien officiel.</p>
+                </fieldset>
                 <p>Les difficultés sont facultatives : renseignez uniquement la classification publiée par le domaine. Désactiver masque le bloc sans effacer ses données.</p>
               </div>}
             </section>

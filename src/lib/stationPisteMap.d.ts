@@ -12,3 +12,5 @@ export function resolveStationPisteMap(
   station?: object,
   pistes?: object,
 ): ResolvedStationPisteMap;
+
+export function resolveNordicPisteMap(nordique?: object): ResolvedStationPisteMap | null;

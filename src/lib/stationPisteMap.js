@@ -35,3 +35,12 @@ function resolveStationPisteMap(station = {}, pistes = {}) {
 }
 
 module.exports = { nonEmptyString, resolveStationPisteMap };
+
+
+/** Nordic maps never fall back to Alpine station fields. */
+function resolveNordicPisteMap(nordique = {}) {
+  if (nordique.enabled !== true) return null;
+  const map = resolveStationPisteMap({}, nordique);
+  return map.smallMapUrl || map.largeMapUrl || map.officialMapUrl ? map : null;
+}
+module.exports.resolveNordicPisteMap = resolveNordicPisteMap;

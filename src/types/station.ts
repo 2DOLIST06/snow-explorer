@@ -34,7 +34,7 @@ export type ForfaitSeason = { label?: string; name?: string; source_url?: string
 
 export type StationWidgetsConfig = {
   stationSlug: string;
-  nordique?: { enabled?: boolean; ski_area_km?: number | null; pistes_count?: number | null; green?: number | null; blue?: number | null; red?: number | null; black?: number | null; classic?: boolean; skating?: boolean; classic_km?: number | null; skating_km?: number | null };
+  nordique?: { small_map_url?: string | null; large_map_url?: string | null; official_map_url?: string | null; caption?: string | null; enabled?: boolean; ski_area_km?: number | null; pistes_count?: number | null; green?: number | null; blue?: number | null; red?: number | null; black?: number | null; classic?: boolean; skating?: boolean; classic_km?: number | null; skating_km?: number | null };
 
   pistes: {
     enabled: boolean;
