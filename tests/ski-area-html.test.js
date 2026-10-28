@@ -17,7 +17,7 @@ function load(file) {
   }).outputText;
   const resolver = name => {
     if (name.endsWith('.css')) return { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) };
-    if (name === 'next/head') return { __esModule: true, default: () => null };
+    if (name === 'next/head') return { __esModule: true, default: ({ children }) => React.createElement(React.Fragment, null, children) };
     if (name === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };
     if (name === '@/components/maps/StationMapCard') return {
       __esModule: true, default: () => null,
@@ -115,4 +115,20 @@ test('weather subtab is shared across stations and stays selected after revisiti
     await act(async () => stationButtons()[0].props.onClick());
     assert.equal(tabs()[0].props['aria-selected'], true, 'keyboard selection also persists');
   } finally { if (view) act(() => view.unmount()); global.fetch = original; }
+});
+
+
+test('domain metadata is complete in server HTML without React separator comments', () => {
+  const Page = load('pages/domaines-skiables/[slug].tsx').default;
+  const area = { id: 1, name: 'Alpe d’Huez Grand Domaine Ski', slug: 'alpe-dhuez-grand-domaine-ski', description: 'Une description détaillée. '.repeat(20) };
+  const html = require('react-dom/server').renderToString(React.createElement(Page, { area, stations: [], initialDataByStation: {} }));
+  const document = new JSDOM(html).window.document;
+  const title = html.match(/<title>([\s\S]*?)<\/title>/)[1];
+  assert.doesNotMatch(title, /<!--|-->/, 'title must be one text child before hydration');
+  assert.equal(document.title, `${area.name} : domaine skiable et stations | Snow Explorer`);
+  const description = document.querySelector('meta[name="description"]').content;
+  assert.match(description, /Alpe d’Huez Grand Domaine Ski/);
+  assert.match(description, /stations, météo, enneigement, webcams et accès\.$/);
+  assert.notEqual(description, area.description.slice(0, 155));
+  assert.equal(document.querySelector('link[rel="canonical"]').href, `https://www.snow-explorer.com/domaines-skiables/${area.slug}`);
 });
