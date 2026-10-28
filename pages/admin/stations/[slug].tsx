@@ -1795,6 +1795,15 @@ const removeForfaitRow = (rowIdx: number) => {
               </div>
             </SectionCard>
 
+            <section className="admin-card">
+              <h2>Ski nordique</h2>
+              <label><input type="checkbox" checked={!!widgets?.nordique?.enabled} onChange={e => setW("nordique.enabled", e.target.checked)} /> Activer le ski nordique</label>
+              {widgets?.nordique?.enabled && <div className="admin-form-grid">
+                {Object.entries({ ski_area_km: "Kilomètres de pistes nordiques (sans doubler les parcours partagés)", pistes_count: "Nombre de pistes nordiques", green: "Pistes vertes", blue: "Pistes bleues", red: "Pistes rouges", black: "Pistes noires", classic_km: "Kilomètres en classique", skating_km: "Kilomètres en skating" }).map(([key, label]) => <label key={key}>{label}<input type="number" min="0" step={key.endsWith("km") ? "0.1" : "1"} value={widgets?.nordique?.[key] ?? ""} onChange={e => setW(`nordique.${key}`, toNumberOrNull(e.target.value))} /></label>)}
+                {[ ["classic", "Classique"], ["skating", "Skating"] ].map(([key, label]) => <label key={key}><input type="checkbox" checked={!!widgets?.nordique?.[key]} onChange={e => setW(`nordique.${key}`, e.target.checked)} />{label}</label>)}
+                <p>Les difficultés sont facultatives : renseignez uniquement la classification publiée par le domaine. Désactiver masque le bloc sans effacer ses données.</p>
+              </div>}
+            </section>
             <SectionCard
               id="pistes"
               title="Pistes & snowpark"

@@ -22,7 +22,7 @@ import StationMapCard, { stationDirectionsUrl } from "@/components/maps/StationM
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import { getStationEditorialContent, getStationSectionData, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationContent";
 import { resolveStationPisteMap } from "@/lib/stationPisteMap";
-import { getStationOverviewScope, getStationPresentation } from "@/lib/stationOverview";
+import { getStationOverviewScope, getStationPresentation, getStationNordicOverview } from "@/lib/stationOverview";
 
 const ORIGIN = "https://www.snow-explorer.com";
 type StationV3Section = StationPageSection | "localisation-acces" | "activites";
@@ -45,9 +45,11 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
   const [selectedScope, setSelectedScope] = useState<"station" | number>("station");
   const selectedSkiArea = typeof selectedScope === "number" ? skiAreas.find((area: any) => area.id === selectedScope) || null : null;
   const scope = getStationOverviewScope(station, widgets, selectedSkiArea);
+  const nordic = getStationNordicOverview(widgets);
+  const hasAlpine = [scope.skiAreaKm, scope.pistesCount, scope.liftsCount, ...scope.pistes.map(p => p.value)].some(usefulNumber);
   const stats = [
     ["Altitude basse", scope.altitudeMin, "m"], ["Altitude haute", scope.altitudeMax, "m"],
-    ["Dénivelé", scope.elevationDrop, "m"], ["Kilomètres skiables", scope.skiAreaKm, "km"],
+    ["Dénivelé", scope.elevationDrop, "m"], ["Kilomètres de ski alpin", scope.skiAreaKm, "km"],
     ["Pistes", scope.pistesCount, ""], ["Remontées", scope.liftsCount, ""], ["Snowparks", scope.snowparksCount, ""],
   ].filter(([, value]) => usefulNumber(value));
   const descriptionParagraphs = getStationPresentation(station, widgets);
@@ -66,8 +68,10 @@ function Overview({ station, widgets }: { station: any; widgets: StationWidgetsC
       </div> : null}
     </div>
     {skiAreas.length ? <div className="v3-scope" role="group" aria-label="Informations affichées"><button type="button" aria-pressed={selectedScope === "station"} onClick={() => setSelectedScope("station")}>Station</button>{skiAreas.map((area: any) => <button type="button" key={area.id} aria-pressed={selectedScope === area.id} onClick={() => setSelectedScope(area.id)}>{area.name}</button>)}</div> : null}
+    {hasAlpine ? <h3>Ski alpin</h3> : null}
     {stats.length ? <dl className="v3-stat-grid">{stats.map(([label, value, unit]) => <div key={String(label)}><dt>{label}</dt><dd>{formatNumber(value)}{unit ? ` ${unit}` : ""}</dd></div>)}</dl> : null}
     {scope.pistes.length ? <div className="v3-pistes"><h3>Pistes par difficulté</h3><dl>{scope.pistes.map(({ label, value, color }) => <div key={label} className={`v3-piste v3-piste--${color}`}><dt>Pistes {label.toLowerCase()}</dt><dd>{formatNumber(value)}</dd></div>)}</dl></div> : null}
+    {nordic ? <section aria-label="Ski nordique"><h3>Ski nordique</h3><dl className="v3-stat-grid">{nordic.stats.map(({ key, label, value, unit }) => <div key={key}><dt>{label}</dt><dd>{formatNumber(value)}{unit ? ` ${unit}` : ""}</dd></div>)}</dl>{nordic.techniques.length ? <p>{nordic.techniques.join(" · ")}</p> : null}</section> : null}
     {selectedSkiArea ? <Link className="v3-ski-area-link" href={`/domaines-skiables/${selectedSkiArea.slug}`}>Voir la fiche du domaine skiable</Link> : null}
   </section>;
 }

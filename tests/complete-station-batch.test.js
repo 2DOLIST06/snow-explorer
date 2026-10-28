@@ -33,3 +33,14 @@ test('no empty import is substituted for an entirely excluded batch', () => {
   assert.deepEqual(result.excluded[0].fields, ['snowpark.count']);
 });
 module.exports = { completeBatch };
+test('Nordic-only creation does not require invented Alpine data and keeps Nordic fields', () => {
+  const input = completeBatch();
+  const record = input.document.stations[0];
+  for (const key of ['ski_area_km', 'pistes_count', 'lifts_count']) delete record.station[key];
+  for (const key of ['pistes', 'remontees', 'snowpark']) delete record[key];
+  record.nordique = { ski_area_km: 18.5, pistes_count: 4, classic: true };
+  const result = completeStationBatch(input);
+  assert.deepEqual(result.excluded, []);
+  assert.deepEqual(result.batch.document.stations[0].nordique, record.nordique);
+  assert.equal(result.batch.document.stations[0].station.ski_area_km, undefined);
+});

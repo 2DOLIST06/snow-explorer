@@ -54,3 +54,16 @@ function getStationOverviewScope(station = {}, widgets = null, skiArea = null) {
 }
 
 module.exports = { getStationPresentation, getStationPisteDetails, getStationOverviewScope };
+
+
+/** Optional Nordic statistics, independent from Alpine totals. */
+function getStationNordicOverview(widgets) {
+  const nordic = widgets?.nordique;
+  if (nordic?.enabled !== true) return null;
+  const stats = Object.entries({ ski_area_km: "Kilomètres nordiques", pistes_count: "Pistes nordiques", green: "Pistes vertes", blue: "Pistes bleues", red: "Pistes rouges", black: "Pistes noires", classic_km: "Kilomètres classique", skating_km: "Kilomètres skating" })
+    .filter(([key]) => typeof nordic[key] === "number" && Number.isFinite(nordic[key]) && nordic[key] > 0)
+    .map(([key, label]) => ({ key, label, value: nordic[key], unit: key.endsWith("km") ? "km" : "" }));
+  const techniques = [nordic.classic === true && "Classique", nordic.skating === true && "Skating"].filter(Boolean);
+  return stats.length || techniques.length ? { stats, techniques } : null;
+}
+module.exports.getStationNordicOverview = getStationNordicOverview;

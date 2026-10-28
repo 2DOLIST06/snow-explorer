@@ -173,6 +173,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const resolvedPistes = resolveStationPisteMap(resort, cfg?.pistes || {});
   const cleanCfg: StationWidgetsConfig | null = cfg ? {
     stationSlug: resort.slug,
+    ...(cfg.nordique ? { nordique: cfg.nordique } : {}),
     pistes: {
       enabled: resolvedPistes.enabled,
       smallMapUrl: resolvedPistes.smallMapUrl,
