@@ -90,24 +90,26 @@ export function Overview({ station, widgets }: { station: any; widgets: StationW
   </section>;
 }
 
-export function Weather({ station, initialData }: { station: any; initialData?: StationInitialData }) {
+export function Weather({ station, initialData, active = true }: { station: any; initialData?: StationInitialData; active?: boolean }) {
   const data = getStationSectionData(station, "meteo-neige");
   const lat = parseCoordinate(station.latitude, 90);
   const lon = parseCoordinate(station.longitude, 180);
-  return <section className="v3-floor v3-floor--tint" aria-labelledby="v3-weather-title">
-    <SectionHeading id="v3-weather-title" eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />
+  const headingId = `v3-weather-title-${station.slug}`;
+  return <section className="v3-floor v3-floor--tint" aria-labelledby={headingId}>
+    <SectionHeading id={headingId} eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
-    <StationWeatherTabs initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
+    <StationWeatherTabs active={active} initialAvalanche={initialData?.avalanche} initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
   </section>;
 }
 
-export function Webcams({ station, initialData }: { station: any; initialData?: StationInitialData }) {
-  return <section className="v3-floor" aria-labelledby="v3-webcams-title">
-    <SectionHeading id="v3-webcams-title" eyebrow="En images" title={`Webcams ${stationNameOf(station.name)}`} />
+export function Webcams({ station, initialData, active = true }: { station: any; initialData?: StationInitialData; active?: boolean }) {
+  const headingId = `v3-webcams-title-${station.slug}`;
+  return <section className="v3-floor" aria-labelledby={headingId}>
+    <SectionHeading id={headingId} eyebrow="En images" title={`Webcams ${stationNameOf(station.name)}`} />
     {editorial(getStationEditorialContent(station, "webcams"))}
     <p className="v3-highlight">Consultez les webcams disponibles pour {station.name}.</p>
-    <div className="v3-media-stage"><WebcamsAuto key={station.slug} initialWebcams={initialData?.webcams} name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
+    <div className="v3-media-stage"><WebcamsAuto active={active} key={station.slug} initialWebcams={initialData?.webcams} name={station.name} lat={station.latitude} lon={station.longitude} headingLevel="h3" /></div>
   </section>;
 }
 
@@ -142,11 +144,12 @@ export function PisteMap({ station, widgets }: { station: any; widgets: StationW
   </section>;
 }
 
-export function LocationAccess({ station }: { station: any }) {
+export function LocationAccess({ station, active = true }: { station: any; active?: boolean }) {
+  const headingId = `v3-location-title-${station.slug}`;
   const directionsUrl = stationDirectionsUrl(station);
-  return <section className="v3-location" aria-labelledby="v3-location-title">
-    <SectionHeading id="v3-location-title" eyebrow="Localisation" title="Localisation, accès et hébergement" />
-    <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />
+  return <section className="v3-location" aria-labelledby={headingId}>
+    <SectionHeading id={headingId} eyebrow="Localisation" title="Localisation, accès et hébergement" />
+    {active && <StationMapCard headingLevel="h3" station={{ id: station.id || station.slug, name: station.name, slug: station.slug, latitude: station.latitude, longitude: station.longitude, logo: station.logo_url || null, department: typeof station.department === "string" ? station.department : station.department?.name || null, region: station.region?.name || null }} />}
     {directionsUrl ? <a className="btn btn--primary station-directions" href={directionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" style={{ flexShrink: 0 }} />Voir le trajet sur Google Maps</a> : null}
     <StationLodgingOptions station={station} />
   </section>;

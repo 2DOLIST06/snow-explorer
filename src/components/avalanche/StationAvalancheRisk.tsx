@@ -41,13 +41,15 @@ export function AvalancheRiskPanel({ resource, slug }: { resource: WeatherResour
   </section>;
 }
 
-function AvalancheResource({ slug }: { slug: string }) {
+type Props = { slug: string; active?: boolean; initialData?: StationAvalancheRiskResponse | null };
+
+function AvalancheResource({ slug, active = true, initialData }: Props) {
   const load = useCallback((signal: AbortSignal) => fetchStationAvalancheRisk(slug, signal), [slug]);
-  const resource = useWeatherResource(load);
+  const resource = useWeatherResource(load, initialData, active);
   return <AvalancheRiskPanel resource={resource} slug={slug} />;
 }
 
-export default function StationAvalancheRisk({ slug }: { slug: string }) {
+export default function StationAvalancheRisk({ slug, ...props }: Props) {
   // Clear the resource before rendering a different station, including before effects.
-  return <AvalancheResource key={slug} slug={slug} />;
+  return <AvalancheResource key={slug} slug={slug} {...props} />;
 }

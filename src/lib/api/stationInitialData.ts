@@ -6,6 +6,7 @@ import type { StationWeatherResponse, WeatherForecastDay } from '@/types/weather
 import type { Webcam } from '@/components/stations/StationLegacyWebcams';
 
 export type StationInitialData = {
+  avalanche?: import("@/types/avalanche").StationAvalancheRiskResponse | null;
   observations: StationWeatherResponse | null;
   forecasts: WeatherForecastDay[];
   webcams: Webcam[] | null;

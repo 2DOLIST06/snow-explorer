@@ -5,8 +5,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 type HeadingLevel = "h2" | "h3";
 export type Webcam = { id: string; title: string; preview: string; link?: string | null; location?: string; capturedAt: number | null };
-export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel; initialWebcams?: Webcam[] | null }> = ({
-  name, lat, lon, headingLevel = "h2", initialWebcams = null,
+export const WebcamsAuto: React.FC<{ active?: boolean; name: string; lat?: number | null; lon?: number | null; headingLevel?: HeadingLevel; initialWebcams?: Webcam[] | null }> = ({
+  active: isActive = true, name, lat, lon, headingLevel = "h2", initialWebcams = null,
 }) => {
   const [cams, setCams] = useState<Webcam[]>(initialWebcams || []);
   const [failed, setFailed] = useState<string[]>([]);
@@ -20,6 +20,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
   const Heading = headingLevel;
 
   useEffect(() => {
+    if (!isActive) return;
     const controller = new AbortController();
     setOpen(false);
     setCams(initialWebcams || []);
@@ -46,7 +47,7 @@ export const WebcamsAuto: React.FC<{ name: string; lat?: number | null; lon?: nu
     // Renew expiring Windy image URLs; never persist them in browser storage.
     const renewal = window.setInterval(() => setRetry(value => value + 1), 4 * 60 * 1000);
     return () => { controller.abort(); window.clearInterval(renewal); };
-  }, [name, lat, lon, retry]);
+  }, [name, lat, lon, retry, isActive]);
 
   useEffect(() => {
     if (!open) return;
