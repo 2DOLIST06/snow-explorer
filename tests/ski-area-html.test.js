@@ -47,7 +47,7 @@ test('raw domain HTML includes each station’s actual weather, snow, forecasts,
     webcams: [{ id: station.slug, title: `Webcam ${station.slug}`, preview: `https://images.example/${station.slug}.jpg`, capturedAt: null, link: `https://cams.example/${station.slug}` }],
   }]));
   const html = renderToStaticMarkup(React.createElement('main', null,
-    ...['weather', 'webcams', 'access'].map(section => React.createElement(StationSection, { key: section, section, label: section, stations, initialDataByStation }))));
+    ...['weather', 'webcams', 'access'].map(section => React.createElement(StationSection, { key: section, section, label: section, domainName: "Grand Domaine", stations, initialDataByStation }))));
   const document = new JSDOM(html).window.document;
   assert.equal(document.querySelectorAll('.ski-area-station-panel').length, 6);
   for (let index = 0; index < stations.length; index++) {
@@ -62,6 +62,12 @@ test('raw domain HTML includes each station’s actual weather, snow, forecasts,
     assert.ok(links.some(link => link.includes('booking.com') && link.includes(stations[index].name)));
     assert.ok(links.some(link => link.includes('abritel.fr') && link.includes(stations[index].name)));
   }
+  assert.equal(document.querySelectorAll('h2').length, 3, 'one domain H2 per section, no repeated station H2s');
+  for (const title of document.querySelectorAll('h2')) assert.match(title.textContent, /Grand Domaine/);
+  assert.equal(document.querySelectorAll('select').length, 0);
+  assert.equal(document.querySelectorAll('.ski-area-station-switch button').length, 6);
+  for (const button of document.querySelectorAll('.ski-area-station-switch button')) assert.ok(document.getElementById(button.getAttribute('aria-controls')));
+  assert.equal(document.querySelectorAll('.ski-area-station-attribution').length, 6);
   const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
   assert.equal(new Set(ids).size, ids.length, 'shared widget headings and panels have unique IDs');
   assert.equal(document.querySelectorAll('.ski-area-station-panel[hidden]').length, 3);

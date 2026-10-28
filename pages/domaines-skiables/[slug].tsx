@@ -23,10 +23,10 @@ export default function SkiAreaDetail({ area, stations, initialDataByStation }: 
         {area.season && <p>Saison {area.season}</p>}
         <p>{area.forecast_open_date && `Ouverture prévue le ${date(area.forecast_open_date)}`}{area.forecast_open_date && area.forecast_close_date && " · "}{area.forecast_close_date && `Fermeture prévue le ${date(area.forecast_close_date)}`}</p>
       </section>}</div> },
-    { id: "meteo-neige", label: "Météo & neige", mobileLabel: "Météo", content: <StationSection stations={stations} section="weather" label="Météo et enneigement" initialDataByStation={initialDataByStation} /> },
-    { id: "webcams", label: "Webcams", content: <StationSection stations={stations} section="webcams" label="Webcams" initialDataByStation={initialDataByStation} /> },
+    { id: "meteo-neige", label: "Météo & neige", mobileLabel: "Météo", content: <StationSection domainName={area.name} stations={stations} section="weather" label="Météo et enneigement" initialDataByStation={initialDataByStation} /> },
+    { id: "webcams", label: "Webcams", content: <StationSection domainName={area.name} stations={stations} section="webcams" label="Webcams" initialDataByStation={initialDataByStation} /> },
     ...(area.piste_map_url && getOfficialMapPresentation(area.piste_map_url) ? [{ id: "plan-des-pistes", label: "Plan des pistes", mobileLabel: "Plan", content: <SkiAreaPisteMap name={area.name} url={area.piste_map_url} /> }] : []),
-    { id: "localisation-acces", label: "Accès & hébergement", content: <StationSection stations={stations} section="access" label="Accès et hébergement" initialDataByStation={initialDataByStation} /> },
+    { id: "localisation-acces", label: "Accès & hébergement", content: <StationSection domainName={area.name} stations={stations} section="access" label="Accès et hébergement" initialDataByStation={initialDataByStation} /> },
     ...(stations.length ? [{ id: "stations", label: "Stations du domaine", mobileLabel: "Stations", content: <section className="ski-area-members"><h2>Stations du domaine</h2><StationCards stations={stations} /></section> }] : []),
   ];
   return <>
