@@ -32,7 +32,7 @@ function WeatherTabsContent(props: StationWeatherProps) {
       id={`${id}-panel-${index}`} aria-labelledby={`${id}-tab-${index}`} hidden={selected !== index} tabIndex={0}>
       {index === 0 && <ObservedConditions resource={observations} headingLevel={props.headingLevel} />}
       {index === 1 && <ForecastConditions resource={forecasts} headingLevel={props.headingLevel} />}
-      {index === 2 && <StationAvalancheRisk slug={props.slug} />}
+      {index === 2 && <StationAvalancheRisk slug={props.slug} active={props.active} initialData={props.initialAvalanche} />}
     </div>)}
   </div>;
 }

@@ -18,6 +18,7 @@ const blocks = Object.fromEntries(['Weather', 'Webcams', 'LocationAccess'].map(n
   props => React.createElement('article', { 'data-block': name, ...props }),
 ]));
 const Sections = load('src/components/skiAreas/SkiAreaStationSections.tsx', {
+  'next/link': { __esModule: true, default: props => React.createElement('a', props) },
   '@/components/stations/StationV3Page': { ...blocks, StationV3Styles: () => null },
 }).default;
 
@@ -25,8 +26,8 @@ test('each selector switches only its block and never passes another station’s
   const stations = [member('alpha'), member('beta')];
   const initialData = { observations: { station: { slug: 'alpha' } }, forecasts: [], webcams: [] };
   let view;
-  act(() => { view = create(React.createElement(Sections, { stations, initialData })); });
-  const rendered = () => view.root.findAllByType('article');
+  act(() => { view = create(React.createElement(Sections, { stations, initialDataByStation: { alpha: initialData } })); });
+  const rendered = () => view.root.findAllByType('article').filter(block => block.props.active);
   assert.equal(view.root.findAllByType('select').length, 3);
   assert.deepEqual(rendered().map(block => block.props.station.slug), ['alpha', 'alpha', 'alpha']);
   assert.equal(rendered()[0].props.initialData, initialData);
@@ -86,4 +87,57 @@ test('loader verifies membership and activity, deduplicates, tolerates missing s
     assert.equal(result[0].ski_pass, undefined);
     assert.equal(result[0].admin_notes, undefined);
   } finally { global.fetch = original; }
+});
+
+test('domain initial loading prepares every station and bounds provider concurrency', async () => {
+  const original = global.fetch;
+  let inFlight = 0, peak = 0;
+  const { loadSkiAreaInitialData } = load('src/lib/api/skiAreaInitialData.ts', {
+    './stationPage': { getStationApiBase: () => 'https://backend.example' },
+    './avalanche': { normalizeAvalancheRisk: value => value },
+    './stationInitialData': { loadStationInitialData: async station => {
+      peak = Math.max(peak, ++inFlight);
+      await new Promise(setImmediate);
+      inFlight--;
+      return { observations: { station }, forecasts: [{ date: '2026-10-29' }], webcams: [] };
+    } },
+  });
+  global.fetch = async url => ({ ok: true, json: async () => ({ station: { slug: url.split('/').at(-2) } }) });
+  try {
+    const stations = Array.from({ length: 8 }, (_, index) => member(`station-${index}`));
+    const result = await loadSkiAreaInitialData(stations);
+    assert.equal(Object.keys(result).length, 8);
+    assert.ok(peak <= 6);
+    for (const station of stations) {
+      assert.equal(result[station.slug].observations.station.slug, station.slug);
+      assert.equal(result[station.slug].avalanche.station.slug, station.slug);
+    }
+  } finally { global.fetch = original; }
+});
+
+test('domain tabs reorder existing sections without removing their HTML or resetting station selection', () => {
+  const original = global.window;
+  global.window = { requestAnimationFrame: () => {} };
+  const Navigation = load('src/components/skiAreas/SkiAreaSections.tsx').default;
+  function Stateful() {
+    const [value, setValue] = React.useState('alpha');
+    return React.createElement('select', { value, onChange: event => setValue(event.target.value) });
+  }
+  const sections = [
+    { id: 'apercu', label: 'Aperçu', content: 'Présentation du domaine' },
+    { id: 'meteo-neige', label: 'Météo & neige', mobileLabel: 'Météo', content: React.createElement(Stateful) },
+    { id: 'webcams', label: 'Webcams', content: 'Webcams des stations' },
+  ];
+  let view;
+  try {
+    act(() => { view = create(React.createElement(Navigation, { sections })); });
+    act(() => view.root.findByType('select').props.onChange({ target: { value: 'beta' } }));
+    act(() => view.root.findAllByType('button')[1].props.onClick());
+    const floors = view.root.findByProps({ className: 'ski-area-floors' });
+    assert.deepEqual(floors.children.map(child => child.props.id), ['domaine-meteo-neige', 'domaine-apercu', 'domaine-webcams']);
+    assert.equal(view.root.findByType('select').props.value, 'beta');
+    assert.equal(view.root.findAllByType('button')[1].props['aria-pressed'], true);
+    assert.match(JSON.stringify(view.toJSON()), /Présentation du domaine/);
+    assert.match(JSON.stringify(view.toJSON()), /Webcams des stations/);
+  } finally { if (view) act(() => view.unmount()); global.window = original; }
 });

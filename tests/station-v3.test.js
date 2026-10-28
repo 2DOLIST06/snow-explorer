@@ -22,7 +22,7 @@ test("V3 keeps every primary section in one reorderable page", () => {
 test("V3 location and access is an internal reorderable section", () => {
   assert.match(component, /"localisation-acces": "Accès & hébergement"/);
   assert.match(component, /"localisation-acces": <LocationAccess station=\{station\} \/>/);
-  assert.match(component, /id="v3-location-title"[^>]+title="Localisation, accès et hébergement"/);
+  assert.match(component, /id=\{headingId\}[^>]+title="Localisation, accès et hébergement"/);
   assert.match(component, /function LocationAccess[\s\S]+<StationMapCard/);
   assert.doesNotMatch(component, /href=[^\n]+localisation-acces|router\.push|window\.location/);
 });

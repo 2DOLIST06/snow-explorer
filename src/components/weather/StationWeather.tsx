@@ -9,6 +9,8 @@ import styles from './StationWeather.module.css';
 
 type HeadingLevel = 'h2' | 'h3';
 export type StationWeatherProps = {
+  active?: boolean;
+  initialAvalanche?: import('@/lib/api/stationInitialData').StationInitialData['avalanche'];
   slug: string;
   name: string;
   latitude: number | null | undefined;
@@ -99,13 +101,13 @@ export function ForecastConditions({ resource, headingLevel = 'h3' }: { resource
   </section>;
 }
 
-export function useStationWeatherResources({ slug, latitude, longitude, initialObservations, initialForecasts }: StationWeatherProps) {
+export function useStationWeatherResources({ slug, latitude, longitude, initialObservations, initialForecasts, active = true }: StationWeatherProps) {
   const lat = parseCoordinate(latitude, 90);
   const lon = parseCoordinate(longitude, 180);
   const loadObservations = useCallback((signal: AbortSignal) => fetchStationWeather(slug, signal), [slug]);
   const loadForecast = useCallback((signal: AbortSignal) => lat === null || lon === null ? Promise.reject(new Error('Missing coordinates')) : fetchWeatherForecast(lat, lon, signal), [lat, lon]);
-  const observations = useWeatherResource(loadObservations, initialObservations);
-  const forecasts = useWeatherResource(loadForecast, initialForecasts);
+  const observations = useWeatherResource(loadObservations, initialObservations, active);
+  const forecasts = useWeatherResource(loadForecast, initialForecasts, active);
   return { observations, forecasts };
 }
 
