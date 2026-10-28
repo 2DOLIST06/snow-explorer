@@ -19,6 +19,7 @@ function load(file) {
     if (name.endsWith('.css')) return { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) };
     if (name === 'next/head') return { __esModule: true, default: ({ children }) => React.createElement(React.Fragment, null, children) };
     if (name === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };
+    if (name === '@/components/stations/StationLegacyHero') return { __esModule: true, default: ({ station }) => React.createElement('h1', null, station.name) };
     if (name === '@/components/maps/StationMapCard') return {
       __esModule: true, default: () => null,
       stationDirectionsUrl: station => `https://www.google.com/maps/dir/?destination=${station.latitude},${station.longitude}`,
@@ -131,4 +132,44 @@ test('domain metadata is complete in server HTML without React separator comment
   assert.match(description, /stations, météo, enneigement, webcams et accès\.$/);
   assert.notEqual(description, area.description.slice(0, 155));
   assert.equal(document.querySelector('link[rel="canonical"]').href, `https://www.snow-explorer.com/domaines-skiables/${area.slug}`);
+});
+
+
+test('domain breadcrumb matches visible navigation, canonical URL and the station trail convention', () => {
+  const Domain = load('pages/domaines-skiables/[slug].tsx').default;
+  const Station = load('src/components/stations/StationV3Page.tsx').default;
+  const name = 'Alpe d’Huez & Oz';
+  for (const [Component, props, listing, label] of [
+    [Domain, { area: { id: 1, name, slug: 'alpe-dhuez' }, stations: [], initialDataByStation: {} }, 'domaines-skiables', 'Domaines skiables'],
+    [Station, { station: { name, slug: 'alpe-dhuez' }, widgets: null }, 'stations', 'Stations'],
+  ]) {
+    const document = new JSDOM(renderToStaticMarkup(React.createElement(Component, props))).window.document;
+    const scripts = [...document.querySelectorAll('script[type="application/ld+json"]')];
+    const trails = scripts.map(script => JSON.parse(script.textContent)).filter(data => data['@type'] === 'BreadcrumbList');
+    assert.equal(trails.length, 1, 'exactly one BreadcrumbList per detail page');
+    const trail = trails[0];
+    assert.equal(trail['@context'], 'https://schema.org');
+    assert.deepEqual(trail.itemListElement, [
+      { '@type': 'ListItem', position: 1, name: 'Accueil', item: 'https://www.snow-explorer.com/' },
+      { '@type': 'ListItem', position: 2, name: label, item: `https://www.snow-explorer.com/${listing}` },
+      { '@type': 'ListItem', position: 3, name, item: `https://www.snow-explorer.com/${listing}/alpe-dhuez` },
+    ]);
+    const nav = document.querySelector('nav[aria-label="Fil d’Ariane"]');
+    assert.ok(nav);
+    assert.deepEqual([...nav.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]), [['Accueil', '/'], [label, `/${listing}`]]);
+    assert.equal(nav.querySelector('[aria-current="page"]').textContent, name);
+    assert.equal(trail.itemListElement[2].item, document.querySelector('link[rel="canonical"]').href);
+  }
+});
+
+test('domain breadcrumb remains valid JSON-LD with special characters in its name', () => {
+  const Page = load('pages/domaines-skiables/[slug].tsx').default;
+  const name = 'Domaine </script> & "Ski"';
+  const document = new JSDOM(renderToStaticMarkup(React.createElement(Page, {
+    area: { id: 1, name, slug: 'domaine-ski' }, stations: [], initialDataByStation: {},
+  }))).window.document;
+  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+  assert.equal(scripts.length, 1);
+  assert.equal(JSON.parse(scripts[0].textContent).itemListElement[2].name, name);
+  assert.equal(document.querySelector('[aria-current="page"]').textContent, name);
 });

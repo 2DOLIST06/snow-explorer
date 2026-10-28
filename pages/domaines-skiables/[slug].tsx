@@ -1,5 +1,6 @@
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
+import Link from "next/link";
 import { fetchPublicSkiArea } from "@/lib/api/skiAreas";
 import { SkiAreaFacts, StationCards } from "@/components/stations/SkiAreaPublicCard";
 import { StationV3Styles } from "@/components/stations/StationV3Page";
@@ -12,10 +13,21 @@ import type { StationInitialData } from "@/lib/api/stationInitialData";
 import { getOfficialMapPresentation } from "@/lib/officialMap";
 import type { SkiAreaPublic } from "@/types/skiArea";
 
+const ORIGIN = "https://www.snow-explorer.com";
 const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 type Props = { area: SkiAreaPublic; stations: SkiAreaStation[]; initialDataByStation: Record<string, StationInitialData> };
 
 export default function SkiAreaDetail({ area, stations, initialDataByStation }: Props) {
+  const canonical = `${ORIGIN}/domaines-skiables/${encodeURIComponent(area.slug)}`;
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${ORIGIN}/` },
+      { "@type": "ListItem", position: 2, name: "Domaines skiables", item: `${ORIGIN}/domaines-skiables` },
+      { "@type": "ListItem", position: 3, name: area.name, item: canonical },
+    ],
+  };
   const title = `${area.name} : domaine skiable et stations | Snow Explorer`;
   const description = `Découvrez le domaine skiable ${area.name} : stations, météo, enneigement, webcams et accès.`;
   const sections: SkiAreaSection[] = [
@@ -31,8 +43,11 @@ export default function SkiAreaDetail({ area, stations, initialDataByStation }: 
     ...(stations.length ? [{ id: "stations", label: "Stations du domaine", mobileLabel: "Stations", content: <section className="ski-area-members"><h2>Stations du domaine</h2><StationCards stations={stations} /></section> }] : []),
   ];
   return <>
-    <Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={`https://www.snow-explorer.com/domaines-skiables/${area.slug}`} /></Head>
+    <Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
+    </Head>
     <main className="ski-area-detail">
+      <nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/domaines-skiables">Domaines skiables</Link><span aria-hidden="true">›</span><span aria-current="page">{area.name}</span></nav>
 
       <SkiAreaSections key={area.slug} sections={sections} hero={<header className="ski-area-hero">{area.cover_image_url && <img src={area.cover_image_url} alt={`Domaine skiable ${area.name}`} />}<div><p className="eyebrow">Domaine skiable</p><h1>{area.name}</h1>{area.description && <p className="ski-area-description">{area.description}</p>}</div></header>} />
     </main>
