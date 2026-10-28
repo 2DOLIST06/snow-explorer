@@ -26,33 +26,35 @@ test('each selector switches only its block and never passes another station’s
   const stations = [member('alpha'), member('beta')];
   const initialData = { observations: { station: { slug: 'alpha' } }, forecasts: [], webcams: [] };
   let view;
-  act(() => { view = create(React.createElement(Sections, { stations, initialDataByStation: { alpha: initialData } })); });
+  act(() => { view = create(React.createElement(Sections, { stations, domainName: "Grand Domaine", initialDataByStation: { alpha: initialData } })); });
   const rendered = () => view.root.findAllByType('article').filter(block => block.props.active);
-  assert.equal(view.root.findAllByType('select').length, 3);
+  assert.equal(view.root.findAllByProps({ role: 'group' }).length, 3);
+  assert.equal(view.root.findAllByType('select').length, 0);
   assert.deepEqual(rendered().map(block => block.props.station.slug), ['alpha', 'alpha', 'alpha']);
   assert.equal(rendered()[0].props.initialData, initialData);
   for (let index = 0; index < 3; index++) {
-    act(() => view.root.findAllByType('select')[index].props.onChange({ target: { value: 'beta' } }));
+    act(() => view.root.findAllByProps({ role: 'group' })[index].findAllByType('button')[1].props.onClick());
     assert.equal(rendered()[index].props.station.slug, 'beta');
     assert.equal(rendered()[index].props.initialData, undefined);
     assert.deepEqual(rendered().map(block => block.props.station.slug),
       [0, 1, 2].map(i => i <= index ? 'beta' : 'alpha'));
   }
-  act(() => view.root.findAllByType('select')[0].props.onChange({ target: { value: 'alpha' } }));
+  act(() => view.root.findAllByProps({ role: 'group' })[0].findAllByType('button')[0].props.onClick());
   assert.equal(rendered()[0].props.initialData, initialData);
   act(() => view.unmount());
 });
 
 test('empty and single station domains have no invalid selection', () => {
   let view;
-  act(() => { view = create(React.createElement(Sections, { stations: [] })); });
+  act(() => { view = create(React.createElement(Sections, { stations: [], domainName: "Grand Domaine" })); });
   assert.equal(view.root.findAllByType('select').length, 0);
   assert.match(JSON.stringify(view.toJSON()), /aucune station active/);
-  act(() => view.update(React.createElement(Sections, { stations: [member('alpha')] })));
-  for (const select of view.root.findAllByType('select')) {
-    assert.equal(select.props.value, 'alpha');
-    assert.equal(select.findAllByType('option').length, 1);
-    assert.ok(view.root.findAllByType('label').some(label => label.props.htmlFor === select.props.id));
+  act(() => view.update(React.createElement(Sections, { stations: [member('alpha')], domainName: 'Grand Domaine' })));
+  for (const group of view.root.findAllByProps({ role: 'group' })) {
+    const buttons = group.findAllByType('button');
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0].props['aria-pressed'], true);
+    assert.ok(buttons[0].props['aria-controls']);
   }
   act(() => view.unmount());
 });
