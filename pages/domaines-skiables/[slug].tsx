@@ -16,7 +16,8 @@ const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString
 type Props = { area: SkiAreaPublic; stations: SkiAreaStation[]; initialDataByStation: Record<string, StationInitialData> };
 
 export default function SkiAreaDetail({ area, stations, initialDataByStation }: Props) {
-  const description = area.description?.slice(0, 155) || `Découvrez le domaine skiable ${area.name} et ses stations.`;
+  const title = `${area.name} : domaine skiable et stations | Snow Explorer`;
+  const description = `Découvrez le domaine skiable ${area.name} : stations, météo, enneigement, webcams et accès.`;
   const sections: SkiAreaSection[] = [
     { id: "apercu", label: "Aperçu", content: <div className="ski-area-overview"><SkiAreaFacts area={area} />
       {(area.forecast_open_date || area.forecast_close_date || area.season) && <section><h2>Ouverture prévisionnelle</h2>
@@ -30,7 +31,7 @@ export default function SkiAreaDetail({ area, stations, initialDataByStation }: 
     ...(stations.length ? [{ id: "stations", label: "Stations du domaine", mobileLabel: "Stations", content: <section className="ski-area-members"><h2>Stations du domaine</h2><StationCards stations={stations} /></section> }] : []),
   ];
   return <>
-    <Head><title>{area.name} : domaine skiable et stations | Snow Explorer</title><meta name="description" content={description} /><link rel="canonical" href={`https://www.snow-explorer.com/domaines-skiables/${area.slug}`} /></Head>
+    <Head><title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={`https://www.snow-explorer.com/domaines-skiables/${area.slug}`} /></Head>
     <main className="ski-area-detail">
 
       <SkiAreaSections key={area.slug} sections={sections} hero={<header className="ski-area-hero">{area.cover_image_url && <img src={area.cover_image_url} alt={`Domaine skiable ${area.name}`} />}<div><p className="eyebrow">Domaine skiable</p><h1>{area.name}</h1>{area.description && <p className="ski-area-description">{area.description}</p>}</div></header>} />
