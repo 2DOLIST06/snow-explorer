@@ -67,3 +67,13 @@ function getStationNordicOverview(widgets) {
   return stats.length || techniques.length ? { stats, techniques } : null;
 }
 module.exports.getStationNordicOverview = getStationNordicOverview;
+
+
+/** Alpine has priority above 20 km; otherwise prefer the longer network. */
+function getDefaultSkiDiscipline(alpineKm, nordicKm) {
+  const distance = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 0;
+  const alpine = distance(alpineKm);
+  const nordic = distance(nordicKm);
+  return alpine > 20 || alpine >= nordic ? "alpine" : "nordic";
+}
+module.exports.getDefaultSkiDiscipline = getDefaultSkiDiscipline;

@@ -22,7 +22,7 @@ import StationMapCard, { stationDirectionsUrl } from "@/components/maps/StationM
 import SkiAreaPublicCard, { StationCards } from "@/components/stations/SkiAreaPublicCard";
 import { getStationEditorialContent, getStationSectionData, SECTION_LABELS, stationLocation, type StationPageSection } from "@/lib/stationContent";
 import { resolveStationPisteMap, resolveNordicPisteMap } from "@/lib/stationPisteMap";
-import { getStationOverviewScope, getStationPresentation, getStationNordicOverview } from "@/lib/stationOverview";
+import { getStationOverviewScope, getStationPresentation, getStationNordicOverview, getDefaultSkiDiscipline } from "@/lib/stationOverview";
 
 const ORIGIN = "https://www.snow-explorer.com";
 type StationV3Section = StationPageSection | "localisation-acces" | "activites";
@@ -48,7 +48,8 @@ export function Overview({ station, widgets }: { station: any; widgets: StationW
   const selectedSkiArea = typeof selectedScope === "number" ? skiAreas.find((area: any) => area.id === selectedScope) || null : null;
   const scope = getStationOverviewScope(station, widgets, selectedSkiArea);
   const nordic = getStationNordicOverview(widgets);
-  const [discipline, setDiscipline] = useState<"all" | "alpine" | "nordic">("all");
+  const [chosenDiscipline, setDiscipline] = useState<"all" | "alpine" | "nordic" | null>(null);
+  const discipline = chosenDiscipline ?? getDefaultSkiDiscipline(scope.skiAreaKm, widgets?.nordique?.ski_area_km);
   const bothDisciplines = hasAlpineData(scope) && Boolean(nordic);
   const hasAlpine = hasAlpineData(scope);
   const stats = [
