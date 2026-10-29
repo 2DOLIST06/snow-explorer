@@ -32,7 +32,7 @@ export default function SkiAreaPublicCard({ area, compact = false }: { area: Ski
   const hasDates = area.forecast_open_date || area.forecast_close_date;
   return <section className={`ski-area-public-card${compact ? " is-compact" : ""}`}><header><p className="eyebrow">Données du domaine</p><h2>Le domaine skiable {area.name}</h2></header><SkiAreaFacts area={area} />
     {hasDates && <p className="ski-area-forecast"><strong>Dates prévisionnelles{area.season ? ` · saison ${area.season}` : ""}</strong><span>{area.forecast_open_date ? `Ouverture prévue le ${date(area.forecast_open_date)}` : ""}{area.forecast_open_date && area.forecast_close_date ? " · " : ""}{area.forecast_close_date ? `Fermeture prévue le ${date(area.forecast_close_date)}` : ""}</span></p>}
-    <Link className="btn btn--secondary" href={`/domaines-skiables/${area.slug}`}>Découvrir le domaine skiable {area.name}</Link>
+    <Link className="btn btn--secondary" href={`/domaines-skiables/${area.slug}`}><span className="ski-area-discover-desktop">Découvrir le domaine skiable {area.name}</span><span className="ski-area-discover-mobile">Découvrir {area.name}</span></Link>
     {area.stations && area.stations.length > 0 && <div><h3>Autres stations du même domaine</h3><StationCards stations={area.stations} /></div>}
   </section>;
 }

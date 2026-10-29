@@ -26,7 +26,7 @@ export default function SkiAreaSections({ sections, hero }: { sections: SkiAreaS
     window.requestAnimationFrame(() => {
       const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
       const target = sectionRefs.current[id];
-      if (alreadySelected && target) {
+      if ((alreadySelected || window.matchMedia("(max-width: 760px)").matches) && target) {
         const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--site-header-visible-height")) || 0;
         const navigation = navigationRef.current?.parentElement?.getBoundingClientRect().height || 0;
         window.scrollTo({ top: window.scrollY + target.getBoundingClientRect().top - header - navigation, behavior });
@@ -47,7 +47,7 @@ export default function SkiAreaSections({ sections, hero }: { sections: SkiAreaS
     </div>
     </div>
     <div className="ski-area-floors">
-      {ordered.map(section => <div key={section.id} id={`domaine-${section.id}`} ref={element => { sectionRefs.current[section.id] = element; }}>{section.content}</div>)}
+      {ordered.map(section => <div key={section.id} id={`domaine-${section.id}`} data-mobile-active={selected === section.id} ref={element => { sectionRefs.current[section.id] = element; }}>{section.content}</div>)}
     </div>
     <style jsx global>{`
       .ski-area-masthead{overflow:hidden;border-radius:28px;background:#fff}

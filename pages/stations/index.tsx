@@ -121,6 +121,11 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
           </div>}
         </section>
 
+        <a className="mobile-map-shortcut" href="#stations-overview-map" onClick={(event) => {
+          event.preventDefault();
+          setShowMap(true);
+          window.requestAnimationFrame(() => document.getElementById("stations-overview-map")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
+        }}><MapIcon size={16} aria-hidden="true" /> Voir la carte</a>
         <div className="station-map-toggle">
           <button type="button" className="btn btn--secondary" aria-expanded={showMap} aria-controls="stations-overview-map" onClick={() => setShowMap((visible) => !visible)}>
             <MapIcon size={18} aria-hidden="true" /> {showMap ? "Masquer la carte" : "Voir les stations sur la carte"}
@@ -136,6 +141,7 @@ const StationsList: NextPage<Props> = ({ initialStations, mapStations, skiAreas 
           </section>}
 
           <div className="station-results" aria-live="polite">
+            <h2 className="mobile-station-list-title">Liste des stations</h2>
             <section className="station-results-grid" aria-label="Résultats stations">
               {data.map((resort) => <article key={resort.id} className="station-result-card">
                 <div className="station-result-card__icon"><MapPin size={20} /></div>

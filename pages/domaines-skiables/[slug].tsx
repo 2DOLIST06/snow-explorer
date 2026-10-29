@@ -1,3 +1,4 @@
+import MobileDescription from "@/components/skiAreas/MobileDescription";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -49,7 +50,7 @@ export default function SkiAreaDetail({ area, stations, initialDataByStation }: 
     <main className="ski-area-detail">
       <nav className="v3-breadcrumb" aria-label="Fil d’Ariane"><Link href="/">Accueil</Link><span aria-hidden="true">›</span><Link href="/domaines-skiables">Domaines skiables</Link><span aria-hidden="true">›</span><span aria-current="page">{area.name}</span></nav>
 
-      <SkiAreaSections key={area.slug} sections={sections} hero={<header className="ski-area-hero">{area.cover_image_url && <img src={area.cover_image_url} alt={`Domaine skiable ${area.name}`} />}<div><p className="eyebrow">Domaine skiable</p><h1>{area.name}</h1>{area.description && <p className="ski-area-description">{area.description}</p>}</div></header>} />
+      <SkiAreaSections key={area.slug} sections={sections} hero={<header className="ski-area-hero">{area.cover_image_url && <img src={area.cover_image_url} alt={`Domaine skiable ${area.name}`} />}<div><p className="eyebrow">Domaine skiable</p><h1>{area.name}</h1>{area.description && <MobileDescription text={area.description} />}</div></header>} />
     </main>
     <StationV3Styles /><SkiAreaStationStyles />
   </>;

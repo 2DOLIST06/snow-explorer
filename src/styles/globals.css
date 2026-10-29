@@ -205,3 +205,46 @@
 
 .ski-areas-directory .ski-area-card-link,.ski-area-stations .station-card-link{display:block;height:100%}
 .ski-areas-directory .ski-area-card-link:focus-visible,.ski-area-stations .station-card-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:-3px;border-radius:19px}
+
+/* Mobile presentation only: every panel remains in the server-rendered HTML. */
+.mobile-map-shortcut,.mobile-station-list-title,.ski-area-discover-mobile,.ski-area-description-toggle{display:none}
+.ski-area-description-wrap{display:contents}
+@media(max-width:760px){
+  .v3-navigation-shell .v3-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;overflow:visible;padding:8px 12px}
+  .v3-navigation-shell .v3-navigation button{min-width:0;min-height:44px;padding:7px 4px;font-size:.8rem;white-space:normal;line-height:1.15;border-color:#d9e3eb;border-radius:10px}
+  .v3-navigation-shell::before,.v3-navigation-shell::after{display:none}
+  .v3-floor-slot[data-mobile-active=false],.v3-initial-activities[data-mobile-active=false],.ski-area-floors>div[data-mobile-active=false]{display:none}
+  .ski-area-detail .ski-area-masthead{display:contents}
+  .ski-area-detail .ski-area-masthead .ski-area-hero{border-radius:20px}
+  .ski-area-detail .ski-area-masthead .ski-area-navigation{position:sticky;top:var(--site-header-visible-height,0px);z-index:50;border-bottom:1px solid var(--line)}
+  .ski-area-description-wrap{display:block}
+  .ski-area-description-wrap .ski-area-description:not(.is-expanded){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+  .ski-area-description-toggle{display:inline-flex;min-height:44px;align-items:center;padding:6px 0;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+  .ski-area-discover-desktop{display:none}
+  .ski-area-discover-mobile{display:inline}
+  .ski-area-public-card>.btn{display:inline-flex;width:fit-content;max-width:100%;min-height:40px;padding:8px 12px;font-size:.86rem;white-space:normal}
+  .ski-areas-directory .ski-area-discover-mobile{display:inline-flex;margin-top:12px;padding:8px 12px;border-radius:10px;background:#e7f7fa;color:#0369a1;font-size:.86rem;font-weight:800}
+  .ski-areas-directory{scroll-margin-top:calc(var(--site-header-visible-height,80px) + 16px)}
+  .stations-directory{display:flex;flex-direction:column;gap:14px}
+  .stations-directory__hero{display:contents}
+  .stations-directory__hero>div:first-child{order:0}
+  .stations-directory>.station-search-card{order:1;margin:0}
+  .stations-directory .station-directory-stats{order:2;display:flex;gap:16px;align-items:center}
+  .stations-directory .station-directory-stats div{display:flex;gap:5px;align-items:baseline;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+  .stations-directory .station-directory-stats strong{font-size:1rem;letter-spacing:normal}
+  .stations-directory .station-directory-stats span{font-size:.85rem;text-transform:none}
+  .mobile-map-shortcut{order:3;display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:44px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--accent-2);font-weight:800;font-size:.85rem}
+  .stations-directory>.station-map-toggle{display:none}
+  .stations-directory>.stations-directory-layout{order:4;grid-template-areas:"results" "map"}
+  .stations-directory>.stations-directory-layout--map-hidden{grid-template-areas:"results"}
+  .stations-directory>.directory-editorial{order:5}
+  .mobile-station-list-title{display:block;margin:0 0 14px;color:var(--brand);font-size:1.35rem}
+  #stations-overview-map{scroll-margin-top:calc(var(--site-header-visible-height,80px) + 12px)}
+  .weather-page{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+  .weather-page__hero,.weather-page>.weather-layout{display:contents}
+  .weather-page__hero>div:first-child{order:0}
+  .weather-page .station-picker{order:1}
+  .weather-page__hero>.notice{order:2}
+  .weather-page .weather-content{order:3}
+  .weather-page>.directory-editorial{order:4}
+}
