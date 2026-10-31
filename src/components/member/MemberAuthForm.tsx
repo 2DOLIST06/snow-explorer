@@ -4,9 +4,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { memberRequest } from "@/lib/memberApi";
 import styles from "../layout/AccountMenu.module.css";
-import { intentFromQuery, loginDestination } from "@/lib/newsletter/onboarding";
+import { intentFromQuery, loginDestination, type NewsletterIntent } from "@/lib/newsletter/onboarding";
 
-export default function MemberAuthForm({ mode = "login", onComplete, initialEmail = "" }: { mode?: "login" | "register"; onComplete?: () => void; initialEmail?: string }) {
+export default function MemberAuthForm({ mode = "login", onComplete, initialEmail = "", newsletterRequest }: { mode?: "login" | "register"; onComplete?: () => void; initialEmail?: string; newsletterRequest?: NewsletterIntent }) {
   const { login } = useMemberAuth(); const router = useRouter();
   const [email, setEmail] = useState(initialEmail); const [password, setPassword] = useState("");
   const [emailLink, setEmailLink] = useState(router.query.method !== "password"); const [busy, setBusy] = useState(false);
@@ -16,7 +16,7 @@ export default function MemberAuthForm({ mode = "login", onComplete, initialEmai
     event.preventDefault(); setBusy(true); setError(""); setSent(false);
     try {
       if (mode === "register" || emailLink) {
-        const intent = intentFromQuery(router.query);
+        const intent = newsletterRequest || intentFromQuery(router.query);
         if (intent) { await memberRequest("/newsletter/login-link", { email: email.trim().toLowerCase(), intent: { ...intent, consent: true } }); }
         else await memberRequest(mode === "register" ? "/register" : "/login-link", { email: email.trim().toLowerCase() });
         setSent(true);

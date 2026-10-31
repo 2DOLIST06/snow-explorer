@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { intentFromQuery } from "@/lib/newsletter/onboarding";
 import { memberRequest } from "@/lib/memberApi";
+import styles from "@/components/newsletter/StationNewsletterEditor.module.css";
 import MemberNewsletter from "@/components/member/MemberNewsletter";
 import NewsletterEnrollment from "@/components/newsletter/NewsletterEnrollment";
 import MemberAuthForm from "@/components/member/MemberAuthForm";
@@ -52,10 +53,10 @@ function MemberAccountContent() {
           <label className="newsletter-field">Nouveau mot de passe (12 caractères minimum)<input type="password" autoComplete="new-password" minLength={12} maxLength={1024} required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
           <label className="newsletter-field">Confirmer le mot de passe<input type="password" autoComplete="new-password" minLength={12} maxLength={1024} required value={confirmation} onChange={e => setConfirmation(e.target.value)} disabled={busy} /></label>
           {saved && <p role="status">Mot de passe modifié.</p>}<button className="btn btn--primary" disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
-        </form> : <><p>Ouvrez le lien reçu par email pour définir votre mot de passe dans ce compte.</p><MemberAuthForm initialEmail={email} /></>}
+        </form> : <><p>Ouvrez le lien reçu par email pour définir votre mot de passe dans ce compte.</p><MemberAuthForm initialEmail={email} newsletterRequest={entry?.intent} /></>}
       </section>}
     </>}
-    {addingAddress ? <section className="newsletter-section"><h2>Inscrire une autre adresse email</h2><NewsletterEnrollment forceOtherEmail initial={{ stations: [], articles: true, consent: false, language: "fr", source: "member-account" }} /></section> : enrolling ? <section className="newsletter-section"><h2>Recevoir les informations de {requested.stations[0].station_name} par email</h2><NewsletterEnrollment initial={requested} /></section> : !authenticated && !signup && <section className="newsletter-section"><h2>Se connecter à mon compte</h2><MemberAuthForm initialEmail={email} /></section>}
+    {addingAddress ? <section className="newsletter-section"><h2>Inscrire une autre adresse email</h2><NewsletterEnrollment forceOtherEmail fullPreferences initial={{ stations: [], articles: false, consent: false, language: "fr", source: "member-account" }} /></section> : enrolling ? <section className="newsletter-section"><header className={styles.accountHeading}><h2>Mes abonnements</h2><p>Choisissez ce que vous souhaitez recevoir par email. Tous vos choix se règlent ici.</p></header><NewsletterEnrollment fullPreferences key={JSON.stringify(requested)} initial={requested} /></section> : !authenticated && !signup && <section className="newsletter-section"><h2>Se connecter à mon compte</h2><MemberAuthForm initialEmail={email} newsletterRequest={entry?.intent} /></section>}
     {error && <p role="alert">{error}</p>}
     <p><button type="button" className="newsletter-change-email" onClick={() => { openNewsletterAccount(null); setOtherEmail(true); setTab("newsletter"); }}>Inscrire une autre adresse email</button>{" · "}<Link className="newsletter-change-email" href="/connexion?autre=1" onClick={() => openNewsletterAccount(null)}>Se connecter avec une autre adresse</Link></p>
   </main>;

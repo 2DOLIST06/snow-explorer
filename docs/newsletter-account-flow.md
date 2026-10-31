@@ -23,7 +23,7 @@ Les tests de composants couvrent la redirection après inscription, le message v
 
 ## Boutons sur les fiches stations et la météo
 
-Les boutons utilisent tous `FollowStationButton`. Un visiteur non connecté est envoyé directement vers `/mon-compte` avec le choix station/thème dans la query : la page affiche le formulaire email habituel, prérempli avec cette sélection. Aucune fenêtre modale ni formulaire de préférences parallèle. Après inscription, le même compte affiche le même éditeur. Si l’adresse existe déjà, le choix est conservé dans la navigation et dans la demande de connexion par email ; il est proposé avec les abonnements existants une fois connecté.
+Les boutons utilisent tous `FollowStationButton`. Un visiteur non connecté est envoyé directement vers `/mon-compte` avec le choix station/thème dans la query : la page affiche directement le même éditeur de préférences que le compte, précédé du champ email. La station et le thème demandés sont déjà sélectionnés. Aucune fenêtre modale ni formulaire de préférences parallèle. Après inscription, le même compte affiche le même éditeur. Si l’adresse existe déjà, le choix est conservé dans la navigation et dans la demande de connexion par email ; il est proposé avec les abonnements existants une fois connecté.
 
 Pour un membre connecté, le bouton appelle `/newsletter/follow` avec CSRF puis affiche une notification temporaire sur la fiche, sans navigation. La confirmation d’ajout n’est préparée qu’après la réussite de la requête. La fiche affiche le message d’ajout pour la station et le thème demandés ; un clic répété affiche que ces informations sont déjà suivies. Les erreurs restent visibles sur la fiche et ne déclenchent pas de fausse confirmation. Les boutons météo précisent « par email ».
 
@@ -49,3 +49,10 @@ Les membres connectés restent sur la fiche après un clic d’abonnement : la c
 ## Notifications et menu de compte
 
 La confirmation d’abonnement est affichée dans une notification attachée au document, hors du bandeau photo, et disparaît après six secondes. Elle peut être fermée manuellement et plusieurs notifications se rangent sans se superposer. Le bouton conserve son état enregistré après fermeture. Les erreurs restent visibles jusqu’à leur fermeture pour permettre de réessayer. Le menu Compte utilise un conteneur positionné autour du bouton seul et s’ouvre juste en dessous, aligné sur son bord droit.
+
+
+## Préférences complètes avant inscription
+
+Sur la page de compte, le visiteur utilise directement `NewsletterIntentForm` avant son inscription : station et thème issus du bouton préselectionnés, autres sujets modifiables, fréquences et ajout multiple de stations. Le champ email et la mention d’inscription sont insérés dans ce même formulaire, sans formulaire imbriqué. Le bouton « M’inscrire avec ces préférences » envoie la sélection complète en une seule demande. L’inscription avec une autre adresse depuis le compte utilise aussi ce mode. Le footer conserve la saisie email courte.
+
+Une adresse déjà inscrite conserve toute la sélection préparée ; la demande de lien de connexion transmet cette sélection complète plutôt que de reconstruire uniquement la première station depuis l’URL. Les réglages existants restent protégés avant connexion. Aucune nouvelle modification API ni migration SQL.

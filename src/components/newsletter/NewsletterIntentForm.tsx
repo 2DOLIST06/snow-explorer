@@ -1,12 +1,12 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, type ReactNode, useMemo, useState } from "react";
 import { type NewsletterIntent, type StationIntent } from "@/lib/newsletter/onboarding";
 import type { NewsletterFrequency, StationSummary } from "@/types/newsletter";
 import StationSubscriptionPicker from "./StationSubscriptionPicker";
 import StationSubscriptionFields from "./StationSubscriptionFields";
 import styles from "./StationNewsletterEditor.module.css";
 
-type Props = { initial: NewsletterIntent; onSave: (intent: NewsletterIntent) => Promise<void>; submitLabel?: string; onCancel?: () => void; disabled?: boolean; onSavingChange?: (saving: boolean) => void };
-export default function NewsletterIntentForm({ initial, onSave, submitLabel, onCancel, disabled = false, onSavingChange }: Props) {
+type Props = { beforeFields?: ReactNode; beforeSubmit?: ReactNode; initial: NewsletterIntent; onSave: (intent: NewsletterIntent) => Promise<void>; submitLabel?: string; onCancel?: () => void; disabled?: boolean; onSavingChange?: (saving: boolean) => void };
+export default function NewsletterIntentForm({ initial, onSave, submitLabel, onCancel, beforeFields, beforeSubmit, disabled = false, onSavingChange }: Props) {
   const [draft, setDraft] = useState(initial); const [baseline, setBaseline] = useState(JSON.stringify(initial));
   const [adding, setAdding] = useState(false); const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""); const [saved, setSaved] = useState(false);
@@ -26,6 +26,7 @@ export default function NewsletterIntentForm({ initial, onSave, submitLabel, onC
     finally { setSaving(false); onSavingChange?.(false); }
   }
   return <form onSubmit={save} className={styles.editor}>
+    {beforeFields}
     <section className={styles.generalSection} aria-label={fr ? "Articles et guides" : "Articles and guides"}>
       <div><h3>{fr ? "Articles et guides généraux" : "General articles and guides"}</h3><p className={styles.hint}>{fr ? "Les nouveautés Snow Explorer, toutes destinations." : "New content from all destinations."}</p></div>
       <label className={styles.topic}><input type="checkbox" checked={draft.articles === true} disabled={busy} onChange={event => setDraft(old => ({ ...old, articles: event.target.checked }))} /><span>{fr ? "Recevoir les articles et guides généraux" : "Receive general articles and guides"}</span></label>
@@ -38,6 +39,7 @@ export default function NewsletterIntentForm({ initial, onSave, submitLabel, onC
       <header><div className={styles.stationTitle}><h4>{row.station_name}</h4>{row.station_slug && <a className={styles.stationLink} href={`/stations/${encodeURIComponent(row.station_slug)}`}>{fr ? "Voir la station" : "View resort"} <span aria-hidden="true">↗</span></a>}</div><button type="button" className={styles.removeButton} disabled={busy} onClick={() => { setDraft(old => ({ ...old, stations: old.stations.filter(item => String(item.station_id) !== String(row.station_id)) })); setSaved(false); }} aria-label={`${fr ? "Retirer" : "Remove"} ${row.station_name}`}>{fr ? "Retirer la station" : "Remove resort"}</button></header>
       <StationSubscriptionFields value={row} fr={fr} disabled={busy} onChange={value => setDraft(old => ({ ...old, stations: old.stations.map(item => String(item.station_id) === String(value.station_id) ? value : item) }))} />
     </section>)}</div>
+    {beforeSubmit}
     {error && <p role="alert">{error}</p>}
     <div className={styles.saveBar}><p role="status">{dirty ? (fr ? "Vos modifications ne sont pas encore enregistrées." : "Your changes have not been saved yet.") : saved ? (fr ? "Vos préférences sont enregistrées." : "Your preferences are saved.") : ""}</p><div className={styles.actions}><button className="btn btn--primary" disabled={busy || adding}>{saving ? (fr ? "Enregistrement…" : "Saving…") : submitLabel || (fr ? "Enregistrer mes préférences" : "Save my preferences")}</button>{onCancel && <button type="button" className={styles.textButton} disabled={busy} onClick={onCancel}>{fr ? "Annuler" : "Cancel"}</button>}</div></div>
   </form>;
