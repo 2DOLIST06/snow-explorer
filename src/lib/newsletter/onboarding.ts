@@ -14,6 +14,7 @@ export const weatherTopics: NewsletterPreferenceKey[] = ["weather", "snowfall", 
 export type StationIntent = {
   station_id: string | number;
   station_name: string;
+  station_slug?: string | null;
   topics: NewsletterPreferenceKey[];
   newsletter_frequency: NewsletterFrequency;
   weather_frequency: WeatherFrequency;

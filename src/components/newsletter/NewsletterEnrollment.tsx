@@ -5,7 +5,7 @@ import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { memberRequest } from "@/lib/memberApi";
 import { accountNewsletterHref, type NewsletterIntent } from "@/lib/newsletter/onboarding";
 
-type SignupResult = { status: "active" | "already_subscribed"; draft_token?: string | null; email_sent?: boolean };
+type SignupResult = { status: "active" | "already_subscribed"; draft_token?: string | null; email_sent?: boolean; intent?: NewsletterIntent };
 export default function NewsletterEnrollment({ initial, forceOtherEmail = false }: { initial: NewsletterIntent; forceOtherEmail?: boolean }) {
   const router = useRouter(); const { user, stageNewsletterIntent, openNewsletterAccount } = useMemberAuth();
   const [email, setEmail] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
@@ -25,7 +25,7 @@ export default function NewsletterEnrollment({ initial, forceOtherEmail = false 
       } else {
         const result = await memberRequest<SignupResult>("/newsletter/start", { email, intent });
         if (result.status === "already_subscribed") stageNewsletterIntent(intent, email.trim().toLowerCase());
-        openNewsletterAccount({ email: email.trim().toLowerCase(), intent, draftToken: result.draft_token || null, status: result.status, expiresAt: Date.now() + 15 * 60 * 1000 });
+        openNewsletterAccount({ email: email.trim().toLowerCase(), intent: result.intent || intent, draftToken: result.draft_token || null, status: result.status, expiresAt: Date.now() + 15 * 60 * 1000 });
       }
       await router.push(station ? accountNewsletterHref(station.station_id, station.station_name, station.topics[0]) : "/mon-compte");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Inscription impossible."); }
