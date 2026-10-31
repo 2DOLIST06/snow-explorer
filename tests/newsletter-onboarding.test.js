@@ -12,6 +12,7 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   new Function('require', 'module', 'exports', 'React', compiled)(name => {
     if (name in mocks) return mocks[name];
+    if (name.endsWith(".module.css")) return {};
     if (name === '@/lib/newsletter/onboarding') return load('src/lib/newsletter/onboarding.ts');
     return require(name);
   }, module, module.exports, React);
@@ -19,7 +20,7 @@ function load(file, mocks = {}) {
 }
 const button = (root, label) => root.root.findAllByType('button').find(item => item.children.join('') === label);
 
-test('connected station CTA saves the topic before opening the account and shows confirmed feedback', async () => {
+test('connected station CTA saves and confirms on the station without navigating', async () => {
   const calls = []; let entry;
   const Follow = load('src/components/newsletter/FollowStationButton.tsx', {
     'next/router': { useRouter: () => ({ push: async url => calls.push(['navigate',url]) }) },
@@ -31,9 +32,11 @@ test('connected station CTA saves the topic before opening the account and shows
   try {
     await act(async()=>root.root.findByType('button').props.onClick());
     assert.deepEqual(calls[0],['/newsletter/follow',{station_id:'FR_2',topic:'weather',language:'fr'},true]);
-    const url=new URL(calls.at(-1)[1],'https://snow.example');
-    assert.equal(url.pathname,'/mon-compte');assert.equal(url.searchParams.get('station_id'),'FR_2');assert.equal(url.searchParams.get('topic'),'weather');
-    assert.match(entry.notice,/Abonnement « Météo et enneigement » ajouté pour Alpe d’Huez/);assert.equal(entry.email,'member@example.com');assert.equal(entry.draftToken,null);
+    assert.equal(calls.some(call=>call[0]==='navigate'),false);
+    assert.equal(entry,undefined);
+    assert.match(root.root.findByProps({role:'status'}).children.join(''),/Abonnement « Météo et enneigement » ajouté pour Alpe d’Huez/);
+    assert.equal(root.root.findByType('button').props.disabled,true);
+    const count=calls.length;await act(async()=>root.root.findByType('button').props.onClick());assert.equal(calls.length,count);
   } finally {act(()=>root.unmount());}
 });
 
@@ -104,5 +107,5 @@ test('an existing email keeps the station choice in both the account URL and the
 
 test('an already followed station receives accurate feedback after the authenticated request',async()=>{
  let notice;const Follow=load('src/components/newsletter/FollowStationButton.tsx',{'next/router':{useRouter:()=>({push:async()=>{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({status:'authenticated',user:{email:'member@example.com'},stageNewsletterIntent(){},openNewsletterAccount:entry=>{notice=entry.notice;}})},'@/lib/memberApi':{memberRequest:async()=>({already_followed:true})},'@/lib/newsletter/i18n':{newsletterLanguage:()=> 'fr'}}).default;
- let root;await act(async()=>{root=renderer.create(React.createElement(Follow,{stationId:'FR_1',stationName:'La Clusaz',topic:'weather'}));});try{await act(async()=>root.root.findByType('button').props.onClick());assert.match(notice,/déjà/);assert.doesNotMatch(notice,/ajouté/);}finally{act(()=>root.unmount());}
+ let root;await act(async()=>{root=renderer.create(React.createElement(Follow,{stationId:'FR_1',stationName:'La Clusaz',topic:'weather'}));});try{await act(async()=>root.root.findByType('button').props.onClick());const feedback=root.root.findByProps({role:'status'}).children.join('');assert.match(feedback,/déjà/);assert.doesNotMatch(feedback,/ajouté/);assert.equal(notice,undefined);}finally{act(()=>root.unmount());}
 });

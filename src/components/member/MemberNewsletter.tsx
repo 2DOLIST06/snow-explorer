@@ -4,6 +4,7 @@ import { memberRequest } from "@/lib/memberApi";
 import { type NewsletterAccountEntry, useMemberAuth } from "@/contexts/MemberAuthContext";
 import { intentFromQuery, mergeNewsletterChoice, type NewsletterIntent } from "@/lib/newsletter/onboarding";
 import NewsletterIntentForm from "../newsletter/NewsletterIntentForm";
+import styles from "../newsletter/StationNewsletterEditor.module.css";
 
 type Settings = { status: string; intent: NewsletterIntent };
 export default function MemberNewsletter({ signup }: { signup?: NewsletterAccountEntry } = {}) {
@@ -59,8 +60,8 @@ export default function MemberNewsletter({ signup }: { signup?: NewsletterAccoun
     finally { setBusy(false); }
   }
   const unsubscribed = settings?.status === "unsubscribed";
-  return <section className="newsletter-section"><h2>Mes abonnements</h2>
-    <p>Choisissez ce que vous souhaitez recevoir par email. Tous vos choix se règlent ici.</p>
+  return <section className="newsletter-section"><header className={styles.accountHeading}><h2>Mes abonnements</h2>
+    <p>Choisissez ce que vous souhaitez recevoir par email. Tous vos choix se règlent ici.</p></header>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!settings || !initial ? <p role="status">Chargement…</p> : blocked ? <p>Cet abonnement est indisponible. Contactez-nous pour le vérifier.</p> : <>
       {unsubscribed && <div className="newsletter-unsubscribed"><p role="status"><strong>Vous êtes désabonné de tous les emails.</strong></p><p>Vos préférences sont conservées.</p>{!reactivating && <button type="button" className="btn btn--secondary" onClick={() => setReactivating(true)}>Réactiver mes abonnements</button>}</div>}

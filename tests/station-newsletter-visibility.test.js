@@ -3,7 +3,7 @@ const {renderToStaticMarkup}=require('react-dom/server');
 function load(file,mocks={}){
  const source=ts.transpileModule(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const mod={exports:{}};
- new Function('require','module','exports','React','fetch',source)(name=>name in mocks?mocks[name]:require(name),mod,mod.exports,React,async()=>({ok:true,json:async()=>null}));
+ new Function('require','module','exports','React','fetch',source)(name=>name in mocks?mocks[name]:name.endsWith(".module.css")?{}:require(name),mod,mod.exports,React,async()=>({ok:true,json:async()=>null}));
  return mod.exports;
 }
 

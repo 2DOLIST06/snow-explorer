@@ -80,3 +80,10 @@ test('a failed save retains each station and its visible unsaved settings',async
   assert.equal(root.root.findAllByType('h4').length,2);assert.match(root.root.findByProps({role:'alert'}).children.join(''),/Enregistrement impossible/);
  }finally{act(()=>root.unmount());}
 });
+
+
+test('station headings link to the exact station slug provided in preferences',async()=>{
+ const Form=load('src/components/newsletter/NewsletterIntentForm.tsx',{'./StationSubscriptionPicker':()=>null}).default;
+ const value={...initial,stations:[{...initial.stations[0],station_slug:'albiez-montrond'},initial.stations[1]]};
+ let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initial:value,onSave:async()=>{}}));});try{const first=root.root.findByProps({'aria-label':'Albiez-Montrond'});assert.equal(first.findByType('a').props.href,'/stations/albiez-montrond');assert.match(first.findByType('a').children.join(''),/Voir la station/);assert.equal(root.root.findByProps({'aria-label':'Auris-en-Oisans'}).findAllByType('a').length,0);}finally{act(()=>root.unmount());}
+});
