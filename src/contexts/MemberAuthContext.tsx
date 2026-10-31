@@ -5,7 +5,7 @@ import type { NewsletterIntent } from "@/lib/newsletter/onboarding";
 
 export type NewsletterAccountEntry = { email: string; intent: NewsletterIntent; draftToken: string | null; notice?: string; status: "active" | "already_subscribed"; expiresAt: number };
 type State = { status: "loading" | "authenticated" | "unauthenticated"; user: MemberUser | null };
-type Context = State & { newsletterEntry: NewsletterAccountEntry | null; openNewsletterAccount: (entry: NewsletterAccountEntry | null) => void; refresh: () => Promise<MemberUser | null>; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void>; newsletterIntent: NewsletterIntent | null; stageNewsletterIntent: (intent: NewsletterIntent | null, email: string) => void };
+type Context = State & { newsletterEntry: NewsletterAccountEntry | null; openNewsletterAccount: (entry: NewsletterAccountEntry | null) => void; completeSignup: (user: MemberUser) => void; refresh: () => Promise<MemberUser | null>; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void>; newsletterIntent: NewsletterIntent | null; stageNewsletterIntent: (intent: NewsletterIntent | null, email: string) => void };
 const MemberContext = createContext<Context | null>(null);
 export function MemberAuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const [state, setState] = useState<State>({ status: "loading", user: null });
@@ -25,6 +25,9 @@ export function MemberAuthProvider({ children }: { children: React.ReactNode }) 
     const next = intent ? { email, intent } : null;
     setStaged(next);
   }, []);
+  const completeSignup = useCallback((user: MemberUser) => {
+    setStaged(null); setState({ status: "authenticated", user });
+  }, []);
   const refresh = useCallback(async () => {
     try { const data = await memberRequest<MemberSession>("/session"); setState({ status: "authenticated", user: data.user }); return data.user; }
     catch { setState({ status: "unauthenticated", user: null }); return null; }
@@ -40,7 +43,7 @@ export function MemberAuthProvider({ children }: { children: React.ReactNode }) 
     openNewsletterAccount(null); stageNewsletterIntent(null, ""); setState({ status: "unauthenticated", user: null }); await router.push("/");
   }, [router, stageNewsletterIntent, openNewsletterAccount]);
   const newsletterIntent = staged?.email === state.user?.email ? staged?.intent ?? null : null;
-  const value = useMemo(() => ({ ...state, refresh, login, logout, newsletterIntent, stageNewsletterIntent, newsletterEntry, openNewsletterAccount }), [state, refresh, login, logout, newsletterIntent, stageNewsletterIntent, newsletterEntry, openNewsletterAccount]);
+  const value = useMemo(() => ({ ...state, completeSignup, refresh, login, logout, newsletterIntent, stageNewsletterIntent, newsletterEntry, openNewsletterAccount }), [state, completeSignup, refresh, login, logout, newsletterIntent, stageNewsletterIntent, newsletterEntry, openNewsletterAccount]);
   return <MemberContext.Provider value={value}>{children}</MemberContext.Provider>;
 }
 export function useMemberAuth() { const value = useContext(MemberContext); if (!value) throw new Error("MemberAuthProvider is required"); return value; }
