@@ -214,6 +214,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // Ne pas transmettre aveuglément la réponse métier : seules les propriétés
   // effectivement consommées par la fiche publique sont sérialisées.
   const stationForPage: Resort = {
+    ...(resort.id != null ? { id: resort.id } : {}),
     name: resort.name,
     slug: resort.slug,
     ...(resort.region ? { region: resort.region } : {}),
