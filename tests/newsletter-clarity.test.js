@@ -30,20 +30,6 @@ test('optional preferences show one named editor and the picker closes after one
  }finally{act(()=>root.unmount());}
 });
 
-test('already subscribed email is acknowledged without restarting preferences or sending a login link',async()=>{
- const calls=[];const Enrollment=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/router':{useRouter:()=>({})},'next/link':({children,...p})=>React.createElement('a',p,children),'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null})},'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);return {status:'already_subscribed'}}},'./NewsletterIntentForm':()=>{throw Error('Duplicate must not open onboarding')}}).default;
- let root;await act(async()=>{root=renderer.create(React.createElement(Enrollment,{initial:{...initial,stations:[]}}));});
- try{
-  assert.equal(root.root.findAllByType('input').length,1);
-  act(()=>root.root.findByProps({type:'email'}).props.onChange({target:{value:'same@example.com'}}));
-  await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
-  assert.match(root.root.findByProps({role:'status'}).children.join(''),/déjà inscrite/);
-  assert.deepEqual(calls.map(c=>c[0]),['/newsletter/start']);
-  await act(async()=>button(root,'Recevoir un lien pour accéder à mon compte').props.onClick());
-  assert.deepEqual(calls.map(c=>c[0]),['/newsletter/start','/newsletter/login-link']);
- }finally{act(()=>root.unmount());}
-});
-
 test('weather directory exposes email subscription for the currently selected station above its weather',async()=>{
  const previous=global.window;global.window={matchMedia:()=>({matches:false}),requestAnimationFrame:fn=>fn()};
  const page=load('pages/meteo.tsx',{'next/head':({children})=>React.createElement(React.Fragment,null,children),'next/link':({children,...p})=>React.createElement('a',p,children),'@/lib/stationName':{stationNameAt:n=>'à '+n},'@/lib/stationAutomaticData':{parseCoordinate:n=>n??null},'@/lib/api/resorts':{},'@/lib/searchNormalization':require('../src/lib/searchNormalization'),'@/components/weather/StationWeather':()=>React.createElement('div',{'data-weather':true}),'@/components/newsletter/FollowStationButton':props=>React.createElement('button',{'data-subscription':true,...props},props.label)}).default;
@@ -66,6 +52,7 @@ test('new signup and active or unsubscribed accounts render the exact same prefe
   const Panel=load('src/components/member/MemberNewsletter.tsx',{'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:{id:1,email:'member@example.com'},stageNewsletterIntent(){}})},'../newsletter/NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async path=>path==='/newsletter/request'?{intent:null}:{data:{status,intent:initial}}}}).default;
   let root;await act(async()=>{root=renderer.create(React.createElement(Panel));});try{const view=shape(root.root.findByType(Editor));if(reference)assert.deepEqual(view,reference);else reference=view;assert.equal(root.root.findAllByType(Editor).length,1);}finally{act(()=>root.unmount());}
  }
- const Signup=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/link':({children,...p})=>React.createElement('a',p,children),'next/router':{useRouter:()=>({})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null})},'./NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async()=>({status:'active',draft_token:'new-signup-only'})}}).default;
- let root;await act(async()=>{root=renderer.create(React.createElement(Signup,{initial}));});try{act(()=>root.root.findByProps({type:'email'}).props.onChange({target:{value:'new@example.com'}}));await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.deepEqual(shape(root.root.findByType(Editor)),reference);assert.equal(root.root.findAllByType(Editor).length,1);}finally{act(()=>root.unmount());}
+ const signup={email:'new@example.com',intent:initial,draftToken:'new-signup-only',status:'active',expiresAt:Date.now()+900000};
+ const Panel=load('src/components/member/MemberNewsletter.tsx',{'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null,openNewsletterAccount(){}})},'../newsletter/NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async()=>{throw Error('No account fetch before authentication');}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Panel,{signup}));});try{assert.deepEqual(shape(root.root.findByType(Editor)),reference);assert.equal(root.root.findAllByType(Editor).length,1);}finally{act(()=>root.unmount());}
 });

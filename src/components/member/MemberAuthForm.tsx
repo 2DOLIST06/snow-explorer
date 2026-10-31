@@ -6,9 +6,9 @@ import { memberRequest } from "@/lib/memberApi";
 import styles from "../layout/AccountMenu.module.css";
 import { intentFromQuery, loginDestination } from "@/lib/newsletter/onboarding";
 
-export default function MemberAuthForm({ mode = "login", onComplete }: { mode?: "login" | "register"; onComplete?: () => void }) {
+export default function MemberAuthForm({ mode = "login", onComplete, initialEmail = "" }: { mode?: "login" | "register"; onComplete?: () => void; initialEmail?: string }) {
   const { login } = useMemberAuth(); const router = useRouter();
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(initialEmail); const [password, setPassword] = useState("");
   const [emailLink, setEmailLink] = useState(router.query.method !== "password"); const [busy, setBusy] = useState(false);
   useEffect(() => { setEmailLink(router.query.method !== "password"); }, [router.query.method]);
   const [error, setError] = useState(""); const [sent, setSent] = useState(false);
