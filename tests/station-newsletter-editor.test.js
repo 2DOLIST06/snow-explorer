@@ -15,7 +15,7 @@ test('one dropdown lists stations immediately and keeps multiple checkboxes sele
   assert.deepEqual(added[0].map(s=>s.id),['2','3']);
  }finally{act(()=>root.unmount());}
 });
-test('batch addition displays controls for every station and saves all choices together',async()=>{
+test('batch addition checks every station topic by default and saves individual opt-outs',async()=>{
  const saves=[];const Form=load('src/components/newsletter/NewsletterIntentForm.tsx').default;let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initial:{stations:[],articles:true,consent:true,language:'fr',source:'footer'},onSave:async value=>saves.push(value)}));});try{
   await act(async()=>button(root,'Ajouter des stations').props.onClick());
   assert.equal(button(root,'Enregistrer mes préférences').props.disabled,true);
@@ -24,9 +24,18 @@ test('batch addition displays controls for every station and saves all choices t
   act(()=>button(root,'Ajouter les stations sélectionnées').props.onClick());
   assert.equal(root.root.findAllByProps({type:'search'}).length,0);assert.equal(root.root.findAllByProps({type:'checkbox'}).length,13);
   assert.deepEqual(root.root.findAllByType('h4').map(h=>h.children.join('')),['Alpe d’Huez','La Clusaz']);
+  assert.ok(root.root.findAllByProps({type:'checkbox'}).every(box=>box.props.checked));
+  assert.ok(root.root.findAllByType('select').every(select=>!select.props.disabled));
+  const first=root.root.findByProps({'aria-label':'Alpe d’Huez'});
+  const updates=first.findAllByType('label').find(label=>label.findAllByType('span').some(span=>span.children.join('')==='Actualités de la station')).findByType('input');
+  act(()=>updates.props.onChange({target:{checked:false}}));
   act(()=>root.root.findByProps({'aria-label':'Fréquence des articles et guides'}).props.onChange({target:{value:'monthly'}}));
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
   assert.equal(saves.length,1);assert.equal(saves[0].stations.length,2);assert.equal(saves[0].newsletter_frequency,'monthly');
+  const topics=['weather','snowfall','snow_conditions','opening_closing','lift_updates','ski_pass_updates','resort_updates','articles'];
+  assert.deepEqual(saves[0].stations[0].topics,topics.filter(topic=>topic!=='resort_updates'));
+  assert.deepEqual(saves[0].stations[1].topics,topics);
+  assert.ok(saves[0].stations.every(station=>station.weather_frequency==='friday'&&station.newsletter_frequency==='weekly'));
  }finally{act(()=>root.unmount());}
 });
 test('merging a station button choice retains the existing stations and frequencies',()=>{

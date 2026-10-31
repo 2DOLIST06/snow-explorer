@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { type NewsletterIntent, type StationIntent } from "@/lib/newsletter/onboarding";
+import { newsletterTopics, type NewsletterIntent, type StationIntent } from "@/lib/newsletter/onboarding";
 import type { NewsletterFrequency, StationSummary } from "@/types/newsletter";
 import StationSubscriptionPicker from "./StationSubscriptionPicker";
 import StationSubscriptionFields from "./StationSubscriptionFields";
@@ -13,7 +13,7 @@ export default function NewsletterIntentForm({ initial, onSave, submitLabel, onC
   const fr = draft.language === "fr"; const dirty = JSON.stringify(draft) !== baseline; const busy = saving || disabled;
   const followed = useMemo(() => new Set(draft.stations.map(row => String(row.station_id))), [draft.stations]);
   function add(stations: StationSummary[]) {
-    const additions = stations.filter(station => !followed.has(String(station.id))).map(station => ({ station_id: station.id, station_name: station.name, station_slug: station.slug, topics: [], newsletter_frequency: "weekly", weather_frequency: "friday" } as StationIntent));
+    const additions = stations.filter(station => !followed.has(String(station.id))).map(station => ({ station_id: station.id, station_name: station.name, station_slug: station.slug, topics: newsletterTopics.map(topic => topic.key), newsletter_frequency: "weekly", weather_frequency: "friday" } as StationIntent));
     if (!additions.length || draft.stations.length + additions.length > 20) return;
     setError(""); setSaved(false); setDraft(old => ({ ...old, stations: [...old.stations, ...additions] })); setAdding(false);
   }
