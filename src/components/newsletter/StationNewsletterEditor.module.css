@@ -10,3 +10,6 @@
 .stationOption { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; border-radius: 8px; }
 .stationOption:hover, .stationOption:focus-within { background: var(--surface); }
 .stationOption input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--brand); }
+.summary { display: block; margin-top: 7px; color: #536b7d; font-weight: 400; font-size: .9rem; line-height: 1.6; }
+.card legend { padding: 0 6px; font-weight: 800; color: var(--brand); }
+.card select, .editor select { width: 100%; max-width: 100%; }

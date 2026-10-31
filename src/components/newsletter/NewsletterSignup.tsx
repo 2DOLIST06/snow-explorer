@@ -1,20 +1,12 @@
 import { useRouter } from "next/router";
-import { FormEvent, useState } from "react";
-import { newsletterApi, NewsletterApiError } from "@/lib/api/newsletter";
-import { newsletterLanguage, translator } from "@/lib/newsletter/i18n";
-import { NEWSLETTER_CONSENT_TEXT_VERSION, type NewsletterSource } from "@/types/newsletter";
+import { newsletterLanguage } from "@/lib/newsletter/i18n";
+import type { NewsletterSource } from "@/types/newsletter";
+import NewsletterEnrollment from "./NewsletterEnrollment";
 
 export default function NewsletterSignup({ source = "page", compact = false }: { source?: NewsletterSource; compact?: boolean }) {
-  const router = useRouter(); const language = newsletterLanguage(router); const t = translator(language);
-  const [email, setEmail] = useState(""); const [consent, setConsent] = useState(false); const [state, setState] = useState<"idle" | "loading" | "success">("idle"); const [error, setError] = useState("");
-  const submit = async (event: FormEvent) => { event.preventDefault(); setError(""); if (!consent) return setError(t("consentRequired")); setState("loading"); try { await newsletterApi.subscribe({ email, language, source, consent, consentTextVersion: NEWSLETTER_CONSENT_TEXT_VERSION }); setState("success"); } catch (e) { setState("idle"); setError(e instanceof NewsletterApiError && e.code === "network" ? t("networkError") : t("genericError")); } };
+  const router = useRouter(); const language = newsletterLanguage(router); const fr = language === "fr";
   return <section className={`newsletter-signup${compact ? " newsletter-signup--compact" : ""}`} aria-labelledby={`newsletter-title-${source}`}>
-    <div><h2 id={`newsletter-title-${source}`}>{t("signupTitle")}</h2><p>{t("signupText")}</p></div>
-    {state === "success" ? <p className="newsletter-feedback newsletter-feedback--success" role="status">{t("signupSuccess")}</p> : <form onSubmit={submit} className="newsletter-signup__form">
-      <label><span>{t("email")}</span><input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-      <label className="newsletter-check"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>{t("consent")}</span></label>
-      {error && <p className="newsletter-feedback newsletter-feedback--error" role="alert">{error}</p>}
-      <button className="btn btn--primary" disabled={state === "loading"}>{state === "loading" ? t("saving") : t("signup")}</button>
-    </form>}
+    <div><h2 id={`newsletter-title-${source}`}>{fr ? "Gardez un œil sur vos stations préférées" : "Keep up with your favourite resorts"}</h2><p>{fr ? "Inscrivez-vous aux articles et guides Snow Explorer. Vous pourrez ensuite choisir vos stations et les informations qui vous intéressent." : "Sign up for Snow Explorer articles and guides, then choose your resorts and updates."}</p></div>
+    <NewsletterEnrollment initial={{ stations: [], articles: true, consent: false, language, source }} />
   </section>;
 }

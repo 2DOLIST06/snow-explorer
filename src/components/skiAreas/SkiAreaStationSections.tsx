@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { Weather, Webcams, LocationAccess, StationV3Styles } from "@/components/stations/StationV3Page";
+import FollowStationButton from "@/components/newsletter/FollowStationButton";
 import type { SkiAreaStation } from "@/lib/api/skiAreaStations";
 import type { StationInitialData } from "@/lib/api/stationInitialData";
 
@@ -32,6 +33,7 @@ export function StationSection({ stations, section, label, domainName, initialDa
         {section === "weather" && <Weather embedded weatherTab={weatherTab} onWeatherTabChange={setWeatherTab} station={station} initialData={initialDataByStation[station.slug]} active={station.slug === selected} />}
         {section === "webcams" && <Webcams embedded station={station} initialData={initialDataByStation[station.slug]} active={station.slug === selected} />}
         {section === "access" && <LocationAccess embedded station={station} active={station.slug === selected} />}
+        {section !== "weather" && station.id != null && <div className="v3-newsletter-cta"><FollowStationButton stationId={station.id} stationName={station.name} /></div>}
       </div>)}
     </> : <p>Aucune station active disponible pour ce domaine.</p>}
     <noscript><style>{`.ski-area-station-panel[hidden]{display:block!important}.ski-area-station-switch{display:none!important}`}</style></noscript>

@@ -19,8 +19,9 @@ export default function App({ Component, pageProps }: AppProps) {
     <CookiePreferencesProvider publicPage={showHeader && !privateMemberPage}>
       <MemberAuthProvider><AdminAuthProvider>
         {showHeader && <ProHeader initialStations={stationDirectory} />}
-        {router.pathname.startsWith("/admin") ? <AdminRoute>{!["/admin/login", "/admin/login-link"].includes(router.pathname) && <AdminBar />}<Component {...pageProps} /></AdminRoute> : <Component {...pageProps} />}</AdminAuthProvider></MemberAuthProvider>
-      {showFooter && <Footer />}
+        {router.pathname.startsWith("/admin") ? <AdminRoute>{!["/admin/login", "/admin/login-link"].includes(router.pathname) && <AdminBar />}<Component {...pageProps} /></AdminRoute> : <Component {...pageProps} />}
+        {showFooter && <Footer />}
+      </AdminAuthProvider></MemberAuthProvider>
     </CookiePreferencesProvider>
   );
 }
