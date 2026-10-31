@@ -10,6 +10,7 @@ export const newsletterTopics: { key: NewsletterPreferenceKey; fr: string; en: s
   { key: "resort_updates", fr: "Actualités de la station", en: "Resort news" },
   { key: "articles", fr: "Articles sur cette station", en: "Articles about this resort" },
 ];
+export const weatherTopics: NewsletterPreferenceKey[] = ["weather", "snowfall", "snow_conditions"];
 export type StationIntent = {
   station_id: string | number;
   station_name: string;
@@ -19,7 +20,7 @@ export type StationIntent = {
 };
 export type NewsletterIntent = { stations: StationIntent[]; articles?: boolean; newsletter_frequency?: NewsletterFrequency; consent: boolean; language: NewsletterLanguage; source: string };
 export function stationIntent(id: string | number, name: string, topic: NewsletterPreferenceKey): StationIntent {
-  return { station_id: id, station_name: name, topics: [topic], newsletter_frequency: "weekly", weather_frequency: "friday" };
+  return { station_id: id, station_name: name, topics: topic === "weather" ? [...weatherTopics] : [topic], newsletter_frequency: "weekly", weather_frequency: "friday" };
 }
 export function accountNewsletterHref(id: string | number, name: string, topic: NewsletterPreferenceKey) {
   return `/mon-compte?${new URLSearchParams({ station_id: String(id), station_name: name, topic })}`;

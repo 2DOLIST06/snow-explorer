@@ -17,7 +17,7 @@ export default function FollowStationButton({ stationId, stationName, topic = "r
       if (status === "authenticated" && user) {
         const result = await memberRequest<{ already_followed: boolean }>("/newsletter/follow", { station_id: stationId, topic, language }, true);
         stageNewsletterIntent(null, user.email);
-        const topicLabel = newsletterTopics.find(item => item.key === topic)?.[fr ? "fr" : "en"] || topic;
+        const topicLabel = topic === "weather" ? (fr ? "Météo et enneigement" : "Weather and snow conditions") : newsletterTopics.find(item => item.key === topic)?.[fr ? "fr" : "en"] || topic;
         const notice = result.already_followed
           ? (fr ? `${stationName} : vous recevez déjà ces informations.` : `You already follow these updates for ${stationName}.`)
           : (fr ? `Abonnement « ${topicLabel} » ajouté pour ${stationName}.` : `${topicLabel} subscription added for ${stationName}.`);
@@ -27,5 +27,5 @@ export default function FollowStationButton({ stationId, stationName, topic = "r
     } catch (cause) { setError(cause instanceof Error ? cause.message : (fr ? "Ajout impossible. Réessayez." : "Unable to add. Please try again.")); }
     finally { setBusy(false); }
   }
-  return <div><button type="button" className="btn btn--secondary" disabled={status === "loading" || busy} onClick={() => void follow()}>{busy ? (fr ? "Ajout en cours…" : "Adding…") : label || (fr ? "Recevoir les informations de cette station par email" : "Get resort updates by email")}</button>{error && <p role="alert">{error}</p>}</div>;
+  return <div><button type="button" className="btn btn--secondary" disabled={status === "loading" || busy} onClick={() => void follow()}>{busy ? (fr ? "Ajout en cours…" : "Adding…") : label || (fr ? "Recevoir les actualités de cette station par email" : "Get resort updates by email")}</button>{error && <p role="alert">{error}</p>}</div>;
 }

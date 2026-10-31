@@ -84,7 +84,7 @@ test('the account page does not repeat the newsletter signup in the footer',()=>
 
 test('anonymous weather CTA uses the account email signup with exactly its station and weather topic preselected',async()=>{
  const f=accountFixture({query:{station_id:'FR_2',station_name:'Alpe d’Huez',topic:'weather'}});let root;await act(async()=>{root=renderer.create(React.createElement(f.Page));});
- try{const signup=root.root.findByProps({'data-signup':true});assert.equal(signup.props.value,'');assert.equal(signup.props['data-intent'].stations[0].station_id,'FR_2');assert.deepEqual(signup.props['data-intent'].stations[0].topics,['weather']);assert.equal(root.root.findAllByProps({'data-login':true}).length,0);assert.equal(f.calls.length,0);}finally{act(()=>root.unmount());}
+ try{const signup=root.root.findByProps({'data-signup':true});assert.equal(signup.props.value,'');assert.equal(signup.props['data-intent'].stations[0].station_id,'FR_2');assert.deepEqual(signup.props['data-intent'].stations[0].topics,['weather','snowfall','snow_conditions']);assert.equal(root.root.findAllByProps({'data-login':true}).length,0);assert.equal(f.calls.length,0);}finally{act(()=>root.unmount());}
 });
 
 test('the account displays the successful station-click notice instead of a generic signup notice',async()=>{

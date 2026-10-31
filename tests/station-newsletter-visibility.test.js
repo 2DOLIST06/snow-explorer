@@ -35,6 +35,6 @@ test('the actual SSR station projection preserves the canonical id so newsletter
  }).default;
  const html=renderToStaticMarkup(React.createElement(Hero,{station:result.props.resort}));
  assert.match(html,/Voir les conditions/);
- assert.match(html,/Recevoir les informations de cette station par email/);
+ assert.match(html,/Recevoir les actualités de cette station par email/);
  assert.doesNotMatch(html,/<button[^>]*disabled/);
 });

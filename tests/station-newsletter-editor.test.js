@@ -15,16 +15,15 @@ test('one dropdown lists stations immediately and keeps multiple checkboxes sele
   assert.deepEqual(added[0].map(s=>s.id),['2','3']);
  }finally{act(()=>root.unmount());}
 });
-test('batch addition uses one editor with one settings panel and one save for all choices',async()=>{
+test('batch addition displays controls for every station and saves all choices together',async()=>{
  const saves=[];const Form=load('src/components/newsletter/NewsletterIntentForm.tsx').default;let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initial:{stations:[],articles:true,consent:true,language:'fr',source:'footer'},onSave:async value=>saves.push(value)}));});try{
-  await act(async()=>button(root,'+ Ajouter une station').props.onClick());
-  assert.equal(button(root,'Enregistrer mes choix').props.disabled,true);
+  await act(async()=>button(root,'Ajouter des stations').props.onClick());
+  assert.equal(button(root,'Enregistrer mes préférences').props.disabled,true);
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(saves.length,0);
   const boxes=root.root.findAllByProps({type:'checkbox'}).slice(1);act(()=>{boxes[0].props.onChange({target:{checked:true}});});act(()=>{boxes[1].props.onChange({target:{checked:true}});});
   act(()=>button(root,'Ajouter les stations sélectionnées').props.onClick());
-  assert.equal(root.root.findAllByProps({type:'search'}).length,0);assert.equal(root.root.findAllByProps({type:'checkbox'}).length,9);
-  assert.equal(root.root.findAllByType('h4').at(-1).children.join(''),'Alpe d’Huez');
-  act(()=>button(root,'Modifier La Clusaz').props.onClick());assert.equal(root.root.findAllByProps({type:'checkbox'}).length,9);
+  assert.equal(root.root.findAllByProps({type:'search'}).length,0);assert.equal(root.root.findAllByProps({type:'checkbox'}).length,13);
+  assert.deepEqual(root.root.findAllByType('h4').map(h=>h.children.join('')),['Alpe d’Huez','La Clusaz']);
   act(()=>root.root.findByProps({'aria-label':'Fréquence des articles et guides'}).props.onChange({target:{value:'monthly'}}));
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
   assert.equal(saves.length,1);assert.equal(saves[0].stations.length,2);assert.equal(saves[0].newsletter_frequency,'monthly');
