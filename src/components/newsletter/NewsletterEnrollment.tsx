@@ -3,7 +3,7 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { memberRequest } from "@/lib/memberApi";
-import NewsletterIntentForm from "./NewsletterIntentForm";
+import styles from "./StationNewsletterEditor.module.css";
 import { accountNewsletterHref, type NewsletterIntent } from "@/lib/newsletter/onboarding";
 
 type SignupResult = { status: "active" | "already_subscribed"; draft_token?: string | null; email_sent?: boolean; intent?: NewsletterIntent };
@@ -37,17 +37,14 @@ export default function NewsletterEnrollment({ initial, forceOtherEmail = false,
     event.preventDefault();
     try { await enroll(intent); } catch (cause) { setError(cause instanceof Error ? cause.message : "Inscription impossible."); }
   }
-  const emailField = activeUser ? <div><p>{activeUser.email}</p><button type="button" className="newsletter-change-email" disabled={busy} onClick={changeEmail}>{fr ? "Utiliser une autre adresse email" : "Use another email address"}</button></div> : <label className="newsletter-field"><span>{fr ? "Adresse email" : "Email address"}</span><input ref={inputRef} required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} disabled={busy} /></label>;
-  if (fullPreferences) return <>
-    <NewsletterIntentForm initial={intent} beforeFields={emailField} beforeSubmit={<p className="newsletter-consent-note">{fr ? "En vous inscrivant, vous demandez à recevoir les emails Snow Explorer sélectionnés ci-dessus. Vous pourrez modifier vos choix ou vous désinscrire à tout moment." : "By subscribing, you request the selected Snow Explorer emails. You can change your preferences or unsubscribe at any time."} <Link href="/confidentialite">{fr ? "Confidentialité" : "Privacy"}</Link></p>} submitLabel={fr ? "M’inscrire avec ces préférences" : "Subscribe with these preferences"} onSave={enroll} />
-    {!activeUser && <p><Link href={loginHref}>{fr ? "Déjà un compte ? Se connecter" : "Already have an account? Sign in"}</Link></p>}
-  </>;
+  const emailField = activeUser ? <div><p>{activeUser.email}</p><button type="button" className="newsletter-change-email" disabled={busy} onClick={changeEmail}>{fr ? "Utiliser une autre adresse email" : "Use another email address"}</button></div> : <label className="newsletter-field"><span>{fr ? "Adresse email" : "Email address"}{fullPreferences && <span className={styles.required} aria-hidden="true"> *</span>}</span><input ref={inputRef} required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} disabled={busy} /></label>;
   return <form onSubmit={submit} className="newsletter-stack">
+    {fullPreferences && <p className={styles.emailPrompt}>{fr ? "Renseignez votre adresse email pour recevoir les informations demandées. Vous pourrez ensuite personnaliser vos abonnements." : "Enter your email to receive the requested updates. You can then customize your subscriptions."}</p>}
     {emailField}
-    {station && <p><strong>{station.station_name}</strong> · {station.topics.includes("weather") ? (fr ? "Météo chaque vendredi, fréquence modifiable ensuite." : "Weather every Friday. You can change this later.") : (fr ? "Les informations sélectionnées pour cette station." : "Selected updates for this resort.")}</p>}
-    <p className="newsletter-consent-note">{fr ? (station ? "En cliquant ci-dessous, vous demandez à recevoir par email les informations sélectionnées pour cette station. Désinscription à tout moment." : "En cliquant ci-dessous, vous vous abonnez aux articles et guides Snow Explorer par email. Désinscription à tout moment.") : "By clicking below, you subscribe to the selected Snow Explorer emails. You can unsubscribe at any time."} <Link href="/confidentialite">{fr ? "Confidentialité" : "Privacy"}</Link></p>
+    {!fullPreferences && station && <p><strong>{station.station_name}</strong> · {station.topics.includes("weather") ? (fr ? "Météo chaque vendredi, fréquence modifiable ensuite." : "Weather every Friday. You can change this later.") : (fr ? "Les informations sélectionnées pour cette station." : "Selected updates for this resort.")}</p>}
+    <p className="newsletter-consent-note">{fr ? (fullPreferences ? "En cliquant sur « Valider », vous vous inscrivez aux emails Snow Explorer demandés. Vous pourrez personnaliser vos choix ou vous désinscrire à tout moment." : station ? "En cliquant ci-dessous, vous demandez à recevoir par email les informations sélectionnées pour cette station. Désinscription à tout moment." : "En cliquant ci-dessous, vous vous abonnez aux articles et guides Snow Explorer par email. Désinscription à tout moment.") : "By clicking below, you subscribe to the selected Snow Explorer emails. You can unsubscribe at any time."} <Link href="/confidentialite">{fr ? "Confidentialité" : "Privacy"}</Link></p>
     {error && <p role="alert">{error}</p>}
-    <button className="btn btn--primary" disabled={busy}>{busy ? (fr ? "Enregistrement…" : "Saving…") : activeUser ? (fr ? "M’abonner et gérer mes préférences" : "Subscribe and manage preferences") : station ? (fr ? "M’abonner à ces informations par email" : "Subscribe to these email updates") : (fr ? "M’inscrire à la newsletter" : "Subscribe to the newsletter")}</button>
+    <button className={`btn btn--primary${fullPreferences ? ` ${styles.signupButton}` : ""}`} disabled={busy}>{busy ? (fr ? "Enregistrement…" : "Saving…") : fullPreferences ? (fr ? "Valider" : "Confirm") : activeUser ? (fr ? "M’abonner et gérer mes préférences" : "Subscribe and manage preferences") : station ? (fr ? "M’abonner à ces informations par email" : "Subscribe to these email updates") : (fr ? "M’inscrire à la newsletter" : "Subscribe to the newsletter")}</button>
     {!activeUser && <p><Link href={loginHref}>{fr ? "Déjà un compte ? Se connecter" : "Already have an account? Sign in"}</Link></p>}
   </form>;
 }

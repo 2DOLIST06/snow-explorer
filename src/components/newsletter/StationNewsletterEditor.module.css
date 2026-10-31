@@ -6,7 +6,7 @@
 .generalSection>div{grid-column:1/-1}.generalSection p,.listHeading p{margin:6px 0 0}
 .hint{color:#536b7d;font-size:.9rem;line-height:1.55}
 .listHeading,.pickerHeading{display:flex;justify-content:space-between;align-items:center;gap:16px}
-.listHeading{padding:18px 20px;border-radius:9px;background:#163c59}.listHeading h3{color:#fff;font-size:1.2rem}.listHeading .hint{color:#dbe9f2}.listHeading button{flex:0 0 auto;background:#fff;color:#12314b;border-color:#fff}
+.listHeading{padding:18px 20px;border-radius:9px;background:#163c59}.editor .listHeading h3{color:#fff;font-size:1.2rem}.listHeading .hint{color:#dbe9f2}.listHeading button{flex:0 0 auto;background:#fff;color:#12314b;border-color:#fff}
 .stations{display:grid;gap:30px}.station{padding-bottom:28px;border-bottom:1px solid #dce5ec;min-width:0}
 .station header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px;padding:12px 16px;border-left:3px solid #7890a5;background:#f3f5f7;border-radius:0 6px 6px 0}
 .fields{display:grid;gap:18px}.weatherRow,.otherRow{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:20px;align-items:center}
@@ -33,3 +33,7 @@
 
 
 .stationTitle{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}.stationLink{font-size:.85rem;font-weight:500;color:#0b6c9e;text-decoration:underline;text-underline-offset:3px}.stationLink:focus-visible{outline:3px solid #38bdf8;outline-offset:3px}
+
+.addStations{display:grid;justify-items:start;gap:14px}.addStations>.picker{width:100%;box-sizing:border-box;padding:20px;background:#f5f8fb;border-radius:10px}.required{color:#a32424}.emailPrompt{margin:0;color:#a32424;font-size:.94rem;line-height:1.55}
+
+.signupButton{justify-self:start;min-width:110px}
