@@ -100,6 +100,7 @@ export function Weather({ station, initialData, active = true, embedded = false,
     {!embedded && <SectionHeading id={headingId} eyebrow="Conditions" title={`Météo et enneigement ${stationNameAt(station.name)}`} intro="Prévisions et informations neige disponibles pour la station." />}
     {editorial(getStationEditorialContent(station, "meteo-neige"))}
     {text(data.summary) ? <p className="v3-highlight">{data.summary}</p> : <p className="v3-highlight">Consultez les prévisions météo et les informations d’enneigement disponibles pour {station.name}.</p>}
+    {station.id != null && <div className="weather-email-subscription"><div><strong>La météo de {station.name} par email</strong><p>Choisissez la fréquence dans vos préférences.</p></div><FollowStationButton stationId={station.id} stationName={station.name} topic="weather" label="Recevoir la météo de cette station" /></div>}
     <StationWeatherTabs selectedTab={weatherTab} onTabChange={onWeatherTabChange} active={active} initialAvalanche={initialData?.avalanche} initialObservations={initialData?.observations} initialForecasts={initialData?.forecasts} stationId={station.id} slug={station.slug} name={station.name} latitude={lat} longitude={lon} headingLevel="h3" />
   </section>;
 }

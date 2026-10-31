@@ -41,7 +41,7 @@ function WeatherTabsContent(props: Props) {
       {index === 0 && <ObservedConditions resource={observations} headingLevel={props.headingLevel} />}
       {index === 1 && <ForecastConditions resource={forecasts} headingLevel={props.headingLevel} />}
       {index === 2 && <StationAvalancheRisk slug={props.slug} active={props.active} initialData={props.initialAvalanche} />}
-      {props.stationId != null && <div className="v3-newsletter-cta"><FollowStationButton stationId={props.stationId} stationName={props.name || props.slug} topic={index === 0 ? "snow_conditions" : index === 1 ? "weather" : "resort_updates"} label={index === 0 ? "Recevoir les informations d’enneigement" : index === 1 ? "Recevoir la météo de cette station" : "Recevoir les nouvelles de cette station"} />{index === 1 && <FollowStationButton stationId={props.stationId} stationName={props.name || props.slug} topic="snowfall" label="Recevoir les prévisions de neige" />}</div>}
+      {props.stationId != null && <div className="v3-newsletter-cta"><FollowStationButton stationId={props.stationId} stationName={props.name || props.slug} topic={index === 0 ? "snow_conditions" : index === 1 ? "snowfall" : "resort_updates"} label={index === 0 ? "Recevoir les informations d’enneigement" : index === 1 ? "Recevoir les prévisions de neige" : "Recevoir les nouvelles de cette station"} /></div>}
     </div>)}
   </div>;
 }

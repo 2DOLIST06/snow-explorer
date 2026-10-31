@@ -34,3 +34,25 @@ export function loginDestination(query: Record<string, string | string[] | undef
   const station = intent?.stations[0];
   return station ? accountNewsletterHref(station.station_id, station.station_name, station.topics[0]) : "/mon-compte";
 }
+
+export function intentPreferences(row: StationIntent): import("@/types/newsletter").StationTopics {
+  return {
+    snowfall_enabled: row.topics.includes("snowfall"), snow_conditions_enabled: row.topics.includes("snow_conditions"),
+    weather_enabled: row.topics.includes("weather"), resort_updates_enabled: row.topics.includes("resort_updates"),
+    articles_enabled: row.topics.includes("articles"), opening_closing_enabled: row.topics.includes("opening_closing"),
+    lift_updates_enabled: row.topics.includes("lift_updates"), ski_pass_updates_enabled: row.topics.includes("ski_pass_updates"),
+    newsletter_frequency: row.newsletter_frequency, weather_frequency: row.weather_frequency,
+  };
+}
+export function settingsIntent(value: import("@/types/newsletter").StationSettings): StationIntent {
+  return { station_id: value.station.id, station_name: value.station.name,
+    topics: newsletterTopics.filter(topic => value.preferences[`${topic.key}_enabled`]).map(topic => topic.key),
+    newsletter_frequency: value.preferences.newsletter_frequency, weather_frequency: value.preferences.weather_frequency };
+}
+export function subscriptionSummary(row: StationIntent, fr: boolean): string {
+  if (!row.topics.length) return fr ? "Aucune information sélectionnée" : "No updates selected";
+  const weather = { daily: fr ? "chaque jour" : "daily", friday: fr ? "chaque vendredi" : "every Friday", weekly: fr ? "chaque semaine" : "weekly", disabled: fr ? "en pause" : "paused" };
+  const other = { immediate: fr ? "à chaque mise à jour" : "on updates", weekly: fr ? "chaque semaine" : "weekly", monthly: fr ? "chaque mois" : "monthly" };
+  const labels = row.topics.map(key => key === "weather" ? `${fr ? "Météo" : "Weather"} : ${weather[row.weather_frequency]}` : (newsletterTopics.find(topic => topic.key === key)?.[fr ? "fr" : "en"] || key));
+  return labels.join(" · ") + (row.topics.some(key => key !== "weather") ? ` — ${other[row.newsletter_frequency]}` : "");
+}
