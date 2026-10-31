@@ -25,7 +25,7 @@ Les tests de composants couvrent la redirection après inscription, le message v
 
 Les boutons utilisent tous `FollowStationButton`. Un visiteur non connecté est envoyé directement vers `/mon-compte` avec le choix station/thème dans la query : la page affiche le formulaire email habituel, prérempli avec cette sélection. Aucune fenêtre modale ni formulaire de préférences parallèle. Après inscription, le même compte affiche le même éditeur. Si l’adresse existe déjà, le choix est conservé dans la navigation et dans la demande de connexion par email ; il est proposé avec les abonnements existants une fois connecté.
 
-Pour un membre connecté, le bouton appelle `/newsletter/follow` avec CSRF puis affiche la confirmation sur la fiche, sans navigation. La confirmation d’ajout n’est préparée qu’après la réussite de la requête. La fiche affiche le message d’ajout pour la station et le thème demandés ; un clic répété affiche que ces informations sont déjà suivies. Les erreurs restent visibles sur la fiche et ne déclenchent pas de fausse confirmation. Les boutons météo précisent « par email ».
+Pour un membre connecté, le bouton appelle `/newsletter/follow` avec CSRF puis affiche une notification temporaire sur la fiche, sans navigation. La confirmation d’ajout n’est préparée qu’après la réussite de la requête. La fiche affiche le message d’ajout pour la station et le thème demandés ; un clic répété affiche que ces informations sont déjà suivies. Les erreurs restent visibles sur la fiche et ne déclenchent pas de fausse confirmation. Les boutons météo précisent « par email ».
 
 Déployer l’API contenant `/newsletter/follow` avant le frontend. Aucun changement de schéma. Les fréquences déjà enregistrées restent conservées ; la météo en pause revient au vendredi après un clic explicite. Les autres modifications se font dans le même éditeur de compte.
 
@@ -44,3 +44,8 @@ Le désabonnement est un bouton explicite, suivi d’une confirmation visible. P
 Le titre principal et son explication sont séparés du formulaire par un trait. Les articles et guides généraux sont nommés explicitement. Un bandeau contrasté identifie « Mes stations » et chaque nom de station dispose d’un en-tête distinct. La disposition des choix reste inchangée.
 
 Les membres connectés restent sur la fiche après un clic d’abonnement : la confirmation apparaît à côté du bouton, après réussite de la sauvegarde. Les visiteurs restent dirigés vers le compte avec le choix préparé. Les noms de station du compte proposent « Voir la station », basé sur le slug canonique renvoyé par l’API ; les stations inactives n’affichent pas de lien public.
+
+
+## Notifications et menu de compte
+
+La confirmation d’abonnement est affichée dans une notification attachée au document, hors du bandeau photo, et disparaît après six secondes. Elle peut être fermée manuellement et plusieurs notifications se rangent sans se superposer. Le bouton conserve son état enregistré après fermeture. Les erreurs restent visibles jusqu’à leur fermeture pour permettre de réessayer. Le menu Compte utilise un conteneur positionné autour du bouton seul et s’ouvre juste en dessous, aligné sur son bord droit.

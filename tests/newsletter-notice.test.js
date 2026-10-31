@@ -1,0 +1,16 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),React=require('react');
+const {JSDOM}=require('jsdom'),{createRoot}=require('react-dom/client'),{act}=require('react-dom/test-utils');
+function load(){const source=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/components/newsletter/NewsletterNotice.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;const mod={exports:{}};new Function('require','module','exports','React',source)(name=>name.endsWith('.css')?new Proxy({},{get:(_,key)=>key==='__esModule'?false:key}):require(name),mod,mod.exports,React);return mod.exports.default;}
+
+async function fixture(){const previous={window:global.window,document:global.document,act:global.IS_REACT_ACT_ENVIRONMENT};const dom=new JSDOM('<body><div id="hero"><div id="app"></div></div></body>');global.window=dom.window;global.document=dom.window.document;global.IS_REACT_ACT_ENVIRONMENT=true;const timers=new Map();let serial=0;window.setTimeout=(callback,delay)=>{const id=++serial;timers.set(id,{callback,delay});return id;};window.clearTimeout=id=>timers.delete(id);const root=createRoot(document.getElementById('app'));return {root,timers,async close(){await act(async()=>root.unmount());dom.window.close();global.window=previous.window;global.document=previous.document;global.IS_REACT_ACT_ENVIRONMENT=previous.act;}};}
+
+test('success confirmation is outside the hero and dismisses after six seconds without leaving a block',async()=>{
+ const f=await fixture(),Notice=load();const close=()=>setVisible(false);let setVisible;
+ function Harness(){const [visible,set]=React.useState(true);setVisible=set;return visible?React.createElement(Notice,{message:'Abonnement ajouté pour Avoriaz 1800.',onClose:close}):null;}
+ try{await act(async()=>f.root.render(React.createElement(Harness)));const notice=document.querySelector('[role="status"]');assert.match(notice.textContent,/Avoriaz 1800/);assert.equal(document.getElementById('hero').contains(notice),false);const timer=[...f.timers.values()].find(t=>t.delay===6000);assert.ok(timer);await act(async()=>timer.callback());assert.equal(document.querySelector('[role="status"]'),null);assert.equal(document.getElementById('hero').textContent,'');}finally{await f.close();}
+});
+
+test('notifications share a stacking region and can be closed manually; errors stay visible',async()=>{
+ const f=await fixture(),Notice=load();let calls=0;
+ try{await act(async()=>f.root.render(React.createElement(React.Fragment,null,React.createElement(Notice,{message:'Premier ajout',onClose:()=>calls++}),React.createElement(Notice,{message:'Enregistrement impossible',error:true,onClose:()=>calls++}))));assert.equal(document.querySelectorAll('#newsletter-notices').length,1);assert.equal(document.querySelectorAll('#newsletter-notices>div').length,2);assert.equal([...f.timers.values()].filter(t=>t.delay===6000).length,1);await act(async()=>document.querySelector('button[aria-label="Fermer la notification"]').click());assert.equal(calls,1);assert.match(document.querySelector('[role="alert"]').textContent,/impossible/);}finally{await f.close();}
+});

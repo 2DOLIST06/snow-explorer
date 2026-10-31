@@ -31,6 +31,5 @@
 .textButton:focus-visible,.removeButton:focus-visible,.topic input:focus-visible{outline:3px solid #38bdf8;outline-offset:3px}
 @media(max-width:680px){.generalSection,.weatherRow,.otherRow{grid-template-columns:1fr}.listHeading{align-items:flex-start;flex-direction:column}.topicGrid{grid-template-columns:1fr}.otherRow{padding:0}.weatherRow{padding:16px}.saveBar{align-items:stretch;flex-direction:column}.actions,.actions button{width:100%}.station header{align-items:flex-start}.frequency{max-width:100%}}
 
-.followSuccess{margin:10px 0 0;padding:10px 14px;border-radius:7px;background:#ecf8f0;color:#166534;font-size:.9rem;line-height:1.5}
 
 .stationTitle{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}.stationLink{font-size:.85rem;font-weight:500;color:#0b6c9e;text-decoration:underline;text-underline-offset:3px}.stationLink:focus-visible{outline:3px solid #38bdf8;outline-offset:3px}

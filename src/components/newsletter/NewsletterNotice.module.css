@@ -1,0 +1,8 @@
+.region{position:fixed;right:24px;bottom:24px;z-index:1000;display:grid;gap:10px;width:min(420px,calc(100vw - 32px));pointer-events:none}
+.notice{display:flex;align-items:flex-start;gap:12px;padding:16px;background:#fff;border:1px solid #a5cfb5;border-left:4px solid #21804b;border-radius:10px;box-shadow:0 8px 32px rgba(8,31,54,.18);pointer-events:auto;color:#14532d}
+.notice p{margin:0;font-size:.94rem;line-height:1.5;color:#14532d;flex:1;overflow-wrap:anywhere}
+.icon{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:50%;background:#e6f5ec;color:#166534;font-weight:800}
+.notice button{display:grid;place-items:center;flex:0 0 28px;min-width:28px;height:28px;padding:0;border:0;background:transparent;color:#3f5c4b;font-size:1.5rem;line-height:1;cursor:pointer}
+.notice button:focus-visible{outline:3px solid #0b6c9e;outline-offset:2px}
+.notice[data-error]{border-color:#e5b0b0;border-left-color:#a73232}.notice[data-error] p{color:#842727}.notice[data-error] .icon{background:#fcecec;color:#842727}
+@media(max-width:600px){.region{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}}
