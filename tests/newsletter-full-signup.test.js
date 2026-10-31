@@ -31,6 +31,8 @@ test('email validation subscribes first then reveals the same account editor wit
   const search=root.root.findAllByProps({type:'checkbox'}).find(i=>i.props.checked===false&&i.parent.findAllByType('span').some(span=>span.children.join('')==='La Clusaz'));
   act(()=>search.props.onChange({target:{checked:true}}));act(()=>button(root,'Ajouter les stations sélectionnées').props.onClick());
   assert.equal(root.root.findAllByType('h4').length,2);
+  assert.ok(root.root.findByProps({'aria-label':'La Clusaz'}).findAllByProps({type:'checkbox'}).every(box=>box.props.checked));
+  assert.equal(first.findAllByProps({type:'checkbox'}).filter(box=>box.props.checked).length,2);
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
   const save=calls.find(c=>c[0]==='/newsletter/settings'&&c[1]);assert.ok(save);assert.equal(save[2],true);assert.equal(save[1].intent.stations.length,2);assert.ok(save[1].intent.stations[0].topics.includes('weather'));assert.equal(calls.filter(c=>c[0]==='/newsletter/start').length,1);
  }finally{act(()=>root.unmount());}
