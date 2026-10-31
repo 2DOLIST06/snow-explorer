@@ -16,6 +16,7 @@ function load(file) {
     compilerOptions: { target: ts.ScriptTarget.ES2017, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const resolver = name => {
+    if (name === '@/components/newsletter/FollowStationButton') return {__esModule:true,default:props=>React.createElement('button',null,props.label || 'Suivre cette station')};
     if (name.endsWith('.css')) return { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) };
     if (name === 'next/head') return { __esModule: true, default: ({ children }) => React.createElement(React.Fragment, null, children) };
     if (name === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };

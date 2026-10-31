@@ -46,15 +46,15 @@ test("station search uses only the final active-station endpoint", () => {
   assert.doesNotMatch(api, /limit=6/);
 });
 
-test("subscriptions use v1 consent and unwrap the data envelope without assuming a token", () => {
-  const api = read("src/lib/api/newsletter.ts");
+test("signup and station buttons use the account enrollment flow without exposing preferences tokens", () => {
   const signup = read("src/components/newsletter/NewsletterSignup.tsx");
   const follow = read("src/components/newsletter/FollowStationButton.tsx");
-  assert.match(api, /ApiDataResponse<NewsletterSubscribeResult>/);
-  assert.match(signup, /email, language, source, consent, consentTextVersion/);
-  assert.match(follow, /source: "station_page".*station_id: stationId/);
-  assert.doesNotMatch(follow, /preferences_token|preferences_url|data\.token/);
-  assert.match(follow, /setSuccess\(true\)/);
+  const enrollment = read("src/components/newsletter/NewsletterEnrollment.tsx");
+  assert.match(signup, /NewsletterEnrollment/);
+  assert.match(follow, /accountNewsletterHref/);
+  assert.match(enrollment, /newsletter\/start/);
+  assert.match(enrollment, /newsletter\/draft/);
+  assert.doesNotMatch(follow + enrollment, /preferences_token|preferences_url/);
 });
 
 test("preference response envelope and unsubscribe confirmation match the final contract", () => {

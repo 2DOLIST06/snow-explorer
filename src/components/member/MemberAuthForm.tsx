@@ -4,17 +4,25 @@ import { FormEvent, useState } from "react";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { memberRequest } from "@/lib/memberApi";
 import styles from "../layout/AccountMenu.module.css";
+import { intentFromQuery, loginDestination } from "@/lib/newsletter/onboarding";
 
 export default function MemberAuthForm({ mode = "login", onComplete }: { mode?: "login" | "register"; onComplete?: () => void }) {
   const { login } = useMemberAuth(); const router = useRouter();
   const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [emailLink, setEmailLink] = useState(false); const [busy, setBusy] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const preparedIntent = intentFromQuery(router.query);
   const [error, setError] = useState(""); const [sent, setSent] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setSent(false);
     try {
-      if (mode === "register" || emailLink) { await memberRequest(mode === "register" ? "/register" : "/login-link", { email: email.trim().toLowerCase() }); setSent(true); }
-      else { await login(email.trim().toLowerCase(), password); setPassword(""); onComplete?.(); await router.push("/mon-compte"); }
+      if (mode === "register" || emailLink) {
+        const intent = intentFromQuery(router.query);
+        if (intent) { if (!consent) throw new Error("Confirmez votre choix de recevoir ces informations par email."); await memberRequest("/newsletter/start", { email: email.trim().toLowerCase(), intent: { ...intent, consent: true } }); }
+        else await memberRequest(mode === "register" ? "/register" : "/login-link", { email: email.trim().toLowerCase() });
+        setSent(true);
+      }
+      else { await login(email.trim().toLowerCase(), password); setPassword(""); onComplete?.(); await router.push(loginDestination(router.query)); }
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Connexion impossible."); }
     finally { setBusy(false); }
   }
@@ -22,6 +30,7 @@ export default function MemberAuthForm({ mode = "login", onComplete }: { mode?: 
     {mode === "register" && <p>Indiquez votre adresse e-mail. Vous recevrez un lien pour confirmer votre inscription et accéder à votre compte. Vous pourrez ensuite définir un mot de passe.</p>}
     <label>Adresse e-mail<input type="email" autoComplete="email" required value={email} onChange={e => { setEmail(e.target.value); setSent(false); setError(""); }} disabled={busy} /></label>
     {mode === "login" && !emailLink && <label>Mot de passe<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>}
+    {preparedIntent && (mode === "register" || emailLink) && <label className="newsletter-check"><input type="checkbox" required checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy} /><span>Je souhaite recevoir par email les informations sélectionnées pour cette station. Je pourrai me désabonner à tout moment.</span></label>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {sent && <p role="status">{mode === "register" ? "Un lien de confirmation a été envoyé à votre adresse e-mail. Cliquez dessus pour activer votre compte." : "Un lien de connexion a été envoyé à votre adresse e-mail."} Vérifiez aussi vos courriers indésirables.</p>}
     <button type="submit" className="btn btn--primary" disabled={busy}>{busy ? "Veuillez patienter…" : mode === "register" ? "Créer mon compte" : emailLink ? "Recevoir mon lien" : "Se connecter"}</button>

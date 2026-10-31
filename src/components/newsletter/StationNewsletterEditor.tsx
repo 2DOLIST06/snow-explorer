@@ -1,14 +1,17 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import StationSearch from "./StationSearch";
 import { translator } from "@/lib/newsletter/i18n";
-import type { NewsletterFrequency, StationSummary, StationTopics, StationSettings, StationSettingsApi } from "@/types/newsletter";
+import type { NewsletterFrequency, WeatherFrequency, StationSummary, StationTopics, StationSettings, StationSettingsApi } from "@/types/newsletter";
 import styles from "./StationNewsletterEditor.module.css";
 
 export type { StationTopics, StationSettings, StationSettingsApi } from "@/types/newsletter";
 const topics = [
   ["snowfall_enabled", "Chutes de neige", "Snowfall"], ["snow_conditions_enabled", "État de la neige", "Snow conditions"],
   ["weather_enabled", "Météo", "Weather"], ["resort_updates_enabled", "Actualités de la station", "Resort news"],
-  ["articles_enabled", "Nouveaux articles", "New articles"],
+  ["articles_enabled", "Articles sur cette station", "Articles about this resort"],
+  ["opening_closing_enabled", "Ouvertures et fermetures", "Opening and closing dates"],
+  ["lift_updates_enabled", "Pistes et remontées", "Slopes and lifts"],
+  ["ski_pass_updates_enabled", "Forfaits de ski", "Ski passes"],
 ] as const;
 
 export default function StationNewsletterEditor({ api, locale = "fr" }: { api: StationSettingsApi; locale?: "fr" | "en" }) {
@@ -60,12 +63,13 @@ function StationCard({ value, fr, busy, newlyAdded, onSave, onRemove }: { value:
   const [open, setOpen] = useState(newlyAdded); const [draft, setDraft] = useState(value.preferences);
   useEffect(() => setDraft(value.preferences), [value]);
   useEffect(() => { if (newlyAdded) setOpen(true); }, [newlyAdded]);
-  return <details className={styles.card} open={open} onToggle={event => setOpen(event.currentTarget.open)}><summary>{value.station.name}</summary>
+  return <details className={styles.card} open={open} onToggle={event => setOpen(event.currentTarget.open)}><summary>{value.station.name}<span className={styles.summary}>{topics.filter(([key]) => value.preferences[key]).map(([, label, english]) => fr ? label : english).join(" · ") || (fr ? "Aucune information activée" : "No updates enabled")}</span></summary>
     {value.station.is_active === false && <p>{fr ? "Cette station n’est actuellement plus proposée dans le catalogue." : "This resort is currently unavailable in the catalogue."}</p>}
-    <form onSubmit={event => { event.preventDefault(); void onSave(draft); }}><div className="preference-grid">{topics.map(([key, label, english]) => <label className="preference-toggle" key={key}><span>{fr ? label : english}</span><input type="checkbox" checked={Boolean(draft[key])} onChange={event => { const checked = event.target.checked; setDraft(old => ({ ...old, [key]: checked })); }} disabled={busy} /></label>)}</div>
-      <label className="newsletter-field">{fr ? "Fréquence pour cette station" : "Frequency for this resort"}<select value={draft.newsletter_frequency} onChange={event => setDraft(old => ({ ...old, newsletter_frequency: event.target.value as NewsletterFrequency }))} disabled={busy}>
+    <form onSubmit={event => { event.preventDefault(); void onSave(draft); }}><div className="preference-grid">{topics.map(([key, label, english]) => <label className="preference-toggle" key={key}><span>{fr ? label : english}</span><input type="checkbox" checked={Boolean(draft[key])} onChange={event => { const checked = event.target.checked; setDraft(old => ({ ...old, [key]: checked, ...(key === "weather_enabled" && checked && old.weather_frequency === "disabled" ? { weather_frequency: "friday" as WeatherFrequency } : {}) })); }} disabled={busy} /></label>)}</div>
+      {draft.weather_enabled && <label className="newsletter-field">{fr ? "Fréquence météo" : "Weather frequency"}<select value={draft.weather_frequency} disabled={busy} onChange={event => setDraft(old => ({ ...old, weather_frequency: event.target.value as WeatherFrequency }))}><option value="daily">{fr ? "Chaque jour" : "Daily"}</option><option value="friday">{fr ? "Chaque vendredi" : "Every Friday"}</option><option value="weekly">{fr ? "Chaque semaine" : "Weekly"}</option><option value="disabled">{fr ? "En pause" : "Paused"}</option></select></label>}
+      <label className="newsletter-field">{fr ? "Fréquence des autres informations" : "Other updates frequency"}<select value={draft.newsletter_frequency} onChange={event => setDraft(old => ({ ...old, newsletter_frequency: event.target.value as NewsletterFrequency }))} disabled={busy}>
         <option value="immediate">{fr ? "Dès qu’une information est disponible" : "As soon as an update is available"}</option><option value="weekly">{fr ? "Chaque semaine" : "Weekly"}</option><option value="monthly">{fr ? "Chaque mois" : "Monthly"}</option>
-      </select></label><div className={styles.actions}><button className="btn btn--primary" disabled={busy}>{fr ? "Enregistrer pour cette station" : "Save for this resort"}</button><button type="button" className="btn btn--secondary" disabled={busy} onClick={() => void onRemove()}>{fr ? "Retirer cette station" : "Remove this resort"}</button></div>
+      </select></label><div className={styles.actions}><button className="btn btn--primary" disabled={busy}>{fr ? "Enregistrer pour cette station" : "Save for this resort"}</button><button type="button" className="btn btn--secondary" disabled={busy} onClick={() => { const paused = { ...draft, ...Object.fromEntries(topics.map(([key]) => [key, false])), weather_frequency: "disabled" as WeatherFrequency }; setDraft(paused); void onSave(paused); }}>{fr ? "Tout mettre en pause" : "Pause all updates"}</button><button type="button" className="btn btn--secondary" disabled={busy} onClick={() => void onRemove()}>{fr ? "Retirer cette station" : "Remove this resort"}</button></div>
     </form>
   </details>;
 }

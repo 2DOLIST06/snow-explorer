@@ -19,6 +19,7 @@ const blocks = Object.fromEntries(['Weather', 'Webcams', 'LocationAccess'].map(n
 ]));
 const Sections = load('src/components/skiAreas/SkiAreaStationSections.tsx', {
   'next/link': { __esModule: true, default: props => React.createElement('a', props) },
+  '@/components/newsletter/FollowStationButton': {__esModule:true,default:props=>React.createElement('button',null,'Suivre '+props.stationName)},
   '@/components/stations/StationV3Page': { ...blocks, StationV3Styles: () => null },
 }).default;
 
