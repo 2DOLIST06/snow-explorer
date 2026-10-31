@@ -41,7 +41,7 @@ test('already subscribed email is acknowledged without restarting preferences or
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
   assert.match(root.root.findByProps({role:'status'}).children.join(''),/déjà inscrite/);
   assert.deepEqual(calls.map(c=>c[0]),['/newsletter/start']);
-  await act(async()=>button(root,'Recevoir un lien pour gérer mes abonnements').props.onClick());
+  await act(async()=>button(root,'Recevoir un lien pour accéder à mon compte').props.onClick());
   assert.deepEqual(calls.map(c=>c[0]),['/newsletter/start','/newsletter/login-link']);
  }finally{act(()=>root.unmount());}
 });
