@@ -15,6 +15,8 @@ export function memberError(code: string) {
     email_delivery_failed: "Impossible d’envoyer le mail. Veuillez réessayer.",
     login_link_cooldown: "Veuillez patienter une minute avant de demander un nouveau lien.",
     too_many_login_attempts: "Trop de tentatives. Veuillez réessayer plus tard.",
+    invalid_preferences_token: "Ce lien d’abonnement est invalide. Connectez-vous avec votre adresse email.",
+    resend_email_required: "Indiquez votre adresse email pour recevoir un nouveau lien de connexion.",
     invalid_or_expired_link: "Ce lien est invalide ou expiré. Demandez un nouveau lien.",
     member_authentication_required: "Votre session a expiré. Veuillez vous reconnecter.",
     password_too_short: "Le mot de passe doit contenir au moins 12 caractères.",
