@@ -12,6 +12,7 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   new Function('require', 'module', 'exports', 'React', compiled)(name => {
     if (name in mocks) return mocks[name];
+    if (name === "./NewsletterIntentForm") return ()=>null;
     if (name === "./NewsletterNotice") return ({message,error,onClose})=>React.createElement("p",{role:error?"alert":"status","data-dismiss":onClose},message);
     if (name.endsWith(".module.css")) return {};
     if (name === '@/lib/newsletter/onboarding') return load('src/lib/newsletter/onboarding.ts');
