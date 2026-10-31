@@ -17,7 +17,7 @@ export type StationIntent = {
   newsletter_frequency: NewsletterFrequency;
   weather_frequency: WeatherFrequency;
 };
-export type NewsletterIntent = { stations: StationIntent[]; articles?: boolean; consent: boolean; language: NewsletterLanguage; source: string };
+export type NewsletterIntent = { stations: StationIntent[]; articles?: boolean; newsletter_frequency?: NewsletterFrequency; consent: boolean; language: NewsletterLanguage; source: string };
 export function stationIntent(id: string | number, name: string, topic: NewsletterPreferenceKey): StationIntent {
   return { station_id: id, station_name: name, topics: [topic], newsletter_frequency: "weekly", weather_frequency: "friday" };
 }
@@ -55,4 +55,20 @@ export function subscriptionSummary(row: StationIntent, fr: boolean): string {
   const other = { immediate: fr ? "à chaque mise à jour" : "on updates", weekly: fr ? "chaque semaine" : "weekly", monthly: fr ? "chaque mois" : "monthly" };
   const labels = row.topics.map(key => key === "weather" ? `${fr ? "Météo" : "Weather"} : ${weather[row.weather_frequency]}` : (newsletterTopics.find(topic => topic.key === key)?.[fr ? "fr" : "en"] || key));
   return labels.join(" · ") + (row.topics.some(key => key !== "weather") ? ` — ${other[row.newsletter_frequency]}` : "");
+}
+
+
+export function mergeNewsletterChoice(current: NewsletterIntent, proposed: NewsletterIntent | null): NewsletterIntent {
+  if (!proposed) return current;
+  const stations = current.stations.map(row => ({ ...row, topics: [...row.topics] }));
+  for (const row of proposed.stations) {
+    const index = stations.findIndex(existing => String(existing.station_id) === String(row.station_id));
+    if (index < 0) stations.push(row);
+    else {
+      const old = stations[index];
+      stations[index] = { ...old, topics: [...new Set([...old.topics, ...row.topics])],
+        weather_frequency: row.topics.includes("weather") && !old.topics.includes("weather") ? row.weather_frequency : old.weather_frequency };
+    }
+  }
+  return { ...current, ...("articles" in proposed ? { articles: proposed.articles } : {}), ...("newsletter_frequency" in proposed ? { newsletter_frequency: proposed.newsletter_frequency } : {}), stations };
 }
