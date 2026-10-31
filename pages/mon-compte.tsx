@@ -1,7 +1,9 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
+import { intentFromQuery } from "@/lib/newsletter/onboarding";
 import { memberRequest } from "@/lib/memberApi";
 import MemberNewsletter from "@/components/member/MemberNewsletter";
 import NewsletterEnrollment from "@/components/newsletter/NewsletterEnrollment";
@@ -11,6 +13,8 @@ export default function MemberAccount() {
   return <><Head><title>Mon compte | Snow Explorer</title><meta name="robots" content="noindex,nofollow" /></Head><MemberAccountContent /></>;
 }
 function MemberAccountContent() {
+  const router = useRouter();
+  const requested = intentFromQuery(router.query);
   const { status, user, refresh, logout, newsletterEntry, openNewsletterAccount } = useMemberAuth();
   const [otherEmail, setOtherEmail] = useState(false);
   const [tab, setTab] = useState<"newsletter" | "password">("newsletter");
@@ -21,6 +25,7 @@ function MemberAccountContent() {
   const addingAddress = otherEmail && !entry;
   const authenticated = Boolean(!addingAddress && user && (!entry || entry.email === user.email));
   const signup = !authenticated && entry?.draftToken ? entry : undefined;
+  const enrolling = !authenticated && !signup && !entry && requested;
   const email = addingAddress ? undefined : entry?.email || user?.email;
   async function save(event: FormEvent) {
     event.preventDefault(); setError(""); setSaved(false);
@@ -35,7 +40,7 @@ function MemberAccountContent() {
     <header className="newsletter-hero"><h1>Mon compte</h1>{email && <p>{email}</p>}
       {authenticated && <button className="btn btn--secondary" onClick={() => void logout().catch(cause => setError(cause instanceof Error ? cause.message : "Déconnexion impossible."))}>Se déconnecter</button>}
     </header>
-    {entry && <p role="status" className="newsletter-feedback newsletter-feedback--success">{entry.status === "already_subscribed" ? "Cette adresse est déjà inscrite. Connectez-vous pour retrouver vos préférences." : "Votre inscription a bien été prise en compte. Vous pouvez modifier vos préférences."}</p>}
+    {entry && <p role="status" className="newsletter-feedback newsletter-feedback--success">{entry.notice || (entry.status === "already_subscribed" ? "Cette adresse est déjà inscrite. Connectez-vous pour retrouver vos préférences." : "Votre inscription a bien été prise en compte. Vous pouvez modifier vos préférences.")}</p>}
     {(authenticated || signup) && <>
       <div role="tablist" aria-label="Rubriques du compte">
         <button id="newsletter-tab" className="btn btn--secondary" role="tab" aria-selected={tab === "newsletter"} aria-controls="newsletter-panel" onClick={() => setTab("newsletter")}>Mes abonnements</button>{" "}
@@ -50,7 +55,7 @@ function MemberAccountContent() {
         </form> : <><p>Ouvrez le lien reçu par email pour définir votre mot de passe dans ce compte.</p><MemberAuthForm initialEmail={email} /></>}
       </section>}
     </>}
-    {addingAddress ? <section className="newsletter-section"><h2>Inscrire une autre adresse email</h2><NewsletterEnrollment forceOtherEmail initial={{ stations: [], articles: true, consent: false, language: "fr", source: "member-account" }} /></section> : !authenticated && !signup && <section className="newsletter-section"><h2>Se connecter à mon compte</h2><MemberAuthForm initialEmail={email} /></section>}
+    {addingAddress ? <section className="newsletter-section"><h2>Inscrire une autre adresse email</h2><NewsletterEnrollment forceOtherEmail initial={{ stations: [], articles: true, consent: false, language: "fr", source: "member-account" }} /></section> : enrolling ? <section className="newsletter-section"><h2>Recevoir les informations de {requested.stations[0].station_name} par email</h2><NewsletterEnrollment initial={requested} /></section> : !authenticated && !signup && <section className="newsletter-section"><h2>Se connecter à mon compte</h2><MemberAuthForm initialEmail={email} /></section>}
     {error && <p role="alert">{error}</p>}
     <p><button type="button" className="newsletter-change-email" onClick={() => { openNewsletterAccount(null); setOtherEmail(true); setTab("newsletter"); }}>Inscrire une autre adresse email</button>{" · "}<Link className="newsletter-change-email" href="/connexion?autre=1" onClick={() => openNewsletterAccount(null)}>Se connecter avec une autre adresse</Link></p>
   </main>;

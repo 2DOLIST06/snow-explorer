@@ -39,7 +39,7 @@ test('weather directory exposes email subscription for the currently selected st
   act(()=>root.root.findAllByProps({role:'option'})[1].props.onClick());
   const cta=root.root.findByProps({'data-subscription':true});
   assert.equal(cta.props.stationId,'2');assert.equal(cta.props.topic,'weather');
-  assert.equal(cta.children.join(''),'Recevoir la météo de cette station');
+  assert.equal(cta.children.join(''),'Recevoir la météo de cette station par email');
  }finally{act(()=>root.unmount());global.window=previous;}
 });
 

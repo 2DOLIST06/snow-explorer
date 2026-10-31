@@ -49,7 +49,7 @@ export default function MemberNewsletter({ signup }: { signup?: NewsletterAccoun
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!settings || !initial ? <p role="status">Chargement…</p> : blocked ? <p>Cet abonnement est indisponible. Contactez-nous pour le vérifier.</p> : <>
       {settings.status === "unsubscribed" && <p>Vous êtes désabonné. Enregistrer vos choix réactivera vos abonnements.</p>}
-      <NewsletterIntentForm key={revision} initial={initial} focusStationId={pending?.stations[0]?.station_id} onSave={save} />
+      <NewsletterIntentForm key={revision} initial={initial} focusStationId={pending?.stations[0]?.station_id || signup?.intent.stations[0]?.station_id} onSave={save} />
       {!signup && (settings.status === "active" || settings.status === "pending") && <details className="newsletter-section"><summary>Me désabonner de tous les emails</summary><p>Cette action désactive tous vos abonnements Snow Explorer.</p><button type="button" className="btn btn--secondary" disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await memberRequest("/newsletter/unsubscribe", {}, true); await load(); setNotice("Vous êtes désabonné de tous les emails."); } catch { setError("Désabonnement impossible. Réessayez."); } finally { setBusy(false); } }}>Confirmer le désabonnement</button></details>}
     </>}
   </section>;

@@ -382,7 +382,7 @@ const SnowparkPage: NextPage<Props> = ({ slug, resort, cfg }) => {
           </div>
 
           <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div className="weather-email-subscription"><FollowStationButton stationId={resort.id} stationName={resort.name} topic="weather" label="Recevoir la météo de cette station" /></div>
+            <div className="weather-email-subscription"><FollowStationButton stationId={resort.id} stationName={resort.name} topic="weather" label="Recevoir la météo de cette station par email" /></div>
             <StationWeather slug={resort.slug} name={resort.name} latitude={resort.latitude} longitude={resort.longitude} headingLevel="h2" />
             <SnowparkWebcams cfg={cfg as any} />
           </aside>
