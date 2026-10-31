@@ -19,3 +19,12 @@ Aucune migration SQL, modification API ni configuration supplémentaire. L’API
 ## Vérifications
 
 Les tests de composants couvrent la redirection après inscription, le message vert dans le compte, la sauvegarde limitée d’une nouvelle inscription, l’absence de lecture des réglages d’une adresse existante avant connexion, la séparation d’une seconde adresse, la connexion avec l’adresse préremplie et l’absence de formulaire newsletter dans le footer du compte. La comparaison des contrôles de l’éditeur entre nouvelle inscription et comptes existants reste couverte.
+
+
+## Boutons sur les fiches stations et la météo
+
+Les boutons utilisent tous `FollowStationButton`. Un visiteur non connecté est envoyé directement vers `/mon-compte` avec le choix station/thème dans la query : la page affiche le formulaire email habituel, prérempli avec cette sélection. Aucune fenêtre modale ni formulaire de préférences parallèle. Après inscription, le même compte affiche le même éditeur. Si l’adresse existe déjà, le choix est conservé dans la navigation et dans la demande de connexion par email ; il est proposé avec les abonnements existants une fois connecté.
+
+Pour un membre connecté, le bouton appelle `/newsletter/follow` avec CSRF puis ouvre le compte. La confirmation d’ajout n’est préparée qu’après la réussite de la requête. Le compte affiche le message « Abonnement « Météo » ajouté pour … » ou le thème demandé ; un clic répété affiche que ces informations sont déjà suivies. Les erreurs restent visibles sur la fiche et ne déclenchent pas de fausse confirmation. Les boutons météo précisent « par email ».
+
+Déployer l’API contenant `/newsletter/follow` avant le frontend. Aucun changement de schéma. Les fréquences déjà enregistrées restent conservées ; la météo en pause revient au vendredi après un clic explicite. Les autres modifications se font dans le même éditeur de compte.

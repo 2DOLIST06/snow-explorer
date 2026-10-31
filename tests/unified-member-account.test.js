@@ -8,7 +8,7 @@ const initial={stations:[],articles:true,consent:false,language:'fr',source:'foo
 class ApiError extends Error{constructor(code){super(code);this.code=code;}}
 
 test('existing email opens the account without requesting a login email or exposing saved preferences',async()=>{
- const calls=[];let entry;const Enrollment=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/link':Link,'next/router':{useRouter:()=>({push:async url=>calls.push(['navigate',url])})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null,openNewsletterAccount:value=>{entry=value;}})},'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);return {status:'already_subscribed'}}}}).default;
+ const calls=[];let entry;const Enrollment=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/link':Link,'next/router':{useRouter:()=>({push:async url=>calls.push(['navigate',url])})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null,stageNewsletterIntent(){},openNewsletterAccount:value=>{entry=value;}})},'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);return {status:'already_subscribed'}}}}).default;
  let root;await act(async()=>{root=renderer.create(React.createElement(Enrollment,{initial}));});
  try{act(()=>root.root.findByProps({type:'email'}).props.onChange({target:{value:'first@example.com'}}));await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(entry.email,'first@example.com');assert.equal(entry.draftToken,null);assert.equal(entry.status,'already_subscribed');assert.deepEqual(calls.map(c=>c[0]),['/newsletter/start','navigate']);assert.equal(calls[1][1],'/mon-compte');}finally{act(()=>root.unmount());}
 });
@@ -42,11 +42,11 @@ test('old newsletter preference page points to the shared account and keeps unsu
  try{assert.equal(root.root.findAllByType('select').length,0);await act(async()=>button(root,'Recevoir un lien pour accéder à mon compte').props.onClick());assert.deepEqual(calls,[['/newsletter/account-link',{token:'legacy-newsletter-token'}]]);assert.match(root.root.findByProps({role:'status'}).children.join(''),/compte/);}finally{act(()=>root.unmount());}
 });
 
-function accountFixture({user=null,entry=null}={}) {
+function accountFixture({user=null,entry=null,query={}}={}) {
  const calls=[];let auth={status:user?'authenticated':'unauthenticated',user,newsletterEntry:entry,openNewsletterAccount:value=>{calls.push(['entry',value]);auth.newsletterEntry=value;},stageNewsletterIntent(){}};
  const Editor=({initial,onSave})=>React.createElement('form',{'data-shared-editor':true,onSubmit:()=>onSave({...initial,articles:false})},React.createElement('button',{type:'submit'},'Enregistrer mes choix'));
  const Panel=load('src/components/member/MemberNewsletter.tsx',{'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'../newsletter/NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);return args[0]==='/newsletter/request'?{intent:null}:{data:{status:'active',intent:initial}};}}}).default;
- const Page=load('pages/mon-compte.tsx',{'next/head':Head,'next/link':Link,'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'@/components/member/MemberNewsletter':Panel,'@/components/member/MemberAuthForm':({initialEmail})=>React.createElement('input',{'data-login':true,type:'email',value:initialEmail}),'@/components/newsletter/NewsletterEnrollment':({forceOtherEmail})=>React.createElement('input',{'data-signup':true,type:'email',value:'',forceOtherEmail}),'@/lib/memberApi':{memberRequest:async(...args)=>calls.push(args)}}).default;
+ const Page=load('pages/mon-compte.tsx',{'next/router':{useRouter:()=>({query})},'next/head':Head,'next/link':Link,'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'@/components/member/MemberNewsletter':Panel,'@/components/member/MemberAuthForm':({initialEmail})=>React.createElement('input',{'data-login':true,type:'email',value:initialEmail}),'@/components/newsletter/NewsletterEnrollment':({forceOtherEmail,initial})=>React.createElement('input',{'data-signup':true,type:'email',value:'',forceOtherEmail,'data-intent':initial}),'@/lib/memberApi':{memberRequest:async(...args)=>calls.push(args)}}).default;
  return {Page,calls,update(root){root.update(React.createElement(Page));}};
 }
 
@@ -79,4 +79,15 @@ test('a temporary signup for another email never exposes the currently signed-in
 test('the account page does not repeat the newsletter signup in the footer',()=>{
  const Signup=load('src/components/newsletter/NewsletterSignup.tsx',{'next/router':{useRouter:()=>({pathname:'/mon-compte'})},'@/lib/newsletter/i18n':{newsletterLanguage:()=> 'fr'},'./NewsletterEnrollment':()=>{throw Error('No footer enrollment in account')}}).default;
  let root;act(()=>{root=renderer.create(React.createElement(Signup,{source:'footer'}));});try{assert.equal(root.toJSON(),null);}finally{act(()=>root.unmount());}
+});
+
+
+test('anonymous weather CTA uses the account email signup with exactly its station and weather topic preselected',async()=>{
+ const f=accountFixture({query:{station_id:'FR_2',station_name:'Alpe d’Huez',topic:'weather'}});let root;await act(async()=>{root=renderer.create(React.createElement(f.Page));});
+ try{const signup=root.root.findByProps({'data-signup':true});assert.equal(signup.props.value,'');assert.equal(signup.props['data-intent'].stations[0].station_id,'FR_2');assert.deepEqual(signup.props['data-intent'].stations[0].topics,['weather']);assert.equal(root.root.findAllByProps({'data-login':true}).length,0);assert.equal(f.calls.length,0);}finally{act(()=>root.unmount());}
+});
+
+test('the account displays the successful station-click notice instead of a generic signup notice',async()=>{
+ const f=accountFixture({user:{id:1,email:'member@example.com'},entry:{email:'member@example.com',intent:initial,draftToken:null,status:'active',notice:'Abonnement « Météo » ajouté pour La Clusaz.',expiresAt:Date.now()+900000}});let root;await act(async()=>{root=renderer.create(React.createElement(f.Page));});
+ try{assert.equal(root.root.findByProps({role:'status'}).children.join(''),'Abonnement « Météo » ajouté pour La Clusaz.');assert.equal(root.root.findAllByProps({'data-shared-editor':true}).length,1);}finally{act(()=>root.unmount());}
 });

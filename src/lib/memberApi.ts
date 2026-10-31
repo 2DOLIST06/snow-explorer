@@ -21,6 +21,7 @@ export function memberError(code: string) {
     member_authentication_required: "Votre session a expiré. Veuillez vous reconnecter.",
     password_too_short: "Le mot de passe doit contenir au moins 12 caractères.",
     password_too_long: "Le mot de passe est trop long.",
+    station_limit_reached: "Vous suivez déjà 20 stations. Retirez-en une dans vos préférences avant d’en ajouter une autre.",
     station_not_found: "Cette station n’est plus disponible. Retirez-la de la sélection et réessayez.",
     invalid_newsletter_intent: "Vérifiez les stations, les thèmes et les fréquences sélectionnés.",
     explicit_consent_required: "Votre accord est nécessaire pour enregistrer cet abonnement.",

@@ -24,9 +24,10 @@ export default function NewsletterEnrollment({ initial, forceOtherEmail = false 
         openNewsletterAccount({ email: activeUser.email, intent, draftToken: null, status: "active", expiresAt: Date.now() + 15 * 60 * 1000 });
       } else {
         const result = await memberRequest<SignupResult>("/newsletter/start", { email, intent });
+        if (result.status === "already_subscribed") stageNewsletterIntent(intent, email.trim().toLowerCase());
         openNewsletterAccount({ email: email.trim().toLowerCase(), intent, draftToken: result.draft_token || null, status: result.status, expiresAt: Date.now() + 15 * 60 * 1000 });
       }
-      await router.push("/mon-compte");
+      await router.push(station ? accountNewsletterHref(station.station_id, station.station_name, station.topics[0]) : "/mon-compte");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Inscription impossible."); }
     finally { setBusy(false); }
   }

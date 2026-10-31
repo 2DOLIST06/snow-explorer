@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { memberRequest, MemberUser, MemberSession } from "@/lib/memberApi";
 import type { NewsletterIntent } from "@/lib/newsletter/onboarding";
 
-export type NewsletterAccountEntry = { email: string; intent: NewsletterIntent; draftToken: string | null; status: "active" | "already_subscribed"; expiresAt: number };
+export type NewsletterAccountEntry = { email: string; intent: NewsletterIntent; draftToken: string | null; notice?: string; status: "active" | "already_subscribed"; expiresAt: number };
 type State = { status: "loading" | "authenticated" | "unauthenticated"; user: MemberUser | null };
 type Context = State & { newsletterEntry: NewsletterAccountEntry | null; openNewsletterAccount: (entry: NewsletterAccountEntry | null) => void; refresh: () => Promise<MemberUser | null>; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void>; newsletterIntent: NewsletterIntent | null; stageNewsletterIntent: (intent: NewsletterIntent | null, email: string) => void };
 const MemberContext = createContext<Context | null>(null);

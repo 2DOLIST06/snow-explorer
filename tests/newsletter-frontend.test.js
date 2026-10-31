@@ -53,7 +53,7 @@ test("signup and station buttons use the account enrollment flow without exposin
   assert.match(signup, /NewsletterEnrollment/);
   assert.match(follow, /accountNewsletterHref/);
   assert.match(enrollment, /newsletter\/start/);
-  assert.match(enrollment, /router.push\("\/mon-compte"\)/);
+  assert.match(enrollment, /router.push\(station \? accountNewsletterHref/);
   assert.doesNotMatch(enrollment, /NewsletterIntentForm|Aucune validation|No email confirmation/);
   assert.doesNotMatch(follow + enrollment, /preferences_token|preferences_url/);
 });
