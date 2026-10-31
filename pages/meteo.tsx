@@ -5,6 +5,7 @@ import Head from "next/head";
 import Link from "next/link";
 import React, { useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin } from "lucide-react";
+import FollowStationButton from "@/components/newsletter/FollowStationButton";
 import StationWeather from "@/components/weather/StationWeather";
 import { fetchActiveResortsServer, type Resort } from "@/lib/api/resorts";
 import { matchesSearch, normalizeSearchText } from "@/lib/searchNormalization";
@@ -63,6 +64,7 @@ const MeteoPage: NextPage<Props> = ({ initialStations }) => {
         </aside>
         <section ref={contentRef} className="weather-content">
           {selected && <div className="weather-content__station"><div><p className="eyebrow">Station sélectionnée</p><h2>Météo {stationNameAt(selected.name)}</h2></div><Link href={`/stations/${selected.slug}`} className="btn btn--secondary">Voir la station <ArrowRight size={17} /></Link></div>}
+          {selected && <div className="weather-email-subscription"><div><strong>La météo de {selected.name} par email</strong><p>Choisissez la fréquence et retrouvez cet abonnement dans vos préférences.</p></div><FollowStationButton stationId={selected.id} stationName={selected.name} topic="weather" label="Recevoir la météo de cette station" /></div>}
           {!selected && <div className="empty-state empty-state--hero"><strong>Choisissez une station</strong><span>Sélectionnez une station pour consulter ses conditions météo et ses prévisions.</span></div>}{selected && <StationWeather slug={selected.slug} name={selected.name} latitude={lat} longitude={lon} />}
         </section>
       </section>

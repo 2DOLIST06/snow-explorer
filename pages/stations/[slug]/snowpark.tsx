@@ -4,6 +4,7 @@ import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import React, { useState } from "react";
+import FollowStationButton from "@/components/newsletter/FollowStationButton";
 import StationWeather from "@/components/weather/StationWeather";
 import { useRouter } from "next/router";
 
@@ -381,6 +382,7 @@ const SnowparkPage: NextPage<Props> = ({ slug, resort, cfg }) => {
           </div>
 
           <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="weather-email-subscription"><FollowStationButton stationId={resort.id} stationName={resort.name} topic="weather" label="Recevoir la météo de cette station" /></div>
             <StationWeather slug={resort.slug} name={resort.name} latitude={resort.latitude} longitude={resort.longitude} headingLevel="h2" />
             <SnowparkWebcams cfg={cfg as any} />
           </aside>

@@ -13,7 +13,7 @@ export default function MemberNewsletter() {
   const [access, setAccess] = useState<Access | null>(null); const [revision, setRevision] = useState(0);
   const [pending, setPending] = useState<NewsletterIntent | null>(null);
   const [articles, setArticles] = useState(false); const [frequency, setFrequency] = useState<NewsletterFrequency>("weekly");
-  const [consent, setConsent] = useState(false); const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(""); const [notice, setNotice] = useState("");
   const api = useMemo<StationSettingsApi>(() => ({
     list: async () => (await memberRequest<{ data: { stations: StationSettings[] } }>("/newsletter/stations")).data.stations,
@@ -53,24 +53,24 @@ export default function MemberNewsletter() {
     <p>Retrouvez vos stations et choisissez les informations que vous souhaitez recevoir pour chacune.</p>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!access ? <p role="status">Chargement…</p> : blocked ? <p>Cet abonnement est indisponible. Contactez-nous pour le vérifier.</p> : <>
-      {pending && <section className="newsletter-section" aria-label="Confirmer les nouveaux abonnements"><h3>Confirmer vos choix</h3><p>Les choix ci-dessous seront ajoutés à vos abonnements. Vos autres stations et réglages sont conservés.</p>
-        <NewsletterIntentForm key={JSON.stringify(pending)} initial={pending} submitLabel="Confirmer mes abonnements" onCancel={() => void action(clearPending)} onSave={async intent => {
+      {pending && <section className="newsletter-section" aria-label="Confirmer les nouveaux abonnements"><h3>Choisir mes abonnements</h3><p>Les choix ci-dessous seront ajoutés à vos abonnements. Vos autres stations et réglages sont conservés.</p>
+        <NewsletterIntentForm key={JSON.stringify(pending)} initial={pending} submitLabel="Enregistrer mes abonnements" onCancel={() => void action(clearPending)} onSave={async intent => {
           await memberRequest("/newsletter/apply", { intent }, true);
           await clearPending(); await load(); setRevision(old => old + 1); setNotice("Vos abonnements sont enregistrés. Vous pouvez les modifier ci-dessous.");
         }} />
       </section>}
-      {available ? <>
+      {available && !pending ? <>
         <section className="newsletter-section"><h3>Articles et guides, toutes destinations</h3>
           <label className="preference-toggle"><span>Recevoir les nouveaux articles et guides Snow Explorer</span><input type="checkbox" checked={articles} disabled={busy} onChange={event => setArticles(event.target.checked)} /></label>
           <label className="newsletter-field">Fréquence<select value={frequency} disabled={busy} onChange={event => setFrequency(event.target.value as NewsletterFrequency)}><option value="immediate">À chaque publication</option><option value="weekly">Chaque semaine</option><option value="monthly">Chaque mois</option></select></label>
           <button className="btn btn--primary" disabled={busy} onClick={() => void action(async () => { await memberRequest("/newsletter/preferences", { articles, newsletter_frequency: frequency }, true); setNotice("Préférences des articles enregistrées."); })}>Enregistrer</button>
         </section>
         <StationNewsletterEditor key={revision} api={api} />
-        <details className="newsletter-section"><summary>Me désabonner de tous les emails</summary><p>Cette action désactive tous vos abonnements Snow Explorer.</p><button className="btn btn--secondary" disabled={busy} onClick={() => void action(async () => { await memberRequest("/newsletter/unsubscribe", {}, true); setAccess({ status: "unsubscribed" }); setConsent(false); setNotice("Vous êtes désabonné de tous les emails."); })}>Confirmer le désabonnement</button></details>
+        <details className="newsletter-section"><summary>Me désabonner de tous les emails</summary><p>Cette action désactive tous vos abonnements Snow Explorer.</p><button className="btn btn--secondary" disabled={busy} onClick={() => void action(async () => { await memberRequest("/newsletter/unsubscribe", {}, true); setAccess({ status: "unsubscribed" }); setNotice("Vous êtes désabonné de tous les emails."); })}>Confirmer le désabonnement</button></details>
       </> : !pending && <>
         <p>{access.status === "unsubscribed" ? "Vous êtes désabonné. Vous pouvez choisir de nouveaux abonnements." : "Commencez par choisir vos informations et vos stations."}</p>
-        <label className="newsletter-check"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} /><span>Je souhaite recevoir les informations que je sélectionnerai par email. Je pourrai me désabonner à tout moment.</span></label>
-        {consent && <NewsletterIntentForm initial={{ stations: [], articles: true, consent: true, language: "fr", source: "member-account" }} onSave={async intent => { await memberRequest("/newsletter/apply", { intent }, true); await load(); setRevision(old => old + 1); setNotice("Vos abonnements sont enregistrés."); }} />}
+        <p>En enregistrant vos choix, vous demandez à recevoir ces informations par email. Désinscription à tout moment.</p>
+        <NewsletterIntentForm initial={{ stations: [], articles: true, consent: true, language: "fr", source: "member-account" }} onSave={async intent => { await memberRequest("/newsletter/apply", { intent }, true); await load(); setRevision(old => old + 1); setNotice("Vos abonnements sont enregistrés."); }} />
       </>}
     </>}
   </section>;

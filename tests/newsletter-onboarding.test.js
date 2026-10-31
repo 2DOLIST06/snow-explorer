@@ -41,13 +41,13 @@ test('connected station CTA opens the account with its station and topic without
   } finally { act(() => root.unmount()); }
 });
 
-test('email capture precedes optional choices and updating a draft never calls preference writes', async () => {
+test('newsletter signup uses one explicit button and displays optional choices after immediate activation', async () => {
   const calls = []; let optional;
   const Enrollment = load('src/components/newsletter/NewsletterEnrollment.tsx', {
     'next/link': ({ children, ...props }) => React.createElement('a', props, children),
     'next/router': { useRouter: () => ({ push: async url => calls.push(['navigate', url]) }) },
     '@/contexts/MemberAuthContext': { useMemberAuth: () => ({ user: null }) },
-    '@/lib/memberApi': { memberRequest: async (...args) => { calls.push(args); return { draft_token: 'draft-only' }; } },
+    '@/lib/memberApi': { memberRequest: async (...args) => { calls.push(args); return { status:'active',draft_token: 'draft-only' }; } },
     './NewsletterIntentForm': props => { optional = props; return React.createElement('div', { 'data-optional': true }); },
   }).default;
   const initial = { stations: [], articles: true, consent: false, language: 'fr', source: 'footer' };
@@ -55,12 +55,12 @@ test('email capture precedes optional choices and updating a draft never calls p
   await act(async () => { root = renderer.create(React.createElement(Enrollment, { initial })); });
   try {
     assert.equal(optional, undefined);
-    assert.equal(root.root.findAllByType('input').length, 2);
+    assert.equal(root.root.findAllByType('input').length, 1);
     act(() => root.root.findByProps({ type: 'email' }).props.onChange({ target: { value: 'a@example.com' } }));
-    act(() => root.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
     await act(async () => root.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.deepEqual(calls[0], ['/newsletter/start', { email: 'a@example.com', intent: { ...initial, consent: true } }]);
     assert.ok(optional);
+    assert.match(root.root.findAllByProps({role:'status'})[0].children.join(''),/Aucune validation/);
     const changed = { ...initial, consent: true, articles: false };
     await act(async () => optional.onSave(changed));
     assert.deepEqual(calls[1], ['/newsletter/draft', { draft_token: 'draft-only', intent: changed }]);
@@ -73,4 +73,19 @@ test('account intent ignores arbitrary redirects and unsupported topics', () => 
   assert.equal(loginDestination({ next: 'https://evil.example' }), '/mon-compte');
   assert.equal(intentFromQuery({ station_id: 'FR_1', topic: 'unsupported' }), null);
   assert.equal(intentFromQuery({ station_id: ['FR_1', 'FR_2'], topic: 'weather' }), null);
+});
+
+
+test('connected newsletter signup is applied immediately before opening the account', async () => {
+  const calls=[];
+  const Enrollment=load('src/components/newsletter/NewsletterEnrollment.tsx',{
+    'next/link':({children,...p})=>React.createElement('a',p,children),
+    'next/router':{useRouter:()=>({push:async url=>calls.push(['navigate',url])})},
+    '@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:{email:'member@example.com'},stageNewsletterIntent:(...args)=>calls.push(['stage',...args])})},
+    '@/lib/memberApi':{memberRequest:async(...args)=>calls.push(args)},
+    './NewsletterIntentForm':()=>null,
+  }).default;
+  const initial={stations:[],articles:true,consent:false,language:'fr',source:'footer'};
+  let root;await act(async()=>{root=renderer.create(React.createElement(Enrollment,{initial}));});
+  try{assert.equal(root.root.findAllByType('input').length,0);await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.deepEqual(calls[0],['/newsletter/apply',{intent:{...initial,consent:true}},true]);assert.deepEqual(calls.at(-1),['navigate','/mon-compte']);}finally{act(()=>root.unmount());}
 });
