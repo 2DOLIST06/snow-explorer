@@ -45,7 +45,7 @@ test('member link page removes the secret fragment and consumes only after an ex
 });
 test('member API keeps cookies and attaches the session CSRF to password changes',async()=>{
  const previous=global.fetch;const calls=[];global.fetch=async(...args)=>{calls.push(args);return {ok:true,json:async()=>({authenticated:true,user,csrf_token:'new-csrf'})};};
- try{const api=load('src/lib/memberApi.ts',{'./adminApi':{ADMIN_API_BASE:'https://api.example'}});await api.memberRequest('/password',{password:'a secure password'},true);assert.equal(calls[0][0],'https://api.example/api/member/session');assert.equal(calls[1][0],'https://api.example/api/member/password');assert.equal(calls[1][1].headers['X-CSRF-Token'],'new-csrf');assert.equal(calls[1][1].credentials,'include');assert.equal(calls[1][1].method,'POST');}finally{global.fetch=previous;}
+ try{const api=load('src/lib/memberApi.ts',{'./adminApi':{ADMIN_API_BASE:'https://api.example'}});await api.memberRequest('/password',{password:'a secure password'},true);assert.equal(calls[0][0],'/api/member/session');assert.equal(calls[1][0],'/api/member/password');assert.equal(calls[1][1].headers['X-CSRF-Token'],'new-csrf');assert.equal(calls[1][1].credentials,'include');assert.equal(calls[1][1].method,'POST');}finally{global.fetch=previous;}
 });
 
 test('unsubscribe is an explicit button with confirmation and leaves a durable unsubscribed view',async()=>{
@@ -66,4 +66,39 @@ test('failed unsubscribe preserves the editor and shows an error without success
  const intent={stations:[],articles:true,consent:true,language:'fr',source:'account'};
  const Panel=load('src/components/member/MemberNewsletter.tsx',{'@/contexts/MemberAuthContext':{useMemberAuth:()=>({...auth,openNewsletterAccount(){},stageNewsletterIntent(){}})},'@/lib/memberApi':{memberRequest:async(path)=>{if(path==='/newsletter/unsubscribe')throw Error('Impossible de joindre le serveur.');return path==='/newsletter/request'?{intent:null}:{data:{status:'active',intent}};}}}).default;
  let root;await act(async()=>{root=renderer.create(React.createElement(Panel));});try{act(()=>button(root,'Me désabonner de tous les emails').props.onClick());await act(async()=>button(root,'Confirmer le désabonnement').props.onClick());assert.match(root.root.findByProps({role:'alert'}).children.join(''),/Impossible de joindre/);assert.ok(button(root,'Enregistrer mes choix'));assert.equal(button(root,'Réactiver mes abonnements'),undefined);assert.equal(root.root.findAllByProps({role:'alertdialog'}).length,1);}finally{act(()=>root.unmount());}
+});
+
+test('first recent-link response confirms the email; an immediate repeat shows the cooldown',async()=>{
+ const calls=[];const cooldown=Object.assign(new Error('Veuillez patienter une minute avant de demander un nouveau lien.'),{code:'login_link_cooldown'});
+ const Form=load('src/components/member/MemberAuthForm.tsx',{'next/link':Link,'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);throw cooldown;}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initialEmail:user.email}));});
+ try{await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(calls.length,1);assert.equal(root.root.findAllByProps({role:'alert'}).length,0);assert.match(root.root.findByProps({role:'status'}).children.join(''),/lien de connexion.*a été envoyé/);
+ await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(calls.length,2);assert.equal(root.root.findAllByProps({role:'status'}).length,0);assert.match(root.root.findByProps({role:'alert'}).children.join(''),/patienter une minute/);
+ }finally{act(()=>root.unmount());}
+});
+test('successful first link request confirms delivery and a repeat preserves the server cooldown',async()=>{
+ let count=0;const Form=load('src/components/member/MemberAuthForm.tsx',{'next/link':Link,'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'@/lib/memberApi':{memberRequest:async()=>{if(++count>1)throw Object.assign(new Error('Veuillez patienter une minute avant de demander un nouveau lien.'),{code:'login_link_cooldown'});return {ok:true};}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initialEmail:user.email}));});try{await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.match(root.root.findByProps({role:'status'}).children.join(''),/a été envoyé/);await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.match(root.root.findByProps({role:'alert'}).children.join(''),/patienter une minute/);}finally{act(()=>root.unmount());}
+});
+test('failed link delivery never claims that an email was sent',async()=>{
+ const Form=load('src/components/member/MemberAuthForm.tsx',{'next/link':Link,'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>auth},'@/lib/memberApi':{memberRequest:async()=>{throw Object.assign(new Error('Impossible d’envoyer le mail.'),{code:'email_delivery_failed'});}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initialEmail:user.email}));});try{await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(root.root.findAllByProps({role:'status'}).length,0);assert.match(root.root.findByProps({role:'alert'}).children.join(''),/Impossible/);}finally{act(()=>root.unmount());}
+});
+test('a late session check cannot disconnect a just-created account or change the menu back to login',async()=>{
+ let rejectSession;const pending=new Promise((resolve,reject)=>{rejectSession=reject;});let context;
+ const module=load('src/contexts/MemberAuthContext.tsx',{'next/router':{useRouter:()=>({push:async()=>{}})},'@/lib/memberApi':{memberRequest:()=>pending}});
+ const Menu=load('src/components/layout/AccountMenu.tsx',{'next/link':Link,'@/contexts/MemberAuthContext':module,'../member/MemberAuthForm':()=>React.createElement('form')}).default;
+ function Probe(){context=module.useMemberAuth();return React.createElement(Menu,{onClose(){}});}
+ let root;await act(async()=>{root=renderer.create(React.createElement(module.MemberAuthProvider,null,React.createElement(Probe)));});try{assert.equal(context.status,'loading');act(()=>context.completeSignup(user));assert.equal(root.root.findByType('a').props.href,'/mon-compte');assert.equal(root.root.findAllByType('form').length,0);await act(async()=>rejectSession(Error('old anonymous session')));assert.equal(context.status,'authenticated');assert.equal(root.root.findByType('a').props.href,'/mon-compte');assert.equal(root.root.findAllByType('form').length,0);}finally{act(()=>root.unmount());}
+});
+
+test('Valider in the real enrollment connects the shared header menu and reload restores the session',async()=>{
+ let account=null,context;const calls=[];const router={query:{},push:async()=>{}};
+ const api={memberRequest:async(endpoint,body)=>{calls.push(endpoint);if(endpoint==='/session'){if(!account)throw Error('anonymous');return {authenticated:true,user:account};}if(endpoint==='/newsletter/start'){account=user;return {status:'active',authenticated:true,user,csrf_token:'csrf',intent:body.intent};}throw Error('unexpected endpoint');}};
+ const contextModule=load('src/contexts/MemberAuthContext.tsx',{'next/router':{useRouter:()=>router},'@/lib/memberApi':api});
+ const Menu=load('src/components/layout/AccountMenu.tsx',{'next/link':Link,'@/contexts/MemberAuthContext':contextModule,'../member/MemberAuthForm':()=>React.createElement('form',{'data-login':true})}).default;
+ const Enrollment=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/link':Link,'next/router':{useRouter:()=>router},'@/contexts/MemberAuthContext':contextModule,'@/lib/memberApi':api}).default;
+ function Screen(){context=contextModule.useMemberAuth();return React.createElement(React.Fragment,null,React.createElement(Menu,{onClose(){}}),React.createElement(Enrollment,{fullPreferences:true,initial:{stations:[],articles:true,consent:true,language:'fr',source:'footer'}}));}
+ const app=()=>React.createElement(contextModule.MemberAuthProvider,null,React.createElement(Screen));let root;
+ await act(async()=>{root=renderer.create(app());});try{assert.equal(context.status,'unauthenticated');act(()=>root.root.findByProps({type:'email'}).props.onChange({target:{value:user.email}}));const form=root.root.findAllByType('form').find(node=>!node.props['data-login']);await act(async()=>form.props.onSubmit({preventDefault(){}}));assert.equal(context.status,'authenticated');const menu=root.root.findByProps({id:'header-account-menu'});assert.equal(menu.findAllByProps({'data-login':true}).length,0);assert.equal(menu.findByType('a').props.href,'/mon-compte');act(()=>root.unmount());await act(async()=>{root=renderer.create(app());});assert.equal(context.status,'authenticated');assert.equal(root.root.findByProps({id:'header-account-menu'}).findByType('a').props.href,'/mon-compte');assert.equal(calls.filter(p=>p==='/newsletter/start').length,1);}finally{act(()=>root.unmount());}
 });

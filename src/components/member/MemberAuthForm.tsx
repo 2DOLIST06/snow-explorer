@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { memberRequest } from "@/lib/memberApi";
 import styles from "../layout/AccountMenu.module.css";
@@ -11,9 +11,13 @@ export default function MemberAuthForm({ mode = "login", onComplete, initialEmai
   const [email, setEmail] = useState(initialEmail); const [password, setPassword] = useState("");
   const [emailLink, setEmailLink] = useState(router.query.method !== "password"); const [busy, setBusy] = useState(false);
   useEffect(() => { setEmailLink(router.query.method !== "password"); }, [router.query.method]);
+  const lastLinkAttempt = useRef("");
   const [error, setError] = useState(""); const [sent, setSent] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setSent(false);
+    const normalizedEmail = email.trim().toLowerCase();
+    const repeated = lastLinkAttempt.current === normalizedEmail;
+    if (mode === "register" || emailLink) lastLinkAttempt.current = normalizedEmail;
     try {
       if (mode === "register" || emailLink) {
         const intent = newsletterRequest || intentFromQuery(router.query);
@@ -22,7 +26,10 @@ export default function MemberAuthForm({ mode = "login", onComplete, initialEmai
         setSent(true);
       }
       else { await login(email.trim().toLowerCase(), password); setPassword(""); onComplete?.(); await router.push(loginDestination(router.query)); }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Connexion impossible."); }
+    } catch (cause) {
+      if (!repeated && cause && typeof cause === "object" && "code" in cause && cause.code === "login_link_cooldown") setSent(true);
+      else setError(cause instanceof Error ? cause.message : "Connexion impossible.");
+    }
     finally { setBusy(false); }
   }
   return <form className={styles.form} onSubmit={submit} data-clarity-mask="true">

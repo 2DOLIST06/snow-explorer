@@ -1,4 +1,3 @@
-import { ADMIN_API_BASE } from "./adminApi";
 export type MemberUser = { id: number; email: string; password_set: boolean };
 export type MemberSession = { authenticated: boolean; user: MemberUser; csrf_token: string };
 let csrf: string | null = null;
@@ -12,6 +11,7 @@ export function memberError(code: string) {
     account_unavailable: "Ce compte est indisponible.", invalid_email: "Vérifiez votre adresse e-mail.",
     invalid_credentials: "Adresse e-mail ou mot de passe incorrect. Vous pouvez aussi recevoir un lien de connexion.",
     password_not_set: "Vous n’avez pas encore défini de mot de passe. Recevez un lien de connexion, puis définissez-le dans votre compte.",
+    member_api_unavailable: "Impossible de joindre le serveur. Veuillez réessayer.",
     email_delivery_failed: "Impossible d’envoyer le mail. Veuillez réessayer.",
     login_link_cooldown: "Veuillez patienter une minute avant de demander un nouveau lien.",
     too_many_login_attempts: "Trop de tentatives. Veuillez réessayer plus tard.",
@@ -34,7 +34,7 @@ export async function memberRequest<T = any>(path: string, body?: object, authen
   if (body && authenticated && !csrf) await memberRequest("/session");
   let response: Response;
   try {
-    response = await fetch(`${ADMIN_API_BASE}/api/member${path}`, {
+    response = await fetch(`/api/member${path}`, {
       method: body ? "POST" : "GET", credentials: "include", cache: "no-store",
       headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}), ...(body && authenticated && csrf ? { "X-CSRF-Token": csrf } : {}) },
       body: body ? JSON.stringify(body) : undefined,
