@@ -1,5 +1,6 @@
 import Image from "next/image";
 import AccountMenu from "./AccountMenu";
+import accountStyles from "./AccountMenu.module.css";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -277,10 +278,12 @@ export default function ProHeader({ initialStations }: Props) {
           )}
         </div>
 
-        <div className="header-actions" ref={accountRef}>
-          <button type="button" className="btn btn--ghost btn--icon" aria-expanded={accountOpen} aria-controls="header-account-menu" onClick={() => setAccountOpen((v) => !v)}><UserRound size={18} /> <span>Compte</span></button>
+        <div className="header-actions">
+          <div className={accountStyles.anchor} ref={accountRef}>
+            <button type="button" className="btn btn--ghost btn--icon" aria-expanded={accountOpen} aria-controls="header-account-menu" onClick={() => setAccountOpen((v) => !v)}><UserRound size={18} /> <span>Compte</span></button>
+            {accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
+          </div>
           <button type="button" className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-controls="mobile-navigation"><Menu /><span className="sr-only">Ouvrir le menu</span></button>
-          {accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
         </div>
       </div>
 

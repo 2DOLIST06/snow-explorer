@@ -1,3 +1,5 @@
+.anchor { position: relative; display: inline-flex; align-items: center; }
+.anchor .menu { position: absolute; top: calc(100% + 8px); right: 0; left: auto; }
 .menu {
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 120px);

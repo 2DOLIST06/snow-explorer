@@ -12,6 +12,7 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   new Function('require', 'module', 'exports', 'React', compiled)(name => {
     if (name in mocks) return mocks[name];
+    if (name === "./NewsletterNotice") return ({message,error,onClose})=>React.createElement("p",{role:error?"alert":"status","data-dismiss":onClose},message);
     if (name.endsWith(".module.css")) return {};
     if (name === '@/lib/newsletter/onboarding') return load('src/lib/newsletter/onboarding.ts');
     return require(name);
@@ -37,6 +38,7 @@ test('connected station CTA saves and confirms on the station without navigating
     assert.match(root.root.findByProps({role:'status'}).children.join(''),/Abonnement « Météo et enneigement » ajouté pour Alpe d’Huez/);
     assert.equal(root.root.findByType('button').props.disabled,true);
     const count=calls.length;await act(async()=>root.root.findByType('button').props.onClick());assert.equal(calls.length,count);
+    act(()=>root.root.findByProps({role:'status'}).props['data-dismiss']());assert.equal(root.root.findAllByProps({role:'status'}).length,0);assert.equal(root.root.findByType('button').props.disabled,true);assert.equal(root.root.findByType('button').children.join(''),'Abonnement enregistré');
   } finally {act(()=>root.unmount());}
 });
 
