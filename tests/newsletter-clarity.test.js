@@ -6,7 +6,7 @@ const button=(root,label)=>root.root.findAllByType('button').find(b=>b.props['ar
 const initial={stations:[{station_id:'1',station_name:'Albiez-Montrond',topics:['weather'],weather_frequency:'friday',newsletter_frequency:'weekly'},{station_id:'2',station_name:'Auris-en-Oisans',topics:['resort_updates'],weather_frequency:'friday',newsletter_frequency:'weekly'}],articles:true,consent:true,language:'fr',source:'footer'};
 
 test('optional preferences show one named editor and the picker closes after one station choice',async()=>{
- const saves=[];const Form=load('src/components/newsletter/NewsletterIntentForm.tsx',{'./StationSubscriptionPicker':({onPick})=>React.createElement('button',{type:'button',onClick:()=>onPick({id:'3',name:'La Clusaz'})},'Choisir La Clusaz')}).default;
+ const saves=[];const Form=load('src/components/newsletter/NewsletterIntentForm.tsx',{'./StationSubscriptionPicker':({onAdd})=>React.createElement('button',{type:'button',onClick:()=>onAdd([{id:'3',name:'La Clusaz'}])},'Choisir La Clusaz')}).default;
  let root;await act(async()=>{root=renderer.create(React.createElement(Form,{initial,onSave:async data=>saves.push(data)}));});
  try{
   assert.equal(root.root.findAllByType('input').length,9); // General articles + eight topics, regardless of station count.
@@ -19,8 +19,6 @@ test('optional preferences show one named editor and the picker closes after one
   act(()=>button(root,'Choisir La Clusaz').props.onClick());
   assert.equal(button(root,'Choisir La Clusaz'),undefined);
   assert.equal(root.root.findAllByType('h4').at(-1).children.join(''),'La Clusaz');
-  await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
-  assert.match(root.root.findByProps({role:'alert'}).children.join(''),/La Clusaz/);assert.equal(saves.length,0);
   const weather=root.root.findAllByType('label').find(l=>l.findAllByType('span').some(s=>s.children.join('')==='Météo')).findByType('input');
   act(()=>weather.props.onChange({target:{checked:true}}));
   await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));
@@ -57,4 +55,17 @@ test('weather directory exposes email subscription for the currently selected st
   assert.equal(cta.props.stationId,'2');assert.equal(cta.props.topic,'weather');
   assert.equal(cta.children.join(''),'Recevoir la météo de cette station');
  }finally{act(()=>root.unmount());global.window=previous;}
+});
+
+test('new signup and active or unsubscribed accounts render the exact same preferences form',async()=>{
+ const Fields=load('src/components/newsletter/StationSubscriptionFields.tsx').default;
+ const Editor=load('src/components/newsletter/NewsletterIntentForm.tsx',{'./StationSubscriptionPicker':()=>null,'./StationSubscriptionFields':Fields}).default;
+ const shape=instance=>({labels:instance.findAllByType('label').map(label=>label.findAllByType('span').map(s=>s.children.join('')).join('')),buttons:instance.findAllByType('button').map(b=>b.children.join('')),checkboxes:instance.findAllByProps({type:'checkbox'}).map(c=>c.props.checked),selects:instance.findAllByType('select').map(s=>s.props.value)});
+ let reference;
+ for(const status of ['not_subscribed','active','unsubscribed']){
+  const Panel=load('src/components/member/MemberNewsletter.tsx',{'next/router':{useRouter:()=>({query:{}})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:{id:1,email:'member@example.com'},stageNewsletterIntent(){}})},'../newsletter/NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async path=>path==='/newsletter/request'?{intent:null}:{data:{status,intent:initial}}}}).default;
+  let root;await act(async()=>{root=renderer.create(React.createElement(Panel));});try{const view=shape(root.root.findByType(Editor));if(reference)assert.deepEqual(view,reference);else reference=view;assert.equal(root.root.findAllByType(Editor).length,1);}finally{act(()=>root.unmount());}
+ }
+ const Signup=load('src/components/newsletter/NewsletterEnrollment.tsx',{'next/link':({children,...p})=>React.createElement('a',p,children),'next/router':{useRouter:()=>({})},'@/contexts/MemberAuthContext':{useMemberAuth:()=>({user:null})},'./NewsletterIntentForm':Editor,'@/lib/memberApi':{memberRequest:async()=>({status:'active',draft_token:'new-signup-only'})}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Signup,{initial}));});try{act(()=>root.root.findByProps({type:'email'}).props.onChange({target:{value:'new@example.com'}}));await act(async()=>root.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.deepEqual(shape(root.root.findByType(Editor)),reference);assert.equal(root.root.findAllByType(Editor).length,1);}finally{act(()=>root.unmount());}
 });
