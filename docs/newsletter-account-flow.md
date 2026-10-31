@@ -28,3 +28,12 @@ Les boutons utilisent tous `FollowStationButton`. Un visiteur non connecté est 
 Pour un membre connecté, le bouton appelle `/newsletter/follow` avec CSRF puis ouvre le compte. La confirmation d’ajout n’est préparée qu’après la réussite de la requête. Le compte affiche le message « Abonnement « Météo » ajouté pour … » ou le thème demandé ; un clic répété affiche que ces informations sont déjà suivies. Les erreurs restent visibles sur la fiche et ne déclenchent pas de fausse confirmation. Les boutons météo précisent « par email ».
 
 Déployer l’API contenant `/newsletter/follow` avant le frontend. Aucun changement de schéma. Les fréquences déjà enregistrées restent conservées ; la météo en pause revient au vendredi après un clic explicite. Les autres modifications se font dans le même éditeur de compte.
+
+
+## Présentation des préférences
+
+Chaque station affiche immédiatement ses choix sous son nom, sans liste de résumés, bouton « Modifier », état « En cours » ni panneau déporté. Les champs restent visibles au même endroit après sauvegarde. L’ajout multiple reste disponible dans une liste à cases à cocher au-dessus des stations. Un seul bouton « Enregistrer mes préférences » sauvegarde le formulaire complet et indique clairement les modifications non enregistrées.
+
+« Météo et enneigement » est un seul choix qui regroupe les clés historiques weather, snowfall et snow_conditions. Activer ce choix ou changer sa fréquence sélectionne le groupe complet ; le désactiver retire les trois thèmes. Les réglages existants sont conservés tant qu’ils ne sont pas modifiés. Les autres sujets restent indépendants : actualités, articles, ouvertures, pistes/remontées et forfaits. Sur la fiche station, un seul bouton météo/enneigement reste au-dessus des onglets observations, prévisions et avalanche. Le bouton général est nommé « Recevoir les actualités de cette station par email ».
+
+Le désabonnement est un bouton explicite, suivi d’une confirmation visible. Pendant cette confirmation et la requête, le formulaire ne peut pas être enregistré. Après réussite, l’état « Désabonné » remplace l’éditeur ; une action séparée permet de réouvrir les choix avant une réactivation explicite par enregistrement. L’annulation n’envoie aucune requête, et un échec affiche une erreur sans annoncer de réussite.

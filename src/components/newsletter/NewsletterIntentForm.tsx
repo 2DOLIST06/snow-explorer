@@ -1,51 +1,44 @@
-import { FormEvent, useMemo, useRef, useState } from "react";
-import { subscriptionSummary, type NewsletterIntent, type StationIntent } from "@/lib/newsletter/onboarding";
+import { FormEvent, useMemo, useState } from "react";
+import { type NewsletterIntent, type StationIntent } from "@/lib/newsletter/onboarding";
 import type { NewsletterFrequency, StationSummary } from "@/types/newsletter";
 import StationSubscriptionPicker from "./StationSubscriptionPicker";
 import StationSubscriptionFields from "./StationSubscriptionFields";
 import styles from "./StationNewsletterEditor.module.css";
 
-type Props = { initial: NewsletterIntent; onSave: (intent: NewsletterIntent) => Promise<void>; submitLabel?: string; focusStationId?: string | number; onCancel?: () => void };
-export default function NewsletterIntentForm({ initial, onSave, submitLabel, focusStationId, onCancel }: Props) {
+type Props = { initial: NewsletterIntent; onSave: (intent: NewsletterIntent) => Promise<void>; submitLabel?: string; onCancel?: () => void; disabled?: boolean; onSavingChange?: (saving: boolean) => void };
+export default function NewsletterIntentForm({ initial, onSave, submitLabel, onCancel, disabled = false, onSavingChange }: Props) {
   const [draft, setDraft] = useState(initial); const [baseline, setBaseline] = useState(JSON.stringify(initial));
-  const [activeId, setActiveId] = useState<string | null>(focusStationId != null ? String(focusStationId) : initial.stations[0] ? String(initial.stations[0].station_id) : null);
-  const [adding, setAdding] = useState(false); const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [saved, setSaved] = useState(false);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const fr = draft.language === "fr"; const dirty = JSON.stringify(draft) !== baseline;
+  const [adding, setAdding] = useState(false); const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(""); const [saved, setSaved] = useState(false);
+  const fr = draft.language === "fr"; const dirty = JSON.stringify(draft) !== baseline; const busy = saving || disabled;
   const followed = useMemo(() => new Set(draft.stations.map(row => String(row.station_id))), [draft.stations]);
-  const active = draft.stations.find(row => String(row.station_id) === activeId);
-  function focusEditor() { if (typeof window === "undefined") return; window.requestAnimationFrame(() => titleRef.current?.focus()); }
   function add(stations: StationSummary[]) {
     const additions = stations.filter(station => !followed.has(String(station.id))).map(station => ({ station_id: station.id, station_name: station.name, topics: [], newsletter_frequency: "weekly", weather_frequency: "friday" } as StationIntent));
     if (!additions.length || draft.stations.length + additions.length > 20) return;
-    setError(""); setDraft(old => ({ ...old, stations: [...old.stations, ...additions] })); setActiveId(String(additions[0].station_id)); setAdding(false);
-    setNotice(fr ? `${additions.length} station(s) ajoutée(s) à votre sélection. Personnalisez les informations pour chacune.` : `${additions.length} resort(s) added to your selection. Choose updates for each one.`); focusEditor();
+    setError(""); setSaved(false); setDraft(old => ({ ...old, stations: [...old.stations, ...additions] })); setAdding(false);
   }
   async function save(event: FormEvent) {
-    event.preventDefault(); setError("");
+    event.preventDefault(); if (busy) return; setError("");
     if (adding) { setError(fr ? "Ajoutez les stations cochées ou fermez la liste avant d’enregistrer." : "Add the checked resorts or close the list before saving."); return; }
-    setBusy(true);
-    try { await onSave(draft); setBaseline(JSON.stringify(draft)); setSaved(true); setNotice(fr ? "Vos choix sont enregistrés." : "Your choices are saved."); setActiveId(null); }
+    setSaving(true); onSavingChange?.(true);
+    try { await onSave(draft); setBaseline(JSON.stringify(draft)); setSaved(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : (fr ? "Enregistrement impossible." : "Unable to save.")); }
-    finally { setBusy(false); }
+    finally { setSaving(false); onSavingChange?.(false); }
   }
   return <form onSubmit={save} className={styles.editor}>
-    <label className={styles.general}><input type="checkbox" checked={draft.articles === true} disabled={busy} onChange={event => setDraft(old => ({ ...old, articles: event.target.checked }))} /><span>{fr ? "Recevoir les articles et guides, toutes destinations" : "Receive articles and guides, all destinations"}</span></label>
-    {draft.articles && <label className="newsletter-field">{fr ? "Fréquence des articles et guides" : "Articles and guides frequency"}<select aria-label={fr ? "Fréquence des articles et guides" : "Articles and guides frequency"} value={draft.newsletter_frequency || "weekly"} disabled={busy} onChange={event => setDraft(old => ({ ...old, newsletter_frequency: event.target.value as NewsletterFrequency }))}><option value="immediate">{fr ? "À chaque publication" : "On publication"}</option><option value="weekly">{fr ? "Chaque semaine" : "Weekly"}</option><option value="monthly">{fr ? "Chaque mois" : "Monthly"}</option></select></label>}
-    <div className={styles.listHeading}><h4>{fr ? "Mes stations" : "My resorts"} <span>({draft.stations.length})</span></h4><span className={styles.hint}>{fr ? "Sélection en cours" : "Current selection"}</span></div>
-    {!draft.stations.length && <p className={styles.hint}>{fr ? "Aucune station choisie pour le moment." : "No resorts selected yet."}</p>}
-    <ul className={styles.stationRows} aria-label={fr ? "Stations sélectionnées" : "Selected resorts"}>{draft.stations.map(row => <li key={String(row.station_id)} data-editing={activeId === String(row.station_id)}>
-      <div className={styles.stationIdentity}><strong>{row.station_name}</strong><span>{subscriptionSummary(row, fr)}</span></div>
-      <div className={styles.rowActions}><button type="button" className={styles.textButton} disabled={busy} onClick={() => { setActiveId(String(row.station_id)); setAdding(false); focusEditor(); }} aria-label={`${fr ? "Modifier" : "Edit"} ${row.station_name}`}>{activeId === String(row.station_id) ? (fr ? "En cours" : "Editing") : (fr ? "Modifier" : "Edit")}</button><button type="button" className={styles.textButton} disabled={busy} onClick={() => { setDraft(old => ({ ...old, stations: old.stations.filter(item => String(item.station_id) !== String(row.station_id)) })); if (activeId === String(row.station_id)) setActiveId(null); setNotice(fr ? `${row.station_name} retirée de votre sélection.` : `${row.station_name} removed from your selection.`); }} aria-label={`${fr ? "Retirer" : "Remove"} ${row.station_name}`}>{fr ? "Retirer" : "Remove"}</button></div>
-    </li>)}</ul>
-    {notice && <p role="status" className={styles.notice}>{notice}</p>}
-    {active && !adding && <section className={styles.editPanel} aria-label={`${fr ? "Réglages de" : "Settings for"} ${active.station_name}`}>
-      <header><div><p>{fr ? "Informations à recevoir pour" : "Updates for"}</p><h4 ref={titleRef} tabIndex={-1}>{active.station_name}</h4></div><button type="button" className={styles.textButton} disabled={busy} onClick={() => setActiveId(null)}>{fr ? "Fermer les réglages" : "Close settings"}</button></header>
-      <StationSubscriptionFields value={active} fr={fr} disabled={busy} onChange={value => setDraft(old => ({ ...old, stations: old.stations.map(row => String(row.station_id) === String(value.station_id) ? value : row) }))} />
-    </section>}
-    {draft.stations.length < 20 && (adding ? <StationSubscriptionPicker followedIds={followed} onAdd={add} maxSelections={20 - draft.stations.length} onClose={() => setAdding(false)} disabled={busy} fr={fr} /> : <button type="button" className={styles.addButton} disabled={busy} onClick={() => setAdding(true)}>+ {fr ? "Ajouter une station" : "Add a resort"}</button>)}
+    <section className={styles.generalSection} aria-label={fr ? "Articles et guides" : "Articles and guides"}>
+      <div><h3>{fr ? "Articles et guides Snow Explorer" : "Snow Explorer articles and guides"}</h3><p className={styles.hint}>{fr ? "Les nouveautés du site, toutes destinations." : "New content from all destinations."}</p></div>
+      <label className={styles.topic}><input type="checkbox" checked={draft.articles === true} disabled={busy} onChange={event => setDraft(old => ({ ...old, articles: event.target.checked }))} /><span>{fr ? "Recevoir les articles et guides" : "Receive articles and guides"}</span></label>
+      <label className={styles.frequency}>{fr ? "Fréquence des articles et guides" : "Articles and guides frequency"}<select aria-label={fr ? "Fréquence des articles et guides" : "Articles and guides frequency"} value={draft.newsletter_frequency || "weekly"} disabled={busy || !draft.articles} onChange={event => setDraft(old => ({ ...old, newsletter_frequency: event.target.value as NewsletterFrequency }))}><option value="immediate">{fr ? "À chaque publication" : "On publication"}</option><option value="weekly">{fr ? "Chaque semaine" : "Weekly"}</option><option value="monthly">{fr ? "Chaque mois" : "Monthly"}</option></select></label>
+    </section>
+    <div className={styles.listHeading}><div><h3>{fr ? "Mes stations" : "My resorts"} ({draft.stations.length})</h3><p className={styles.hint}>{fr ? "Cochez les informations à recevoir pour chaque station." : "Choose the updates to receive for each resort."}</p></div>{draft.stations.length < 20 && !adding && <button type="button" className="btn btn--secondary" disabled={busy} onClick={() => setAdding(true)}>{fr ? "Ajouter des stations" : "Add resorts"}</button>}</div>
+    {adding && <StationSubscriptionPicker followedIds={followed} onAdd={add} maxSelections={20 - draft.stations.length} onClose={() => setAdding(false)} disabled={busy} fr={fr} />}
+    {!draft.stations.length && !adding && <p className={styles.empty}>{fr ? "Vous ne suivez aucune station. Ajoutez vos stations pour choisir les informations à recevoir." : "You do not follow any resorts yet. Add resorts to choose your updates."}</p>}
+    <div className={styles.stations}>{draft.stations.map(row => <section key={String(row.station_id)} className={styles.station} aria-label={row.station_name}>
+      <header><h4>{row.station_name}</h4><button type="button" className={styles.removeButton} disabled={busy} onClick={() => { setDraft(old => ({ ...old, stations: old.stations.filter(item => String(item.station_id) !== String(row.station_id)) })); setSaved(false); }} aria-label={`${fr ? "Retirer" : "Remove"} ${row.station_name}`}>{fr ? "Retirer la station" : "Remove resort"}</button></header>
+      <StationSubscriptionFields value={row} fr={fr} disabled={busy} onChange={value => setDraft(old => ({ ...old, stations: old.stations.map(item => String(item.station_id) === String(value.station_id) ? value : item) }))} />
+    </section>)}</div>
     {error && <p role="alert">{error}</p>}
-    <div className={styles.saveBar}><span>{dirty ? (fr ? "Modifications à enregistrer" : "Unsaved changes") : saved ? (fr ? "Choix enregistrés" : "Choices saved") : (fr ? "Choisissez vos informations, puis enregistrez" : "Choose your updates, then save")}</span><div className={styles.actions}><button className="btn btn--primary" disabled={busy || adding}>{busy ? (fr ? "Enregistrement…" : "Saving…") : submitLabel || (fr ? "Enregistrer mes choix" : "Save my choices")}</button>{onCancel && <button type="button" className={styles.textButton} disabled={busy} onClick={onCancel}>{fr ? "Annuler cet ajout" : "Cancel this addition"}</button>}</div></div>
+    <div className={styles.saveBar}><p role="status">{dirty ? (fr ? "Vos modifications ne sont pas encore enregistrées." : "Your changes have not been saved yet.") : saved ? (fr ? "Vos préférences sont enregistrées." : "Your preferences are saved.") : ""}</p><div className={styles.actions}><button className="btn btn--primary" disabled={busy || adding}>{saving ? (fr ? "Enregistrement…" : "Saving…") : submitLabel || (fr ? "Enregistrer mes préférences" : "Save my preferences")}</button>{onCancel && <button type="button" className={styles.textButton} disabled={busy} onClick={onCancel}>{fr ? "Annuler" : "Cancel"}</button>}</div></div>
   </form>;
 }

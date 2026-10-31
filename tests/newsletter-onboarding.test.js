@@ -33,7 +33,7 @@ test('connected station CTA saves the topic before opening the account and shows
     assert.deepEqual(calls[0],['/newsletter/follow',{station_id:'FR_2',topic:'weather',language:'fr'},true]);
     const url=new URL(calls.at(-1)[1],'https://snow.example');
     assert.equal(url.pathname,'/mon-compte');assert.equal(url.searchParams.get('station_id'),'FR_2');assert.equal(url.searchParams.get('topic'),'weather');
-    assert.match(entry.notice,/Abonnement « Météo » ajouté pour Alpe d’Huez/);assert.equal(entry.email,'member@example.com');assert.equal(entry.draftToken,null);
+    assert.match(entry.notice,/Abonnement « Météo et enneigement » ajouté pour Alpe d’Huez/);assert.equal(entry.email,'member@example.com');assert.equal(entry.draftToken,null);
   } finally {act(()=>root.unmount());}
 });
 

@@ -47,3 +47,23 @@ test('member API keeps cookies and attaches the session CSRF to password changes
  const previous=global.fetch;const calls=[];global.fetch=async(...args)=>{calls.push(args);return {ok:true,json:async()=>({authenticated:true,user,csrf_token:'new-csrf'})};};
  try{const api=load('src/lib/memberApi.ts',{'./adminApi':{ADMIN_API_BASE:'https://api.example'}});await api.memberRequest('/password',{password:'a secure password'},true);assert.equal(calls[0][0],'https://api.example/api/member/session');assert.equal(calls[1][0],'https://api.example/api/member/password');assert.equal(calls[1][1].headers['X-CSRF-Token'],'new-csrf');assert.equal(calls[1][1].credentials,'include');assert.equal(calls[1][1].method,'POST');}finally{global.fetch=previous;}
 });
+
+test('unsubscribe is an explicit button with confirmation and leaves a durable unsubscribed view',async()=>{
+ const calls=[];const intent={stations:[],articles:true,consent:true,language:'fr',source:'account'};
+ const Panel=load('src/components/member/MemberNewsletter.tsx',{'@/contexts/MemberAuthContext':{useMemberAuth:()=>({...auth,openNewsletterAccount(){},stageNewsletterIntent(){}})},'@/lib/memberApi':{memberRequest:async(...args)=>{calls.push(args);return args[0]==='/newsletter/request'?{intent:null}:{data:{status:'active',intent}};}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Panel));});try{
+  assert.equal(root.root.findAllByType('details').length,0);
+  const before=calls.length;act(()=>button(root,'Me désabonner de tous les emails').props.onClick());assert.equal(calls.length,before);assert.equal(root.root.findAllByProps({role:'alertdialog'}).length,1);
+  act(()=>button(root,'Annuler').props.onClick());assert.equal(root.root.findAllByProps({role:'alertdialog'}).length,0);assert.equal(calls.length,before);
+  act(()=>button(root,'Me désabonner de tous les emails').props.onClick());await act(async()=>button(root,'Confirmer le désabonnement').props.onClick());assert.deepEqual(calls.at(-1),['/newsletter/unsubscribe',{},true]);
+  assert.equal(button(root,'Enregistrer mes choix'),undefined);assert.ok(button(root,'Réactiver mes abonnements'));
+  assert.match(JSON.stringify(root.toJSON()),/Vous êtes désabonné de tous les emails/);
+  const after=calls.length;act(()=>button(root,'Réactiver mes abonnements').props.onClick());assert.equal(calls.length,after);assert.ok(button(root,'Enregistrer mes choix'));
+ }finally{act(()=>root.unmount());}
+});
+
+test('failed unsubscribe preserves the editor and shows an error without success feedback',async()=>{
+ const intent={stations:[],articles:true,consent:true,language:'fr',source:'account'};
+ const Panel=load('src/components/member/MemberNewsletter.tsx',{'@/contexts/MemberAuthContext':{useMemberAuth:()=>({...auth,openNewsletterAccount(){},stageNewsletterIntent(){}})},'@/lib/memberApi':{memberRequest:async(path)=>{if(path==='/newsletter/unsubscribe')throw Error('Impossible de joindre le serveur.');return path==='/newsletter/request'?{intent:null}:{data:{status:'active',intent}};}}}).default;
+ let root;await act(async()=>{root=renderer.create(React.createElement(Panel));});try{act(()=>button(root,'Me désabonner de tous les emails').props.onClick());await act(async()=>button(root,'Confirmer le désabonnement').props.onClick());assert.match(root.root.findByProps({role:'alert'}).children.join(''),/Impossible de joindre/);assert.ok(button(root,'Enregistrer mes choix'));assert.equal(button(root,'Réactiver mes abonnements'),undefined);assert.equal(root.root.findAllByProps({role:'alertdialog'}).length,1);}finally{act(()=>root.unmount());}
+});
